@@ -89,19 +89,19 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
     : tasks
 
   return (
-    <div className="flex min-h-full flex-col bg-[#f2f3f5]">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border bg-white px-4 py-3 md:px-6">
-        <Link href={`/classes/${classSlug}`} className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+    <div className="flex min-h-full flex-col">
+      {/* Frosted toolbar */}
+      <div className="sticky top-0 z-40 flex items-center gap-2 border-b border-black/[0.07] bg-white/70 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 md:px-6">
+        <Link href={`/classes/${classSlug}`} className="rounded-[7px] p-1.5 text-foreground/55 transition-colors hover:bg-black/[0.05] hover:text-foreground">
           <ArrowLeft size={18} />
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="truncate font-semibold text-foreground">{cls.class_name} · Kanban</h1>
+          <h1 className="truncate font-semibold tracking-tight text-foreground">{cls.class_name} · Kanban</h1>
           <p className="text-xs text-muted-foreground">{students.length} 人 · {tasks.length} 項任務</p>
         </div>
         <Link
           href={`/classes/${classSlug}`}
-          className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+          className="flex items-center gap-1.5 rounded-[8px] border border-black/[0.08] bg-white/80 px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:bg-white active:scale-[0.97]"
         >
           <LayoutList size={14} />
           表格
@@ -109,7 +109,7 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
       </div>
 
       {/* Student tabs */}
-      <div className="overflow-x-auto border-b border-border bg-white">
+      <div className="overflow-x-auto border-b border-black/[0.06] bg-white/55 backdrop-blur-xl">
         <div className="flex min-w-max px-2">
           {students.map((cs, idx) => {
             const unfinished = tasks.filter(t => {
@@ -175,8 +175,8 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
                 key={task.id}
                 onClick={() => handleCardClick(task, activeStudent)}
                 className={cn(
-                  'flex flex-col gap-1.5 rounded-xl border border-border bg-white p-3 text-left shadow-sm transition-shadow hover:shadow-md',
-                  'border-l-4',
+                  'flex flex-col gap-1.5 rounded-2xl bg-white/95 p-3.5 text-left ring-1 ring-black/[0.06] transition-all hover:-translate-y-0.5 active:scale-[0.99]',
+                  'border-l-4 shadow-[0_6px_20px_-10px_rgba(0,0,0,0.14),0_2px_6px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.22)]',
                   LAMP_BORDER[lamp]
                 )}
               >

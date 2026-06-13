@@ -6,6 +6,29 @@ import { Loader2, X, Search, UserPlus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { RosterStudent } from '@/lib/grade/types'
 
+const AVATAR_COLORS = [
+  'bg-sky-100 text-sky-700',
+  'bg-violet-100 text-violet-700',
+  'bg-amber-100 text-amber-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-rose-100 text-rose-700',
+  'bg-indigo-100 text-indigo-700',
+  'bg-teal-100 text-teal-700',
+  'bg-orange-100 text-orange-700',
+]
+
+function initials(chinese: string | null, english: string | null): string {
+  if (english?.trim()) return english.trim()[0].toUpperCase()
+  if (chinese?.trim()) return chinese.trim().slice(-1)
+  return '?'
+}
+
+function avatarColor(seed: string): string {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h + seed.charCodeAt(i)) % AVATAR_COLORS.length
+  return AVATAR_COLORS[h]
+}
+
 export function StudentRoster({ students }: { students: RosterStudent[] }) {
   const [q, setQ] = useState('')
   const [editing, setEditing] = useState<RosterStudent | null>(null)
@@ -28,22 +51,22 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
 
   return (
     <>
-      {/* Header */}
-      <div className="border-b border-border bg-white px-4 py-4 md:px-6">
+      {/* Frosted toolbar */}
+      <div className="sticky top-0 z-40 border-b border-black/[0.07] bg-white/70 px-4 py-4 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 md:px-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold text-foreground">學生總覽</h1>
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">學生總覽</h1>
             <p className="mt-1 text-sm text-muted-foreground">全校 {students.length} 位學生</p>
           </div>
           <button
             onClick={() => setAdding(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-foreground px-3 py-2 text-sm font-medium text-background hover:opacity-90"
+            className="flex items-center gap-1.5 rounded-[8px] bg-gold px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.97]"
           >
             <UserPlus size={15} />
             新增學生
           </button>
         </div>
-        <div className="mt-3 flex max-w-sm items-center gap-2 rounded-lg border border-border bg-white px-3">
+        <div className="mt-3 flex max-w-sm items-center gap-2 rounded-[9px] bg-black/[0.04] px-3 ring-1 ring-black/[0.06] focus-within:bg-white focus-within:ring-gold/40">
           <Search size={15} className="text-muted-foreground" />
           <input
             value={q}
@@ -54,61 +77,74 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto p-3 md:p-6">
-        <table className="w-full min-w-[640px] border-separate border-spacing-0 overflow-hidden rounded-xl bg-white text-sm shadow-sm">
-          <thead>
-            <tr className="text-xs text-muted-foreground">
-              <th className="border-b border-border px-3 py-2.5 text-left font-medium">編號</th>
-              <th className="border-b border-border px-3 py-2.5 text-left font-medium">中文名</th>
-              <th className="border-b border-border px-3 py-2.5 text-left font-medium">英文名</th>
-              <th className="border-b border-border px-3 py-2.5 text-left font-medium">學校</th>
-              <th className="border-b border-border px-3 py-2.5 text-left font-medium">年級</th>
-              <th className="border-b border-border px-3 py-2.5 text-left font-medium">所屬班級</th>
-              <th className="border-b border-border px-3 py-2.5 text-left font-medium">狀態</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visible.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-3 py-10 text-center text-muted-foreground">
-                  {students.length === 0 ? '尚無學生，點右上角新增' : '查無符合的學生'}
-                </td>
+      {/* Table card */}
+      <div className="p-4 md:p-6">
+        <div className="overflow-x-auto rounded-[18px] bg-white/95 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.16),0_4px_12px_-8px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.06]">
+          <table className="w-full min-w-[680px] border-separate border-spacing-0 text-sm">
+            <thead>
+              <tr className="text-xs text-muted-foreground">
+                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">學生</th>
+                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">編號</th>
+                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">學校</th>
+                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">年級</th>
+                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">所屬班級</th>
+                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">狀態</th>
               </tr>
-            ) : (
-              visible.map(s => (
-                <tr
-                  key={s.id}
-                  onClick={() => setEditing(s)}
-                  className="cursor-pointer transition-colors hover:bg-muted/50"
-                >
-                  <td className="border-b border-border px-3 py-2.5 font-mono text-xs text-muted-foreground">{s.legacy_student_id}</td>
-                  <td className="border-b border-border px-3 py-2.5 text-foreground">{s.chinese_name ?? '—'}</td>
-                  <td className="border-b border-border px-3 py-2.5 text-muted-foreground">{s.english_name ?? '—'}</td>
-                  <td className="border-b border-border px-3 py-2.5 text-muted-foreground">{s.school ?? '—'}</td>
-                  <td className="border-b border-border px-3 py-2.5 text-muted-foreground">{s.grade ?? '—'}</td>
-                  <td className="border-b border-border px-3 py-2.5">
-                    {s.classes.length === 0
-                      ? <span className="text-muted-foreground/50">未分班</span>
-                      : <span className="flex flex-wrap gap-1">
-                          {s.classes.map((c, i) => (
-                            <span key={i} className="rounded bg-muted px-1.5 py-0.5 text-[11px] text-muted-foreground">{c}</span>
-                          ))}
-                        </span>}
-                  </td>
-                  <td className="border-b border-border px-3 py-2.5">
-                    <span className={cn(
-                      'rounded-full px-2 py-0.5 text-[11px] font-medium',
-                      s.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
-                    )}>
-                      {s.status === 'active' ? '在學' : '停課'}
-                    </span>
+            </thead>
+            <tbody>
+              {visible.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                    {students.length === 0 ? '尚無學生，點右上角新增' : '查無符合的學生'}
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                visible.map(s => (
+                  <tr
+                    key={s.id}
+                    onClick={() => setEditing(s)}
+                    className="cursor-pointer transition-colors hover:bg-black/[0.025]"
+                  >
+                    <td className="border-b border-gray-100 px-4 py-2.5">
+                      <span className="flex items-center gap-3">
+                        <span className={cn(
+                          'flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
+                          avatarColor(s.id)
+                        )}>
+                          {initials(s.chinese_name, s.english_name)}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate font-medium text-foreground">{s.chinese_name ?? '—'}</span>
+                          <span className="block truncate text-xs text-muted-foreground">{s.english_name ?? ''}</span>
+                        </span>
+                      </span>
+                    </td>
+                    <td className="border-b border-gray-100 px-4 py-2.5 font-mono text-xs text-muted-foreground">{s.legacy_student_id}</td>
+                    <td className="border-b border-gray-100 px-4 py-2.5 text-muted-foreground">{s.school ?? '—'}</td>
+                    <td className="border-b border-gray-100 px-4 py-2.5 text-muted-foreground">{s.grade ?? '—'}</td>
+                    <td className="border-b border-gray-100 px-4 py-2.5">
+                      {s.classes.length === 0
+                        ? <span className="text-muted-foreground/50">未分班</span>
+                        : <span className="flex flex-wrap gap-1">
+                            {s.classes.map((c, i) => (
+                              <span key={i} className="rounded-md bg-black/[0.05] px-1.5 py-0.5 text-[11px] text-muted-foreground">{c}</span>
+                            ))}
+                          </span>}
+                    </td>
+                    <td className="border-b border-gray-100 px-4 py-2.5">
+                      <span className={cn(
+                        'rounded-full px-2 py-0.5 text-[11px] font-medium',
+                        s.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                      )}>
+                        {s.status === 'active' ? '在學' : '停課'}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {(adding || editing) && (
