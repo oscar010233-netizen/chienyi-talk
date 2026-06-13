@@ -133,6 +133,14 @@
   }
   body {
     @apply bg-background text-foreground;
+    /* San Francisco on macOS, Segoe UI on Windows; PingFang / JhengHei for 中文.
+       Per-glyph fallback keeps Latin crisp while Chinese picks the right CJK face. */
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+      "Helvetica Neue", "Segoe UI", "PingFang TC", "PingFang SC",
+      "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   html {
     @apply font-sans;

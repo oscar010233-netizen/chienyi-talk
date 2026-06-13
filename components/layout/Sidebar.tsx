@@ -18,11 +18,11 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-border bg-white md:flex">
-      <div className="border-b border-border px-6 py-5">
-        <span className="text-lg font-bold text-foreground">{"簡易 OS"}</span>
+    <aside className="sticky top-0 hidden h-screen w-56 shrink-0 flex-col border-r border-black/[0.06] bg-white/70 backdrop-blur-2xl supports-[backdrop-filter]:bg-white/55 md:flex">
+      <div className="px-5 py-5">
+        <span className="text-[17px] font-semibold tracking-tight text-foreground">{"簡易 OS"}</span>
       </div>
-      <nav className="flex flex-1 flex-col gap-1 p-3">
+      <nav className="flex flex-1 flex-col gap-0.5 px-2.5">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive =
             pathname === href || (href !== "/" && pathname.startsWith(href));
@@ -31,13 +31,13 @@ export function Sidebar() {
               key={href}
               href={href}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                "flex items-center gap-2.5 rounded-[8px] px-2.5 py-2 text-[13px] font-medium transition-all active:scale-[0.98]",
                 isActive
-                  ? "bg-gold/10 text-gold"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-gold text-white shadow-sm"
+                  : "text-foreground/70 hover:bg-black/[0.05] hover:text-foreground"
               )}
             >
-              <Icon size={18} />
+              <Icon size={17} strokeWidth={isActive ? 2.4 : 2} />
               {label}
             </Link>
           );

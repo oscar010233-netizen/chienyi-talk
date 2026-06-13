@@ -122,30 +122,28 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   const classSlug = encodeURIComponent(cls.legacy_class_id ?? cls.id)
 
+  // macOS-style bordered toolbar button
+  const toolBtn =
+    'flex items-center gap-1.5 rounded-[8px] border border-black/[0.08] bg-white/80 px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:bg-white active:scale-[0.97] disabled:opacity-50'
+
   return (
-    <div className="flex min-h-full flex-col bg-[#f2f3f5]">
-      {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border bg-white px-4 py-3 md:px-6">
-        <Link href="/classes" className="rounded-lg p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+    <div className="flex min-h-full flex-col">
+      {/* Toolbar (frosted glass) */}
+      <div className="sticky top-0 z-40 flex items-center gap-2 border-b border-black/[0.07] bg-white/70 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 md:px-6">
+        <Link href="/classes" className="rounded-[7px] p-1.5 text-foreground/55 transition-colors hover:bg-black/[0.05] hover:text-foreground">
           <ArrowLeft size={18} />
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="truncate font-semibold text-foreground">{cls.class_name}</h1>
+          <h1 className="truncate font-semibold tracking-tight text-foreground">{cls.class_name}</h1>
           <p className="text-xs text-muted-foreground">
             {cls.legacy_class_id} · {students.length} 人 · {tasks.length} 項任務
           </p>
         </div>
-        <button
-          onClick={() => setShowEnroll(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
-        >
+        <button onClick={() => setShowEnroll(true)} className={toolBtn}>
           <UserPlus size={14} />
           新增學生
         </button>
-        <button
-          onClick={() => setShowAddTask(true)}
-          className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
-        >
+        <button onClick={() => setShowAddTask(true)} className={toolBtn}>
           <Plus size={14} />
           新增任務
         </button>
@@ -153,7 +151,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           onClick={handleDispatch}
           disabled={dispatching}
           title="為班上所有學生 × 任務補上缺少的任務記錄"
-          className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
+          className={toolBtn}
         >
           <Send size={14} />
           {dispatching ? '派發中…' : '派發任務'}
@@ -161,10 +159,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         {dispatchMsg && (
           <span className="text-xs text-muted-foreground">{dispatchMsg}</span>
         )}
-        <Link
-          href={`/classes/${classSlug}/kanban`}
-          className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
-        >
+        <Link href={`/classes/${classSlug}/kanban`} className={toolBtn}>
           <Kanban size={14} />
           Kanban
         </Link>
@@ -176,8 +171,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           <p>{tasks.length === 0 ? '此班尚無任務' : '此班尚無學生'}</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-hidden p-3 md:p-5">
-          <div className="h-full overflow-auto rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+        <div className="flex-1 overflow-hidden p-4 md:p-6">
+          <div className="h-full overflow-auto rounded-[18px] bg-white/95 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18),0_4px_12px_-8px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] backdrop-blur-sm">
             <table className="w-full border-separate border-spacing-0 text-sm">
               <thead>
                 <tr>
