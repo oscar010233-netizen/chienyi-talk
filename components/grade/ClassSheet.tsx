@@ -20,23 +20,14 @@ const TASK_SHORT: Record<TaskType, string> = {
   comment:    '評',
 }
 
-// Type chips — one step darker than the row tint so they stay legible on it.
+// Solid colour lives only in the small type badge — keeps the type cue strong
+// while the row stays neutral so the status lamps on the right read clearly.
 const TASK_CHIP: Record<TaskType, string> = {
-  attendance: 'bg-sky-100 text-sky-700',
-  homework:   'bg-violet-100 text-violet-700',
-  practice:   'bg-amber-100 text-amber-700',
-  quiz:       'bg-rose-100 text-rose-700',
-  comment:    'bg-teal-100 text-teal-700',
-}
-
-// Faint per-type row background (solid so the sticky first column stays opaque),
-// with a slightly stronger tint on hover.
-const TASK_ROW: Record<TaskType, string> = {
-  attendance: 'bg-sky-50 group-hover:bg-sky-100/70',
-  homework:   'bg-violet-50 group-hover:bg-violet-100/70',
-  practice:   'bg-amber-50 group-hover:bg-amber-100/70',
-  quiz:       'bg-rose-50 group-hover:bg-rose-100/70',
-  comment:    'bg-teal-50 group-hover:bg-teal-100/70',
+  attendance: 'bg-sky-500 text-white',
+  homework:   'bg-violet-500 text-white',
+  practice:   'bg-amber-500 text-white',
+  quiz:       'bg-rose-500 text-white',
+  comment:    'bg-teal-500 text-white',
 }
 
 const AVATAR_COLORS = [
@@ -209,13 +200,18 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 </tr>
               </thead>
               <tbody>
-                {tasks.map(task => {
-                  const rowBg = TASK_ROW[task.task_type]
+                {tasks.map((task, rowIdx) => {
+                  // Zebra striping guides the eye across the row; colour is reserved
+                  // for the type badge (left) and the status lamps (right).
+                  const zebra = cn(
+                    rowIdx % 2 === 1 ? 'bg-gray-50' : 'bg-white',
+                    'group-hover:bg-gray-100'
+                  )
                   return (
                   <tr key={task.id} className="group">
-                    <td className={cn('sticky left-0 z-10 border-b border-gray-100 px-4 py-3.5 transition-colors', rowBg)}>
+                    <td className={cn('sticky left-0 z-10 border-b border-gray-100 px-4 py-3.5 transition-colors', zebra)}>
                       <span className="flex items-center gap-2">
-                        <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
+                        <span className={cn('inline-flex size-5 shrink-0 items-center justify-center rounded-[6px] text-[11px] font-semibold', TASK_CHIP[task.task_type])}>
                           {TASK_SHORT[task.task_type]}
                         </span>
                         <span className="font-medium text-foreground">{task.task_name ?? task.task_code}</span>
@@ -237,11 +233,11 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                       return (
                         <td
                           key={cs.student_id}
-                          className={cn('border-b border-gray-100 px-2 py-2.5 text-center transition-colors', rowBg)}
+                          className={cn('border-b border-gray-100 px-2 py-2.5 text-center transition-colors', zebra)}
                         >
                           <button
                             onClick={() => handleCellClick(task, cs)}
-                            className="inline-flex items-center justify-center rounded-lg px-1.5 py-1 transition-colors hover:bg-gray-100"
+                            className="inline-flex items-center justify-center rounded-lg px-1.5 py-1 transition-colors hover:bg-gray-200/70"
                           >
                             {record
                               ? <LampBadge color={display.color} label={display.label} detail={detail} />
@@ -250,7 +246,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                         </td>
                       )
                     })}
-                    <td aria-hidden className={cn('border-b border-gray-100 transition-colors', rowBg)} />
+                    <td aria-hidden className={cn('border-b border-gray-100 transition-colors', zebra)} />
                   </tr>
                   )
                 })}
