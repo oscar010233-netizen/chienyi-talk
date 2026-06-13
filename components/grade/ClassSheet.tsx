@@ -20,13 +20,23 @@ const TASK_SHORT: Record<TaskType, string> = {
   comment:    '評',
 }
 
-// Low-saturation type chips, one tint per task kind.
+// Type chips — one step darker than the row tint so they stay legible on it.
 const TASK_CHIP: Record<TaskType, string> = {
-  attendance: 'bg-sky-50 text-sky-600',
-  homework:   'bg-violet-50 text-violet-600',
-  practice:   'bg-amber-50 text-amber-600',
-  quiz:       'bg-rose-50 text-rose-600',
-  comment:    'bg-teal-50 text-teal-600',
+  attendance: 'bg-sky-100 text-sky-700',
+  homework:   'bg-violet-100 text-violet-700',
+  practice:   'bg-amber-100 text-amber-700',
+  quiz:       'bg-rose-100 text-rose-700',
+  comment:    'bg-teal-100 text-teal-700',
+}
+
+// Faint per-type row background (solid so the sticky first column stays opaque),
+// with a slightly stronger tint on hover.
+const TASK_ROW: Record<TaskType, string> = {
+  attendance: 'bg-sky-50 group-hover:bg-sky-100/70',
+  homework:   'bg-violet-50 group-hover:bg-violet-100/70',
+  practice:   'bg-amber-50 group-hover:bg-amber-100/70',
+  quiz:       'bg-rose-50 group-hover:bg-rose-100/70',
+  comment:    'bg-teal-50 group-hover:bg-teal-100/70',
 }
 
 const AVATAR_COLORS = [
@@ -199,9 +209,11 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 </tr>
               </thead>
               <tbody>
-                {tasks.map(task => (
+                {tasks.map(task => {
+                  const rowBg = TASK_ROW[task.task_type]
+                  return (
                   <tr key={task.id} className="group">
-                    <td className="sticky left-0 z-10 border-b border-gray-100 bg-white px-4 py-3.5 transition-colors group-hover:bg-gray-50/80">
+                    <td className={cn('sticky left-0 z-10 border-b border-gray-100 px-4 py-3.5 transition-colors', rowBg)}>
                       <span className="flex items-center gap-2">
                         <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
                           {TASK_SHORT[task.task_type]}
@@ -225,7 +237,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                       return (
                         <td
                           key={cs.student_id}
-                          className="border-b border-gray-100 px-2 py-2.5 text-center transition-colors group-hover:bg-gray-50/80"
+                          className={cn('border-b border-gray-100 px-2 py-2.5 text-center transition-colors', rowBg)}
                         >
                           <button
                             onClick={() => handleCellClick(task, cs)}
@@ -238,9 +250,10 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                         </td>
                       )
                     })}
-                    <td aria-hidden className="border-b border-gray-100 transition-colors group-hover:bg-gray-50/80" />
+                    <td aria-hidden className={cn('border-b border-gray-100 transition-colors', rowBg)} />
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
