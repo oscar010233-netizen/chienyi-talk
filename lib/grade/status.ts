@@ -58,9 +58,22 @@ const ATTENDANCE: Record<GradeStatus, LampDisplay> = {
   completed: { color: 'green', label: '出' },
 }
 
+// Older data (and the previous editor) used a different vocabulary than the
+// canonical legacy state machine. Fold those aliases onto the canonical set so
+// existing rows render correctly while new writes use the canonical terms.
+const STATUS_ALIASES: Record<string, GradeStatus> = {
+  passed:    'completed',
+  complete:  'completed',
+  done:      'completed',
+  testing:   'correcting', // old name for quiz 驗收中
+  exempt:    'wont_do',
+  wontdo:    'wont_do',
+}
+
 export function normalizeStatus(raw: string | null | undefined): GradeStatus {
   const s = String(raw ?? '').trim().toLowerCase().replace(/[\s-]+/g, '_').replace(/'/g, '')
   if (s in QUIZ) return s as GradeStatus
+  if (s in STATUS_ALIASES) return STATUS_ALIASES[s]
   return 'pending'
 }
 
