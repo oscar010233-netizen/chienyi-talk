@@ -3,24 +3,30 @@
 import { cn } from '@/lib/utils'
 import type { Lamp } from '@/lib/grade/types'
 
-const LAMP: Record<Lamp, { dot: string; bg: string; text: string; label: string }> = {
-  red:    { dot: 'bg-red-400',     bg: 'bg-red-50',     text: 'text-red-700',     label: '待' },
-  yellow: { dot: 'bg-yellow-400',  bg: 'bg-yellow-50',  text: 'text-yellow-700',  label: '訂' },
-  green:  { dot: 'bg-emerald-400', bg: 'bg-emerald-50', text: 'text-emerald-700', label: '過' },
-  blue:   { dot: 'bg-blue-400',    bg: 'bg-blue-50',    text: 'text-blue-700',    label: '驗' },
-  black:  { dot: 'bg-gray-600',    bg: 'bg-gray-100',   text: 'text-gray-600',    label: '缺' },
-  white:  { dot: 'bg-gray-300',    bg: 'bg-gray-50',    text: 'text-gray-400',    label: '免' },
-  orange: { dot: 'bg-orange-400',  bg: 'bg-orange-50',  text: 'text-orange-700',  label: '練' },
+// Pure presentation. The colour + label are derived upstream from
+// (status, task_type) via lib/grade/status.ts — this component never
+// decides what a status "means".
+const LAMP_COLOR: Record<Lamp, { dot: string; bg: string; text: string }> = {
+  red:    { dot: 'bg-red-400',     bg: 'bg-red-50',     text: 'text-red-700' },
+  yellow: { dot: 'bg-yellow-400',  bg: 'bg-yellow-50',  text: 'text-yellow-700' },
+  green:  { dot: 'bg-emerald-400', bg: 'bg-emerald-50', text: 'text-emerald-700' },
+  blue:   { dot: 'bg-blue-400',    bg: 'bg-blue-50',    text: 'text-blue-700' },
+  black:  { dot: 'bg-gray-600',    bg: 'bg-gray-100',   text: 'text-gray-600' },
+  white:  { dot: 'bg-gray-300',    bg: 'bg-gray-50',    text: 'text-gray-400' },
+  orange: { dot: 'bg-orange-400',  bg: 'bg-orange-50',  text: 'text-orange-700' },
 }
 
 interface Props {
-  lamp: Lamp
-  score?: number | null
+  color: Lamp
+  label?: string
+  /** Score or history string, e.g. 100 or "80,90,99,90". */
+  detail?: string | number | null
   className?: string
 }
 
-export function LampBadge({ lamp, score, className }: Props) {
-  const c = LAMP[lamp]
+export function LampBadge({ color, label, detail, className }: Props) {
+  const c = LAMP_COLOR[color]
+  const hasDetail = detail != null && detail !== ''
   return (
     <span
       className={cn(
@@ -31,8 +37,8 @@ export function LampBadge({ lamp, score, className }: Props) {
       )}
     >
       <span className={cn('size-1.5 shrink-0 rounded-full', c.dot)} />
-      {c.label}
-      {score != null && <span className="opacity-75">{score}</span>}
+      {label}
+      {hasDetail && <span className="opacity-75">{detail}</span>}
     </span>
   )
 }

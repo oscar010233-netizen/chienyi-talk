@@ -7,7 +7,8 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { LampBadge } from './LampBadge'
 import { TaskUpdateDrawer } from './TaskUpdateDrawer'
-import type { ClassDetail, Task, TaskRecord, TaskType, ClassStudent, Lamp } from '@/lib/grade/types'
+import { lampFor, commentLamp } from '@/lib/grade/status'
+import type { ClassDetail, Task, TaskRecord, TaskType, ClassStudent } from '@/lib/grade/types'
 
 const TASK_SHORT: Record<TaskType, string> = {
   attendance: '出',
@@ -154,7 +155,14 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                   </td>
                   {students.map(cs => {
                     const record = recordMap.get(`${cs.student_id}:${task.id}`)
-                    const lamp: Lamp = record?.lamp ?? 'white'
+                    const isComment = task.task_type === 'comment'
+                    const display = isComment
+                      ? commentLamp(record?.comment_status)
+                      : lampFor(record?.status, task.task_type)
+                    // Scores only matter for quizzes; prefer the full history.
+                    const detail = task.task_type === 'quiz'
+                      ? (record?.result_history || record?.latest_result)
+                      : null
                     return (
                       <td
                         key={cs.student_id}
@@ -164,7 +172,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                           onClick={() => handleCellClick(task, cs)}
                           className="rounded-md px-1 py-0.5 transition-colors hover:bg-muted"
                         >
-                          <LampBadge lamp={lamp} score={record?.latest_result ?? undefined} />
+                          {record
+                            ? <LampBadge color={display.color} label={display.label} detail={detail} />
+                            : <span className="text-muted-foreground/40">–</span>}
                         </button>
                       </td>
                     )

@@ -4,25 +4,8 @@ import { useState } from 'react'
 import { Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LampBadge } from './LampBadge'
-import type { Task, TaskRecord, Lamp, TaskType } from '@/lib/grade/types'
-
-interface StatusOption {
-  value: string
-  lamp: Lamp
-  label: string
-  types: TaskType[]
-}
-
-const ALL_STATUS_OPTIONS: StatusOption[] = [
-  { value: 'pending',    lamp: 'red',    label: '待處理',   types: ['attendance','homework','practice','quiz','comment'] },
-  { value: 'redo',       lamp: 'red',    label: '需重做',   types: ['homework','practice','quiz'] },
-  { value: 'correcting', lamp: 'yellow', label: '訂正中',   types: ['homework','practice','quiz'] },
-  { value: 'testing',    lamp: 'blue',   label: '驗收中',   types: ['quiz'] },
-  { value: 'passed',     lamp: 'green',  label: '通過',     types: ['quiz'] },
-  { value: 'completed',  lamp: 'green',  label: '完成',     types: ['attendance','homework','practice','comment'] },
-  { value: 'missing',    lamp: 'black',  label: '缺交/缺考', types: ['attendance','homework','practice','quiz'] },
-  { value: 'exempt',     lamp: 'white',  label: '免',       types: ['attendance','homework','practice','quiz','comment'] },
-]
+import { lampFor, commentLamp, statusOptionsFor, takesScore } from '@/lib/grade/status'
+import type { Task, TaskRecord } from '@/lib/grade/types'
 
 interface Props {
   task: Task
@@ -39,8 +22,14 @@ export function TaskUpdateDrawer({ task, student, record, classId, onClose }: Pr
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
 
-  const options = ALL_STATUS_OPTIONS.filter(o => o.types.includes(task.task_type))
-  const currentLamp = ALL_STATUS_OPTIONS.find(o => o.value === status)?.lamp ?? 'red'
+  const options = statusOptionsFor(task.task_type)
+  // Lamp is always derived from (status, task_type) — never stored on its own.
+  const currentLamp = lampFor(status, task.task_type).color
+
+  // Current cell display (comment cells are driven by comment_status).
+  const currentDisplay = task.task_type === 'comment'
+    ? commentLamp(record?.comment_status)
+    : lampFor(record?.status, task.task_type)
 
   async function handleSubmit() {
     setLoading(true)
@@ -51,7 +40,7 @@ export function TaskUpdateDrawer({ task, student, record, classId, onClose }: Pr
         task_id: task.id,
         class_id: classId,
         status,
-        lamp: currentLamp,
+        lamp: currentLamp, // kept populated for legacy Sheet/AppSheet readers
         private_note: note.trim() || null,
       }
 
@@ -108,7 +97,11 @@ export function TaskUpdateDrawer({ task, student, record, classId, onClose }: Pr
           {record && (
             <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
               <span>現況：</span>
-              <LampBadge lamp={record.lamp} score={record.latest_result} />
+              <LampBadge
+                color={currentDisplay.color}
+                label={currentDisplay.label}
+                detail={takesScore(task.task_type) ? record.latest_result : null}
+              />
               {record.result_history && (
                 <span className="ml-auto">歷史：{record.result_history}</span>
               )}
@@ -130,15 +123,15 @@ export function TaskUpdateDrawer({ task, student, record, classId, onClose }: Pr
                       : 'border-border text-muted-foreground hover:bg-muted'
                   )}
                 >
-                  <LampBadge lamp={opt.lamp} />
-                  {opt.label}
+                  <LampBadge color={opt.color} label={opt.label} />
+                  {opt.name}
                 </button>
               ))}
             </div>
           </div>
 
           {/* Score (quiz only) */}
-          {task.task_type === 'quiz' && (
+          {takesScore(task.task_type) && (
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                 新成績{task.threshold != null && `（門檻 ${task.threshold}）`}

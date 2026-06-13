@@ -7,7 +7,17 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { LampBadge } from './LampBadge'
 import { TaskUpdateDrawer } from './TaskUpdateDrawer'
+import { lampFor, commentLamp, type LampDisplay } from '@/lib/grade/status'
 import type { ClassDetail, Task, TaskRecord, TaskType, ClassStudent, Lamp } from '@/lib/grade/types'
+
+// Lamp colour + label are derived from (status, task_type); an
+// un-dispatched cell (no record) is treated as a neutral white.
+function displayFor(task: Task, record?: TaskRecord): LampDisplay {
+  if (!record) return { color: 'white', label: '' }
+  return task.task_type === 'comment'
+    ? commentLamp(record.comment_status)
+    : lampFor(record.status, task.task_type)
+}
 
 const TASK_TYPE_LABEL: Record<TaskType, string> = {
   attendance: '出席',
@@ -74,7 +84,7 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
   const visibleTasks = hideDone
     ? tasks.filter(t => {
         const r = activeStudent ? recordMap.get(`${activeStudent.student_id}:${t.id}`) : undefined
-        return !DONE_LAMPS.includes((r?.lamp ?? 'white') as Lamp)
+        return !DONE_LAMPS.includes(displayFor(t, r).color)
       })
     : tasks
 
@@ -104,7 +114,7 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
           {students.map((cs, idx) => {
             const unfinished = tasks.filter(t => {
               const r = recordMap.get(`${cs.student_id}:${t.id}`)
-              return !DONE_LAMPS.includes((r?.lamp ?? 'white') as Lamp)
+              return !DONE_LAMPS.includes(displayFor(t, r).color)
             }).length
             return (
               <button
@@ -155,7 +165,11 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
         <div className="grid gap-2 p-3 sm:grid-cols-2 lg:grid-cols-3">
           {visibleTasks.map(task => {
             const record = recordMap.get(`${activeStudent.student_id}:${task.id}`)
-            const lamp: Lamp = record?.lamp ?? 'white'
+            const display = displayFor(task, record)
+            const lamp = display.color
+            const detail = task.task_type === 'quiz'
+              ? (record?.result_history || record?.latest_result)
+              : null
             return (
               <button
                 key={task.id}
@@ -176,7 +190,7 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
                       {task.threshold != null && ` · 門檻 ${task.threshold}`}
                     </p>
                   </div>
-                  <LampBadge lamp={lamp} score={record?.latest_result ?? undefined} />
+                  <LampBadge color={display.color} label={display.label} detail={detail} />
                 </div>
                 {record?.result_history && (
                   <p className="text-[10px] text-muted-foreground">歷史：{record.result_history}</p>
