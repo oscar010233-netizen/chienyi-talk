@@ -74,3 +74,16 @@ export interface ClassDetail {
 export interface ClassWithCount extends ClassRow {
   student_count: number
 }
+
+export interface RosterStudent {
+  id: string
+  legacy_student_id: string
+  chinese_name: string | null
+  english_name: string | null
+  status: string
+  school: string | null
+  grade: string | null
+  parent_name: string | null
+  parent_phone: string | null
+  classes: string[]
+}

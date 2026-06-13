@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, CalendarDays, ClipboardCheck, GraduationCap, Home } from "lucide-react";
+import { BookOpen, CalendarDays, ClipboardCheck, GraduationCap, Home, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", icon: Home, label: "總覽" },
   { href: "/workspace", icon: CalendarDays, label: "配課表" },
   { href: "/classes", icon: GraduationCap, label: "班級" },
+  { href: "/students", icon: Users, label: "學生" },
   { href: "/speaking", icon: BookOpen, label: "口說練習" },
   { href: "/exam-grading", icon: ClipboardCheck, label: "試卷批改" },
 ];

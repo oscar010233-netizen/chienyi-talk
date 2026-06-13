@@ -2,11 +2,13 @@
 
 import { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Kanban, Send } from 'lucide-react'
+import { ArrowLeft, Kanban, Send, UserPlus, Plus } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { LampBadge } from './LampBadge'
 import { TaskUpdateDrawer } from './TaskUpdateDrawer'
+import { AddTaskModal } from './AddTaskModal'
+import { EnrollStudentModal } from './EnrollStudentModal'
 import { lampFor, commentLamp } from '@/lib/grade/status'
 import type { ClassDetail, Task, TaskRecord, TaskType, ClassStudent } from '@/lib/grade/types'
 
@@ -29,7 +31,17 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   const [selected, setSelected] = useState<SelectedCell | null>(null)
   const [dispatching, setDispatching] = useState(false)
   const [dispatchMsg, setDispatchMsg] = useState('')
+  const [showAddTask, setShowAddTask] = useState(false)
+  const [showEnroll, setShowEnroll] = useState(false)
   const router = useRouter()
+
+  const enrolledIds = students.map(cs => cs.student_id)
+
+  const handleModalClose = (refresh?: boolean) => {
+    setShowAddTask(false)
+    setShowEnroll(false)
+    if (refresh) router.refresh()
+  }
 
   async function handleDispatch() {
     setDispatching(true)
@@ -92,9 +104,23 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           </p>
         </div>
         <button
+          onClick={() => setShowEnroll(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+        >
+          <UserPlus size={14} />
+          新增學生
+        </button>
+        <button
+          onClick={() => setShowAddTask(true)}
+          className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted"
+        >
+          <Plus size={14} />
+          新增任務
+        </button>
+        <button
           onClick={handleDispatch}
           disabled={dispatching}
-          title="將班上所有學生 × 任務產生缺少的任務記錄"
+          title="為班上所有學生 × 任務補上缺少的任務記錄"
           className="flex items-center gap-1.5 rounded-lg border border-border bg-white px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
         >
           <Send size={14} />
@@ -193,6 +219,18 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           record={selected.record}
           classId={cls.id}
           onClose={handleClose}
+        />
+      )}
+
+      {showAddTask && (
+        <AddTaskModal classId={cls.id} onClose={handleModalClose} />
+      )}
+
+      {showEnroll && (
+        <EnrollStudentModal
+          classId={cls.id}
+          enrolledIds={enrolledIds}
+          onClose={handleModalClose}
         />
       )}
     </div>

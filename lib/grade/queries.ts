@@ -1,5 +1,34 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import type { ClassWithCount, ClassDetail, ClassStudent, Task, TaskRecord, ClassRow } from './types'
+import type { ClassWithCount, ClassDetail, ClassStudent, Task, TaskRecord, ClassRow, RosterStudent } from './types'
+
+// School-wide student roster, each with the classes they're actively enrolled in.
+export async function getAllStudents(): Promise<RosterStudent[]> {
+  const supabase = await createServiceClient()
+
+  const { data: students, error } = await supabase
+    .from('students')
+    .select('id, legacy_student_id, chinese_name, english_name, status, school, grade, parent_name, parent_phone')
+    .order('legacy_student_id')
+
+  if (error || !students) return []
+
+  const { data: enrollments } = await supabase
+    .from('class_students')
+    .select('student_id, class:classes(class_name, legacy_class_id)')
+    .eq('status', 'active')
+
+  const classMap: Record<string, string[]> = {}
+  for (const e of enrollments ?? []) {
+    const cls = e.class as unknown as { class_name: string | null } | null
+    const name = cls?.class_name
+    if (name) (classMap[e.student_id] ??= []).push(name)
+  }
+
+  return students.map(s => ({
+    ...s,
+    classes: classMap[s.id] ?? [],
+  })) as RosterStudent[]
+}
 
 export async function getAllClasses(): Promise<ClassWithCount[]> {
   const supabase = await createServiceClient()
