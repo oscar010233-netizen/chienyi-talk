@@ -52,7 +52,7 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
   return (
     <>
       {/* Frosted toolbar */}
-      <div className="sticky top-0 z-40 border-b border-black/[0.07] bg-white/70 px-4 py-4 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 md:px-6">
+      <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-4 md:px-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">學生總覽</h1>
@@ -60,13 +60,13 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
           </div>
           <button
             onClick={() => setAdding(true)}
-            className="flex items-center gap-1.5 rounded-[8px] bg-gold px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.97]"
+            className="flex items-center gap-1.5 rounded-[8px] bg-gold px-3.5 py-2 text-sm font-medium text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.97] dark:bg-[#ff4d4f]"
           >
             <UserPlus size={15} />
             新增學生
           </button>
         </div>
-        <div className="mt-3 flex max-w-sm items-center gap-2 rounded-[9px] bg-black/[0.04] px-3 ring-1 ring-black/[0.06] focus-within:bg-white focus-within:ring-gold/40">
+        <div className="mt-3 flex max-w-sm items-center gap-2 rounded-[9px] bg-black/[0.04] px-3 ring-1 ring-black/[0.06] focus-within:bg-white focus-within:ring-gold/40 dark:bg-white/[0.06] dark:ring-white/10 dark:focus-within:bg-white/10">
           <Search size={15} className="text-muted-foreground" />
           <input
             value={q}
@@ -79,16 +79,16 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
 
       {/* Table card */}
       <div className="p-4 md:p-6">
-        <div className="overflow-x-auto rounded-[18px] bg-white/95 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.16),0_4px_12px_-8px_rgba(0,0,0,0.10)] ring-1 ring-black/[0.06]">
+        <div className="mac-card overflow-x-auto rounded-[18px]">
           <table className="w-full min-w-[680px] border-separate border-spacing-0 text-sm">
             <thead>
-              <tr className="text-xs text-muted-foreground">
-                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">學生</th>
-                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">編號</th>
-                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">學校</th>
-                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">年級</th>
-                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">所屬班級</th>
-                <th className="border-b border-gray-200 px-4 py-3 text-left font-medium">狀態</th>
+              <tr className="text-xs text-muted-foreground [&>th]:border-b [&>th]:border-black/[0.08] [&>th]:px-4 [&>th]:py-3 [&>th]:text-left [&>th]:font-medium dark:[&>th]:border-white/10">
+                <th>學生</th>
+                <th>編號</th>
+                <th>學校</th>
+                <th>年級</th>
+                <th>所屬班級</th>
+                <th>狀態</th>
               </tr>
             </thead>
             <tbody>
@@ -103,9 +103,9 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
                   <tr
                     key={s.id}
                     onClick={() => setEditing(s)}
-                    className="cursor-pointer transition-colors hover:bg-black/[0.025]"
+                    className="cursor-pointer transition-colors hover:bg-black/[0.025] dark:hover:bg-white/[0.04]"
                   >
-                    <td className="border-b border-gray-100 px-4 py-2.5">
+                    <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06]">
                       <span className="flex items-center gap-3">
                         <span className={cn(
                           'flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold',
@@ -119,22 +119,22 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
                         </span>
                       </span>
                     </td>
-                    <td className="border-b border-gray-100 px-4 py-2.5 font-mono text-xs text-muted-foreground">{s.legacy_student_id}</td>
-                    <td className="border-b border-gray-100 px-4 py-2.5 text-muted-foreground">{s.school ?? '—'}</td>
-                    <td className="border-b border-gray-100 px-4 py-2.5 text-muted-foreground">{s.grade ?? '—'}</td>
-                    <td className="border-b border-gray-100 px-4 py-2.5">
+                    <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06] font-mono text-xs text-muted-foreground">{s.legacy_student_id}</td>
+                    <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06] text-muted-foreground">{s.school ?? '—'}</td>
+                    <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06] text-muted-foreground">{s.grade ?? '—'}</td>
+                    <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06]">
                       {s.classes.length === 0
                         ? <span className="text-muted-foreground/50">未分班</span>
                         : <span className="flex flex-wrap gap-1">
                             {s.classes.map((c, i) => (
-                              <span key={i} className="rounded-md bg-black/[0.05] px-1.5 py-0.5 text-[11px] text-muted-foreground">{c}</span>
+                              <span key={i} className="rounded-md bg-black/[0.05] px-1.5 py-0.5 text-[11px] text-muted-foreground dark:bg-white/[0.08]">{c}</span>
                             ))}
                           </span>}
                     </td>
-                    <td className="border-b border-gray-100 px-4 py-2.5">
+                    <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06]">
                       <span className={cn(
                         'rounded-full px-2 py-0.5 text-[11px] font-medium',
-                        s.status === 'active' ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                        s.status === 'active' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300' : 'bg-gray-100 text-gray-500 dark:bg-white/10 dark:text-white/50'
                       )}>
                         {s.status === 'active' ? '在學' : '停課'}
                       </span>
@@ -198,7 +198,7 @@ function StudentFormModal({ student, onClose }: { student: RosterStudent | null;
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center md:justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={() => onClose()} />
-      <div className="relative z-10 w-full max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white shadow-xl md:max-w-sm md:rounded-2xl">
+      <div className="relative z-10 w-full max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white shadow-xl md:max-w-sm md:rounded-2xl dark:bg-[#2c2c2e]">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
             <p className="font-semibold text-foreground">{isEdit ? '編輯學生' : '新增學生'}</p>

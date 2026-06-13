@@ -50,7 +50,7 @@ export function AddTaskModal({ classId, onClose }: { classId: string; onClose: (
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center md:justify-center">
       <div className="absolute inset-0 bg-black/40" onClick={() => onClose()} />
-      <div className="relative z-10 w-full max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white shadow-xl md:max-w-sm md:rounded-2xl">
+      <div className="relative z-10 w-full max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white shadow-xl md:max-w-sm md:rounded-2xl dark:bg-[#2c2c2e]">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <p className="font-semibold text-foreground">新增任務</p>
           <button onClick={() => onClose()} className="rounded-lg p-1.5 hover:bg-muted">

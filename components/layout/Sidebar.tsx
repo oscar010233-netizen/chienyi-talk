@@ -14,6 +14,7 @@ import {
   PanelLeftOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "./ThemeToggle";
 
 const navItems = [
   { href: "/", icon: Home, label: "總覽" },
@@ -43,7 +44,7 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "sticky top-0 hidden h-screen shrink-0 flex-col border-r border-black/[0.06] bg-white/70 backdrop-blur-2xl supports-[backdrop-filter]:bg-white/55 transition-[width] duration-200 ease-out md:flex",
+        "mac-glass mac-hairline sticky top-0 hidden h-screen shrink-0 flex-col border-r transition-[width] duration-200 ease-out md:flex",
         collapsed ? "w-16" : "w-56"
       )}
     >
@@ -81,8 +82,8 @@ export function Sidebar() {
                 "flex items-center rounded-[8px] text-[13px] font-medium transition-all active:scale-[0.98]",
                 collapsed ? "justify-center py-2.5" : "gap-2.5 px-2.5 py-2",
                 isActive
-                  ? "bg-gold text-white shadow-sm"
-                  : "text-foreground/70 hover:bg-black/[0.05] hover:text-foreground"
+                  ? "bg-gold text-white shadow-sm dark:bg-[#ff4d4f]"
+                  : "text-foreground/70 hover:bg-black/[0.05] hover:text-foreground dark:hover:bg-white/[0.06]"
               )}
             >
               <Icon size={17} strokeWidth={isActive ? 2.4 : 2} />
@@ -91,6 +92,10 @@ export function Sidebar() {
           );
         })}
       </nav>
+
+      <div className="mac-hairline border-t p-2.5">
+        <ThemeToggle collapsed={collapsed} />
+      </div>
     </aside>
   );
 }

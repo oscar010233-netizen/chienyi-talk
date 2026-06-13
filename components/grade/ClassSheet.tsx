@@ -124,13 +124,13 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   // macOS-style bordered toolbar button
   const toolBtn =
-    'flex items-center gap-1.5 rounded-[8px] border border-black/[0.08] bg-white/80 px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:bg-white active:scale-[0.97] disabled:opacity-50'
+    'flex items-center gap-1.5 rounded-[8px] border border-black/[0.08] bg-white/80 px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:bg-white active:scale-[0.97] disabled:opacity-50 dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10'
 
   return (
     <div className="flex min-h-full flex-col">
       {/* Toolbar (frosted glass) */}
-      <div className="sticky top-0 z-40 flex items-center gap-2 border-b border-black/[0.07] bg-white/70 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 md:px-6">
-        <Link href="/classes" className="rounded-[7px] p-1.5 text-foreground/55 transition-colors hover:bg-black/[0.05] hover:text-foreground">
+      <div className="mac-glass mac-hairline sticky top-0 z-40 flex items-center gap-2 border-b px-4 py-2.5 md:px-6">
+        <Link href="/classes" className="rounded-[7px] p-1.5 text-foreground/55 transition-colors hover:bg-black/[0.05] hover:text-foreground dark:hover:bg-white/[0.06]">
           <ArrowLeft size={18} />
         </Link>
         <div className="flex-1 min-w-0">
@@ -172,17 +172,17 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         </div>
       ) : (
         <div className="flex-1 overflow-hidden p-4 md:p-6">
-          <div className="h-full overflow-auto rounded-[18px] bg-white/95 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18),0_4px_12px_-8px_rgba(0,0,0,0.12)] ring-1 ring-black/[0.06] backdrop-blur-sm">
+          <div className="mac-card h-full overflow-auto rounded-[18px]">
             <table className="w-full border-separate border-spacing-0 text-sm">
               <thead>
                 <tr>
-                  <th className="sticky left-0 top-0 z-30 min-w-[11rem] border-b border-gray-200 bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                  <th className="sticky left-0 top-0 z-30 min-w-[11rem] border-b border-black/[0.08] bg-white dark:border-white/10 dark:bg-[#2c2c2e] px-4 py-3 text-left text-xs font-medium text-muted-foreground">
                     任務
                   </th>
                   {students.map(cs => (
                     <th
                       key={cs.student_id}
-                      className="sticky top-0 z-20 min-w-[6.5rem] border-b border-gray-200 bg-white px-3 py-3 text-center align-bottom font-normal"
+                      className="sticky top-0 z-20 min-w-[6.5rem] border-b border-black/[0.08] bg-white dark:border-white/10 dark:bg-[#2c2c2e] px-3 py-3 text-center align-bottom font-normal"
                     >
                       <span className={cn(
                         'mx-auto mb-1.5 flex size-8 items-center justify-center rounded-full text-xs font-semibold',
@@ -195,7 +195,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                     </th>
                   ))}
                   {/* filler keeps the real columns packed to the left */}
-                  <th aria-hidden className="w-full border-b border-gray-200 bg-white" />
+                  <th aria-hidden className="w-full border-b border-black/[0.08] bg-white dark:border-white/10 dark:bg-[#2c2c2e]" />
                 </tr>
               </thead>
               <tbody>
@@ -203,12 +203,14 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                   // Zebra striping guides the eye across the row; colour is reserved
                   // for the type badge (left) and the status lamps (right).
                   const zebra = cn(
-                    rowIdx % 2 === 1 ? 'bg-gray-100' : 'bg-white',
-                    'group-hover:bg-gray-200/80'
+                    rowIdx % 2 === 1
+                      ? 'bg-[#f3f4f6] dark:bg-[#353537]'
+                      : 'bg-white dark:bg-[#2c2c2e]',
+                    'group-hover:bg-[#e5e7eb] dark:group-hover:bg-[#3a3a3c]'
                   )
                   return (
                   <tr key={task.id} className="group">
-                    <td className={cn('sticky left-0 z-10 border-b border-gray-100 px-4 py-3.5 transition-colors', zebra)}>
+                    <td className={cn('sticky left-0 z-10 border-b border-gray-100 dark:border-white/[0.06] px-4 py-3.5 transition-colors', zebra)}>
                       <span className="flex items-center gap-2">
                         <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
                           {TASK_SHORT[task.task_type]}
@@ -232,20 +234,20 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                       return (
                         <td
                           key={cs.student_id}
-                          className={cn('border-b border-gray-100 px-2 py-2.5 text-center transition-colors', zebra)}
+                          className={cn('border-b border-gray-100 dark:border-white/[0.06] px-2 py-2.5 text-center transition-colors', zebra)}
                         >
                           <button
                             onClick={() => handleCellClick(task, cs)}
-                            className="inline-flex items-center justify-center rounded-lg px-1.5 py-1 transition-colors hover:bg-gray-300/60"
+                            className="inline-flex items-center justify-center rounded-lg px-1.5 py-1 transition-colors hover:bg-gray-300/60 dark:hover:bg-white/10"
                           >
                             {record
                               ? <LampBadge color={display.color} label={display.label} detail={detail} />
-                              : <span className="text-gray-300">–</span>}
+                              : <span className="text-gray-300 dark:text-white/20">–</span>}
                           </button>
                         </td>
                       )
                     })}
-                    <td aria-hidden className={cn('border-b border-gray-100 transition-colors', zebra)} />
+                    <td aria-hidden className={cn('border-b border-gray-100 dark:border-white/[0.06] transition-colors', zebra)} />
                   </tr>
                   )
                 })}

@@ -91,8 +91,8 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
   return (
     <div className="flex min-h-full flex-col">
       {/* Frosted toolbar */}
-      <div className="sticky top-0 z-40 flex items-center gap-2 border-b border-black/[0.07] bg-white/70 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-white/60 md:px-6">
-        <Link href={`/classes/${classSlug}`} className="rounded-[7px] p-1.5 text-foreground/55 transition-colors hover:bg-black/[0.05] hover:text-foreground">
+      <div className="mac-glass mac-hairline sticky top-0 z-40 flex items-center gap-2 border-b px-4 py-2.5 md:px-6">
+        <Link href={`/classes/${classSlug}`} className="rounded-[7px] p-1.5 text-foreground/55 transition-colors hover:bg-black/[0.05] hover:text-foreground dark:hover:bg-white/[0.06]">
           <ArrowLeft size={18} />
         </Link>
         <div className="flex-1 min-w-0">
@@ -101,7 +101,7 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
         </div>
         <Link
           href={`/classes/${classSlug}`}
-          className="flex items-center gap-1.5 rounded-[8px] border border-black/[0.08] bg-white/80 px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:bg-white active:scale-[0.97]"
+          className="flex items-center gap-1.5 rounded-[8px] border border-black/[0.08] bg-white/80 px-3 py-1.5 text-xs font-medium text-foreground/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-all hover:bg-white active:scale-[0.97] dark:border-white/10 dark:bg-white/5 dark:hover:bg-white/10"
         >
           <LayoutList size={14} />
           表格
@@ -109,7 +109,7 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
       </div>
 
       {/* Student tabs */}
-      <div className="overflow-x-auto border-b border-black/[0.06] bg-white/55 backdrop-blur-xl">
+      <div className="mac-glass mac-hairline overflow-x-auto border-b">
         <div className="flex min-w-max px-2">
           {students.map((cs, idx) => {
             const unfinished = tasks.filter(t => {
@@ -123,7 +123,7 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
                 className={cn(
                   'relative flex flex-col items-center gap-0.5 px-4 py-2.5 text-xs font-medium transition-colors',
                   idx === activeStudentIdx
-                    ? 'border-b-2 border-gold text-gold'
+                    ? 'border-b-2 border-gold text-gold dark:border-[#ff6b6b] dark:text-[#ff7a7a]'
                     : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -175,8 +175,8 @@ export function KanbanBoard({ detail }: { detail: ClassDetail }) {
                 key={task.id}
                 onClick={() => handleCardClick(task, activeStudent)}
                 className={cn(
-                  'flex flex-col gap-1.5 rounded-2xl bg-white/95 p-3.5 text-left ring-1 ring-black/[0.06] transition-all hover:-translate-y-0.5 active:scale-[0.99]',
-                  'border-l-4 shadow-[0_6px_20px_-10px_rgba(0,0,0,0.14),0_2px_6px_-4px_rgba(0,0,0,0.08)] hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.22)]',
+                  'mac-soft flex flex-col gap-1.5 rounded-2xl p-3.5 text-left transition-all hover:-translate-y-0.5 active:scale-[0.99]',
+                  'border-l-4 hover:shadow-[0_14px_32px_-14px_rgba(0,0,0,0.22)]',
                   LAMP_BORDER[lamp]
                 )}
               >

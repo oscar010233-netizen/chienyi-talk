@@ -32,9 +32,9 @@ export function ClassList({ classes }: { classes: ClassWithCount[] }) {
         <Link
           key={c.id}
           href={`/classes/${encodeURIComponent(c.legacy_class_id ?? c.id)}`}
-          className="flex items-center gap-4 rounded-2xl bg-white/95 p-4 shadow-[0_6px_20px_-8px_rgba(0,0,0,0.12),0_2px_6px_-4px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.06] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_36px_-12px_rgba(0,0,0,0.20)] active:scale-[0.99]"
+          className="mac-soft flex items-center gap-4 rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_36px_-12px_rgba(0,0,0,0.20)] active:scale-[0.99]"
         >
-          <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-gold/10 text-gold">
+          <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-gold/10 text-gold dark:bg-[#ff4d4f]/15 dark:text-[#ff7a7a]">
             <GraduationCap size={22} />
           </div>
           <div className="min-w-0 flex-1">
