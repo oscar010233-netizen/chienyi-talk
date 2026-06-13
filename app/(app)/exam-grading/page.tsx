@@ -154,7 +154,7 @@ export default function ExamGradingPage() {
   }
 
   return (
-    <div className="min-h-full bg-[#f7f8fa] pb-20 md:pb-0">
+    <div className="min-h-full bg-[#f2f3f5] pb-20 md:pb-0">
       <div className="border-b border-border bg-white px-4 py-4 md:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>

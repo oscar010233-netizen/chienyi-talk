@@ -131,7 +131,7 @@ export function ResultClient({ bookId }: ResultClientProps) {
             <h2 id="more-practice-heading" className="text-base font-semibold text-foreground">
               More Practice
             </h2>
-            <span className="text-xs text-[#E85D24] font-medium">需加強發音</span>
+            <span className="text-xs text-[#e4524f] font-medium">需加強發音</span>
           </div>
           <PhonemeList phonemes={weakPhonemes} />
           <PracticeAdvice phonemes={weakPhonemes} />

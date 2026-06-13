@@ -56,7 +56,7 @@ export function AudioPlayer({ duration = 3, className }: AudioPlayerProps) {
           value={progress}
           onChange={(e) => setProgress(Number(e.target.value))}
           aria-label="播放進度"
-          className="w-full h-1.5 accent-[#F5A623] cursor-pointer"
+          className="w-full h-1.5 accent-[#a40000] cursor-pointer"
         />
         <div className="flex justify-between text-xs text-muted-foreground mt-0.5">
           <span>{formatTime(progress)}</span>

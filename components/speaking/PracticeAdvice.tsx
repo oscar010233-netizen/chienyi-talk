@@ -35,7 +35,7 @@ export function PracticeAdvice({ phonemes }: PracticeAdviceProps) {
 
   return (
     <div className="mt-3 rounded-2xl bg-orange-50 p-4">
-      <p className="text-sm font-semibold text-[#E85D24]">建議練習方式</p>
+      <p className="text-sm font-semibold text-[#e4524f]">建議練習方式</p>
       <div className="mt-3 flex flex-col gap-2">
         {phonemes.slice(0, 3).map((ph) => (
           <p key={ph.phoneme} className="text-sm leading-6 text-zinc-700">

@@ -1,14 +1,14 @@
 const legendItems = [
   { color: 'bg-red-500', label: '需要練習', range: '< 50' },
   { color: 'bg-yellow-400', label: '尚可', range: '50-79' },
-  { color: 'bg-[#27AE60]', label: '正確', range: '80+' },
+  { color: 'bg-[#4AB54A]', label: '正確', range: '80+' },
   { color: 'border border-dashed border-zinc-400 bg-white', label: '漏念', range: 'Omission' },
-  { color: 'bg-[#E85D24]', label: '多念', range: 'Insertion' },
+  { color: 'bg-[#e4524f]', label: '多念', range: 'Insertion' },
 ];
 
 export function ScoreLegend() {
   return (
-    <div className="rounded-2xl bg-[#F8F8F8] p-4">
+    <div className="rounded-2xl bg-[#f2f3f5] p-4">
       <p className="text-sm font-semibold text-foreground">顏色圖例</p>
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
         {legendItems.map((item) => (

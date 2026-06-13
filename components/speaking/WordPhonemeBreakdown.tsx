@@ -11,8 +11,8 @@ function scoreTone(score: number) {
   if (score >= 80) {
     return {
       label: '正確',
-      chip: 'border-[#27AE60] bg-[#27AE60]/10 text-[#1D8247]',
-      text: 'text-[#27AE60]',
+      chip: 'border-[#4AB54A] bg-[#4AB54A]/10 text-[#1D8247]',
+      text: 'text-[#4AB54A]',
     };
   }
 
@@ -42,7 +42,7 @@ function wordTone(word: WordAssessment) {
   if (word.errorType === 'Insertion') {
     return {
       label: '多念',
-      className: 'border-[#E85D24] bg-[#E85D24]/10 text-[#E85D24]',
+      className: 'border-[#e4524f] bg-[#e4524f]/10 text-[#e4524f]',
     };
   }
 
@@ -68,7 +68,7 @@ export function WordPhonemeBreakdown({ words }: WordPhonemeBreakdownProps) {
         const wordStyle = wordTone(word);
 
         return (
-          <article key={`${word.word}-${wordIndex}`} className="rounded-2xl bg-[#F8F8F8] p-4">
+          <article key={`${word.word}-${wordIndex}`} className="rounded-2xl bg-[#f2f3f5] p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <span

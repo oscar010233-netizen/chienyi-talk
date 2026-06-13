@@ -123,7 +123,7 @@ export function WorkspaceSchedule({ data }: WorkspaceScheduleProps) {
   }
 
   return (
-    <div className="min-h-full bg-[#f7f8fa]">
+    <div className="min-h-full bg-[#f2f3f5]">
       <div className="border-b border-border bg-white px-4 py-4 md:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
@@ -201,7 +201,7 @@ export function WorkspaceSchedule({ data }: WorkspaceScheduleProps) {
             })}
           </div>
 
-          <div className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-[#f7f8fa] p-1">
+          <div className="flex shrink-0 items-center gap-1 rounded-md border border-border bg-[#fff9f9] p-1">
             {(Object.keys(VIEW_DENSITIES) as ViewDensity[]).map((key) => (
               <Button
                 key={key}

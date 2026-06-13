@@ -7,7 +7,7 @@ export default function Home() {
 
   return (
     <div className="flex min-h-full flex-col gap-6 p-6">
-      <section className="rounded-2xl bg-[#F8F8F8] p-6">
+      <section className="rounded-2xl bg-[#fff9f9] p-6">
         <div className="inline-flex items-center gap-2 rounded-full bg-gold/10 px-3 py-1 text-sm font-medium text-gold">
           <Mic size={16} />
           Azure Pronunciation Assessment

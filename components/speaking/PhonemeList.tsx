@@ -6,9 +6,9 @@ interface PhonemeListProps {
 }
 
 function scoreStyle(score: number) {
-  if (score >= 80) return 'text-[#27AE60] bg-[#27AE60]/10';
+  if (score >= 80) return 'text-[#4AB54A] bg-[#4AB54A]/10';
   if (score >= 50) return 'text-yellow-600 bg-yellow-50';
-  return 'text-[#E85D24] bg-[#E85D24]/10';
+  return 'text-[#e4524f] bg-[#e4524f]/10';
 }
 
 export function PhonemeList({ phonemes }: PhonemeListProps) {
@@ -19,7 +19,7 @@ export function PhonemeList({ phonemes }: PhonemeListProps) {
       {phonemes.map((ph) => (
         <div
           key={ph.phoneme}
-          className="flex items-center gap-4 rounded-xl bg-[#F8F8F8] p-3"
+          className="flex items-center gap-4 rounded-xl bg-[#f2f3f5] p-3"
         >
           {/* Phoneme symbol */}
           <div

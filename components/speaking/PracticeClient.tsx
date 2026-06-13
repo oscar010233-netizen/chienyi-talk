@@ -41,11 +41,11 @@ export function PracticeClient({ book, words, bookId }: PracticeClientProps) {
     <div className="flex flex-col gap-6 p-6 max-w-2xl mx-auto">
       {/* Score comparison */}
       <div className="grid grid-cols-2 gap-3">
-        <div className="flex flex-col items-center gap-1 rounded-xl bg-[#F8F8F8] p-4">
+        <div className="flex flex-col items-center gap-1 rounded-xl bg-[#f2f3f5] p-4">
           <span className="text-xs text-muted-foreground">最高分</span>
-          <span className="text-2xl font-bold text-[#27AE60]">—</span>
+          <span className="text-2xl font-bold text-[#4AB54A]">—</span>
         </div>
-        <div className="flex flex-col items-center gap-1 rounded-xl bg-[#F8F8F8] p-4">
+        <div className="flex flex-col items-center gap-1 rounded-xl bg-[#f2f3f5] p-4">
           <span className="text-xs text-muted-foreground">最新分</span>
           <span className="text-2xl font-bold text-foreground">
             {isDone && result ? result.pronunciationScore : '—'}
@@ -69,7 +69,7 @@ export function PracticeClient({ book, words, bookId }: PracticeClientProps) {
       {/* Inline scores after recording */}
       {isDone && result && (
         <div className="flex flex-col gap-4">
-          <div className="rounded-2xl bg-[#F8F8F8] p-4">
+          <div className="rounded-2xl bg-[#f2f3f5] p-4">
             <p className="text-xs text-muted-foreground mb-3 text-center">本次評分</p>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <ScoreCard label="準確度" score={result.accuracyScore} />
@@ -95,7 +95,7 @@ export function PracticeClient({ book, words, bookId }: PracticeClientProps) {
                     尚可
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <span className="h-2.5 w-2.5 rounded-full bg-[#27AE60]" aria-hidden />
+                    <span className="h-2.5 w-2.5 rounded-full bg-[#4AB54A]" aria-hidden />
                     正確
                   </span>
                 </div>

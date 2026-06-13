@@ -7,16 +7,16 @@ interface ScoreCardProps {
 }
 
 function scoreColor(score: number) {
-  if (score >= 80) return 'text-[#27AE60]';
+  if (score >= 80) return 'text-[#4AB54A]';
   if (score >= 50) return 'text-yellow-500';
-  return 'text-[#E85D24]';
+  return 'text-[#e4524f]';
 }
 
 export function ScoreCard({ label, score, className }: ScoreCardProps) {
   return (
     <div
       className={cn(
-        'flex flex-col items-center gap-1 rounded-2xl bg-[#F8F8F8] p-4',
+        'flex flex-col items-center gap-1 rounded-2xl bg-[#f2f3f5] p-4',
         className
       )}
     >
