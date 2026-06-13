@@ -13,7 +13,7 @@ export async function getAllClasses(): Promise<ClassWithCount[]> {
   if (error || !classes) return []
 
   const ids = classes.map(c => c.id)
-  if (ids.length === 0) return classes.map(c => ({ ...c, student_count: 0 }))
+  if (ids.length === 0) return classes.map(c => ({ ...c, status: 'active', system_sessions: 24, student_count: 0 }))
 
   const { data: enrollments } = await supabase
     .from('class_students')
