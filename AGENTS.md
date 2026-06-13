@@ -3,3 +3,119 @@
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
+
+# JIANYI Project Instructions
+
+## Core Goal
+
+The user wants to build a web-based internal system for their cram school. The first purpose is not to sell SaaS immediately; it is to solve real internal daily problems first, then potentially generalize later.
+
+Think of the product as a cram-school operating system:
+
+- Parent communication and message triage.
+- Student records, grades, attendance, and make-up class tracking.
+- Student question bank and practice workflows.
+- Student speaking practice and pronunciation assessment.
+- Teacher/admin dashboard for reviewing important messages and student status.
+- Future interactive learning, make-up lesson workflows, and teaching-material support.
+
+When uncertain, optimize for something the user's own school can actually use every day.
+
+## Current Repository Focus
+
+This repository currently contains ChienYi Talk speaking practice:
+
+- `/speaking` book list.
+- `/speaking/[bookId]/practice` recording practice.
+- `/speaking/[bookId]/result` score result.
+- `/api/pronunciation-assessment` Azure Speech Pronunciation Assessment.
+
+Azure Speech scoring is confirmed working through the server-side API route.
+
+## Legacy Google System
+
+The user also has an existing Google Sheets + Apps Script + AppSheet system for grades, task tracking, class management, parent-facing lookup, AI comment polishing, and billing.
+
+Treat that system as the migration source for the broader JIANYI OS. Do not copy the sheet layout directly into Supabase. Preserve its business rules and workflows, then normalize them into Supabase tables and Next.js pages.
+
+Migration notes live in `docs/google-sheets-to-supabase-migration.md`.
+
+## Confirmed Stack
+
+- Next.js 16 App Router with Turbopack.
+- React 19 and TypeScript.
+- Tailwind CSS v4, CSS-first via `app/globals.css`; do not add `tailwind.config.js` unless explicitly required.
+- shadcn/ui v4 style components.
+- Azure Speech keys stay server-side in `.env.local`; never expose them with `NEXT_PUBLIC_`.
+
+## Practical Product Modules
+
+Prefer building the product in clear modules:
+
+1. Speaking practice
+   - Record student audio.
+   - Send audio to Azure Speech.
+   - Show scores, weak phonemes, and practice advice.
+
+2. Parent communication
+   - Receive parent messages, likely from LINE.
+   - Classify messages by topic and urgency.
+   - Highlight complaints, urgent issues, payments, absences, and make-up requests.
+   - Draft replies, but require teacher approval before sending.
+
+3. Student management
+   - Students, guardians, classes, attendance, grades, make-up lessons, and notes.
+   - One student page should summarize the student's current situation quickly.
+
+4. Question bank
+   - Store questions, answers, explanations, tags, difficulty, and source.
+   - Support student practice and teacher review.
+
+5. Make-up and interaction workflows
+   - Track absence, make-up requirements, assigned materials, completion state, and teacher follow-up.
+
+## Architecture Direction
+
+For the broader JIANYI OS, the likely architecture is:
+
+- Next.js on Vercel for frontend and API.
+- Supabase for database, auth, realtime, and storage.
+- Inngest for slow background work such as AI analysis, retrying jobs, and scheduled reports.
+- LINE Official Account for parent messaging.
+- AI APIs for classification, summaries, reply drafts, and learning support.
+
+Key parent-message rule: webhook handlers should validate, store, immediately return `200`, then hand slow work to a background job. Do not block inbound messaging while waiting for AI.
+
+## Data And Security Rules
+
+- Do not hardcode API keys, Azure keys, LINE secrets, database credentials, or tokens.
+- Use `.env.local` for real local secrets.
+- Use `.env.local.example` only as a template.
+- If building multi-school features, every business table should include `tenant_id`.
+- Supabase RLS should be the first boundary against cross-school data leakage.
+- Parent-facing AI replies should be reviewed by a human before sending, unless the user explicitly changes that policy.
+
+## Azure Speech Setup
+
+Current environment shape:
+
+- `AZURE_SPEECH_KEY`
+- `AZURE_SPEECH_REGION`
+- `AZURE_SPEECH_ENDPOINT`
+- optional `AZURE_FOUNDRY_PROJECT_ENDPOINT`
+- optional `AZURE_SPEECH_MOCK`
+
+`AZURE_SPEECH_ENDPOINT=https://eastasia.api.cognitive.microsoft.com/` is confirmed working with the current Azure key.
+
+Use `/api/pronunciation-assessment` as the single scoring entry point. Browser flow:
+
+MediaRecorder -> WAV 16 kHz mono PCM -> POST API route -> Azure Speech -> normalized score JSON.
+
+## Development Rules
+
+- Build real internal workflows, not marketing pages.
+- Keep UI practical, clear, and mobile-friendly.
+- Preserve the current Next.js 16 and Tailwind v4 patterns.
+- Avoid adding large abstractions before the workflow is proven.
+- Run `npm run lint` and `npm run build` after code changes.
+- Run `npm run check:azure` after changing Azure Speech integration.

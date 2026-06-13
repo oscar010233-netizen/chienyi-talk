@@ -1,0 +1,4243 @@
+{
+  "source": {
+    "sheetName": "配課表UI",
+    "workbook": "C:\\Users\\oscar\\Documents\\JianYiOS\\reference\\jianyios_google_sheet.xlsx",
+    "generatedAt": "2026-06-12T03:55:27.386676+00:00"
+  },
+  "sections": [
+    {
+      "id": "public",
+      "label": "Public",
+      "startCol": 14,
+      "endCol": 15,
+      "tone": "lime"
+    },
+    {
+      "id": "extension",
+      "label": "延伸A",
+      "startCol": 16,
+      "endCol": 17,
+      "tone": "sky"
+    },
+    {
+      "id": "roomA",
+      "label": "A教室",
+      "startCol": 18,
+      "endCol": 19,
+      "tone": "rose"
+    },
+    {
+      "id": "roomB",
+      "label": "B教室",
+      "startCol": 20,
+      "endCol": 21,
+      "tone": "violet"
+    },
+    {
+      "id": "stairs",
+      "label": "階梯教室",
+      "startCol": 22,
+      "endCol": 24,
+      "tone": "cyan"
+    }
+  ],
+  "days": [
+    {
+      "id": "mon",
+      "label": "一",
+      "englishLabel": "MON",
+      "startRow": 3,
+      "endRow": 45,
+      "dateSerial": "46139.0",
+      "slots": [
+        {
+          "id": "mon-r3",
+          "row": 3,
+          "hourLabel": "12 pm",
+          "minuteLabel": "00~15",
+          "time": "12:00",
+          "items": []
+        },
+        {
+          "id": "mon-r4",
+          "row": 4,
+          "hourLabel": "12 pm",
+          "minuteLabel": "15~30",
+          "time": "12:15",
+          "items": []
+        },
+        {
+          "id": "mon-r5",
+          "row": 5,
+          "hourLabel": "12 pm",
+          "minuteLabel": "30~45",
+          "time": "12:30",
+          "items": []
+        },
+        {
+          "id": "mon-r6",
+          "row": 6,
+          "hourLabel": "12 pm",
+          "minuteLabel": "45~00",
+          "time": "12:45",
+          "items": []
+        },
+        {
+          "id": "mon-r7",
+          "row": 7,
+          "hourLabel": "01 pm",
+          "minuteLabel": "00~15",
+          "time": "13:00",
+          "items": []
+        },
+        {
+          "id": "mon-r8",
+          "row": 8,
+          "hourLabel": "01 pm",
+          "minuteLabel": "15~30",
+          "time": "13:15",
+          "items": [
+            {
+              "id": "mon-r8-public-0",
+              "sectionId": "public",
+              "row": 8,
+              "startCol": 14,
+              "endCol": 14,
+              "cell": "N8",
+              "title": "低年級\n作業",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低年級\n作業"
+              ]
+            },
+            {
+              "id": "mon-r8-stairs-0",
+              "sectionId": "stairs",
+              "row": 8,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V8",
+              "title": "P發B2\nS*5",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "P發B2\nS*5"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mon-r9",
+          "row": 9,
+          "hourLabel": "01 pm",
+          "minuteLabel": "30~45",
+          "time": "13:30",
+          "items": []
+        },
+        {
+          "id": "mon-r10",
+          "row": 10,
+          "hourLabel": "01 pm",
+          "minuteLabel": "45~00",
+          "time": "13:45",
+          "items": []
+        },
+        {
+          "id": "mon-r11",
+          "row": 11,
+          "hourLabel": "02 pm",
+          "minuteLabel": "00~15",
+          "time": "14:00",
+          "items": []
+        },
+        {
+          "id": "mon-r12",
+          "row": 12,
+          "hourLabel": "02 pm",
+          "minuteLabel": "15~30",
+          "time": "14:15",
+          "items": []
+        },
+        {
+          "id": "mon-r13",
+          "row": 13,
+          "hourLabel": "02 pm",
+          "minuteLabel": "30~45",
+          "time": "14:30",
+          "items": []
+        },
+        {
+          "id": "mon-r14",
+          "row": 14,
+          "hourLabel": "02 pm",
+          "minuteLabel": "45~00",
+          "time": "14:45",
+          "items": []
+        },
+        {
+          "id": "mon-r15",
+          "row": 15,
+          "hourLabel": "03 pm",
+          "minuteLabel": "00~15",
+          "time": "15:00",
+          "items": [
+            {
+              "id": "mon-r15-public-0",
+              "sectionId": "public",
+              "row": 15,
+              "startCol": 14,
+              "endCol": 14,
+              "cell": "N15",
+              "title": "低年級\n作業",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低年級\n作業"
+              ]
+            },
+            {
+              "id": "mon-r15-stairs-0",
+              "sectionId": "stairs",
+              "row": 15,
+              "startCol": 22,
+              "endCol": 23,
+              "cell": "V15",
+              "title": "P發B4\nS*2",
+              "subtitle": "P發B2\nS*5\n補4/16課",
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "P發B4\nS*2",
+                "P發B2\nS*5\n補4/16課"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mon-r16",
+          "row": 16,
+          "hourLabel": "03 pm",
+          "minuteLabel": "15~30",
+          "time": "15:15",
+          "items": []
+        },
+        {
+          "id": "mon-r17",
+          "row": 17,
+          "hourLabel": "03 pm",
+          "minuteLabel": "30~45",
+          "time": "15:30",
+          "items": []
+        },
+        {
+          "id": "mon-r18",
+          "row": 18,
+          "hourLabel": "03 pm",
+          "minuteLabel": "45~00",
+          "time": "15:45",
+          "items": []
+        },
+        {
+          "id": "mon-r19",
+          "row": 19,
+          "hourLabel": "4 pm",
+          "minuteLabel": "00~15",
+          "time": "16:00",
+          "items": [
+            {
+              "id": "mon-r19-public-0",
+              "sectionId": "public",
+              "row": 19,
+              "startCol": 14,
+              "endCol": 14,
+              "cell": "N19",
+              "title": "補位",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "補位"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mon-r20",
+          "row": 20,
+          "hourLabel": "4 pm",
+          "minuteLabel": "15~30",
+          "time": "16:15",
+          "items": [
+            {
+              "id": "mon-r20-public-0",
+              "sectionId": "public",
+              "row": 20,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N20",
+              "title": "點心",
+              "subtitle": "點心",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "點心",
+                "點心"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mon-r21",
+          "row": 21,
+          "hourLabel": "4 pm",
+          "minuteLabel": "30~45",
+          "time": "16:30",
+          "items": [
+            {
+              "id": "mon-r21-public-0",
+              "sectionId": "public",
+              "row": 21,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N21",
+              "title": "低中高\n作業",
+              "subtitle": "低中高\n作業",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低中高\n作業",
+                "低中高\n作業"
+              ]
+            },
+            {
+              "id": "mon-r21-extension-0",
+              "sectionId": "extension",
+              "row": 21,
+              "startCol": 16,
+              "endCol": 16,
+              "cell": "P21",
+              "title": "低\n訂評量\n(未來)",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低\n訂評量\n(未來)"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mon-r22",
+          "row": 22,
+          "hourLabel": "4 pm",
+          "minuteLabel": "45~00",
+          "time": "16:45",
+          "items": []
+        },
+        {
+          "id": "mon-r23",
+          "row": 23,
+          "hourLabel": "5 pm",
+          "minuteLabel": "00~15",
+          "time": "17:00",
+          "items": []
+        },
+        {
+          "id": "mon-r24",
+          "row": 24,
+          "hourLabel": "5 pm",
+          "minuteLabel": "15~30",
+          "time": "17:15",
+          "items": []
+        },
+        {
+          "id": "mon-r25",
+          "row": 25,
+          "hourLabel": "5 pm",
+          "minuteLabel": "30~45",
+          "time": "17:30",
+          "items": [
+            {
+              "id": "mon-r25-stairs-0",
+              "sectionId": "stairs",
+              "row": 25,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V25",
+              "title": "批改\n評量",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "批改\n評量"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mon-r26",
+          "row": 26,
+          "hourLabel": "5 pm",
+          "minuteLabel": "45~00",
+          "time": "17:45",
+          "items": [
+            {
+              "id": "mon-r26-public-0",
+              "sectionId": "public",
+              "row": 26,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N26",
+              "title": "晚餐",
+              "subtitle": "晚餐",
+              "status": null,
+              "kind": "meal",
+              "raw": [
+                "晚餐",
+                "晚餐"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mon-r27",
+          "row": 27,
+          "hourLabel": "6 pm",
+          "minuteLabel": "00~15",
+          "time": "18:00",
+          "items": [
+            {
+              "id": "mon-r27-public-0",
+              "sectionId": "public",
+              "row": 27,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N27",
+              "title": "強化\n/\nLinus\n補4/23\n寫聯絡簿",
+              "subtitle": "強化\nSammi\n/\nErica",
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "強化\n/\nLinus\n補4/23\n寫聯絡簿",
+                "強化\nSammi\n/\nErica"
+              ]
+            },
+            {
+              "id": "mon-r27-roomB-0",
+              "sectionId": "roomB",
+              "row": 27,
+              "startCol": 20,
+              "endCol": 20,
+              "cell": "T27",
+              "title": "英檢B2\nN*9\n+Henry",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "英檢B2\nN*9\n+Henry"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mon-r28",
+          "row": 28,
+          "hourLabel": "6 pm",
+          "minuteLabel": "15~30",
+          "time": "18:15",
+          "items": []
+        },
+        {
+          "id": "mon-r29",
+          "row": 29,
+          "hourLabel": "6 pm",
+          "minuteLabel": "30~45",
+          "time": "18:30",
+          "items": []
+        },
+        {
+          "id": "mon-r30",
+          "row": 30,
+          "hourLabel": "6 pm",
+          "minuteLabel": "45~00",
+          "time": "18:45",
+          "items": []
+        },
+        {
+          "id": "mon-r31",
+          "row": 31,
+          "hourLabel": "7 pm",
+          "minuteLabel": "00~15",
+          "time": "19:00",
+          "items": [
+            {
+              "id": "mon-r31-stairs-0",
+              "sectionId": "stairs",
+              "row": 31,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V31",
+              "title": "強化",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "強化"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mon-r32",
+          "row": 32,
+          "hourLabel": "7 pm",
+          "minuteLabel": "15~30",
+          "time": "19:15",
+          "items": []
+        },
+        {
+          "id": "mon-r33",
+          "row": 33,
+          "hourLabel": "7 pm",
+          "minuteLabel": "30~45",
+          "time": "19:30",
+          "items": [
+            {
+              "id": "mon-r33-public-0",
+              "sectionId": "public",
+              "row": 33,
+              "startCol": 14,
+              "endCol": 14,
+              "cell": "N33",
+              "title": "強化",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "強化"
+              ]
+            },
+            {
+              "id": "mon-r33-roomB-0",
+              "sectionId": "roomB",
+              "row": 33,
+              "startCol": 20,
+              "endCol": 20,
+              "cell": "T33",
+              "title": "英檢B3\nH*7+1",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "英檢B3\nH*7+1"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "mon-r34",
+          "row": 34,
+          "hourLabel": "7 pm",
+          "minuteLabel": "45~00",
+          "time": "19:45",
+          "items": []
+        },
+        {
+          "id": "mon-r35",
+          "row": 35,
+          "hourLabel": "8 pm",
+          "minuteLabel": "00~15",
+          "time": "20:00",
+          "items": []
+        },
+        {
+          "id": "mon-r36",
+          "row": 36,
+          "hourLabel": "8 pm",
+          "minuteLabel": "15~30",
+          "time": "20:15",
+          "items": []
+        },
+        {
+          "id": "mon-r37",
+          "row": 37,
+          "hourLabel": "8 pm",
+          "minuteLabel": "30~45",
+          "time": "20:30",
+          "items": []
+        },
+        {
+          "id": "mon-r38",
+          "row": 38,
+          "hourLabel": "8 pm",
+          "minuteLabel": "45~00",
+          "time": "20:45",
+          "items": []
+        },
+        {
+          "id": "mon-r39",
+          "row": 39,
+          "hourLabel": "9 pm",
+          "minuteLabel": "00~15",
+          "time": "21:00",
+          "items": []
+        },
+        {
+          "id": "mon-r40",
+          "row": 40,
+          "hourLabel": "9 pm",
+          "minuteLabel": "15~30",
+          "time": "21:15",
+          "items": []
+        },
+        {
+          "id": "mon-r41",
+          "row": 41,
+          "hourLabel": "9 pm",
+          "minuteLabel": "30~45",
+          "time": "21:30",
+          "items": []
+        },
+        {
+          "id": "mon-r42",
+          "row": 42,
+          "hourLabel": "9 pm",
+          "minuteLabel": "45~00",
+          "time": "21:45",
+          "items": []
+        }
+      ],
+      "sideNotes": [
+        {
+          "id": "mon-pickup-r4",
+          "row": 4,
+          "type": "pickup",
+          "index": "",
+          "title": "華山",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "mon-pickup-r5",
+          "row": 5,
+          "type": "pickup",
+          "index": "",
+          "title": "小港 / 鳳陽",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "mon-pickup-r6",
+          "row": 6,
+          "type": "pickup",
+          "index": "",
+          "title": "二苓 / 漢民",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "mon-pickup-r7",
+          "row": 7,
+          "type": "pickup",
+          "index": "",
+          "title": "沿海 / 華山",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "mon-pickup-r8",
+          "row": 8,
+          "type": "pickup",
+          "index": "",
+          "title": "漢民",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "mon-side-r13",
+          "row": 13,
+          "type": "meal",
+          "index": "1",
+          "title": "Yulisa",
+          "detail": "雞腿",
+          "amount": "95"
+        },
+        {
+          "id": "mon-side-r14",
+          "row": 14,
+          "type": "meal",
+          "index": "2",
+          "title": "Winnie",
+          "detail": "雞腿",
+          "amount": "95"
+        },
+        {
+          "id": "mon-side-r15",
+          "row": 15,
+          "type": "meal",
+          "index": "3",
+          "title": "Andrea",
+          "detail": "雞腿",
+          "amount": "95"
+        },
+        {
+          "id": "mon-side-r16",
+          "row": 16,
+          "type": "meal",
+          "index": "4",
+          "title": "Lucy",
+          "detail": "雞腿",
+          "amount": "95"
+        },
+        {
+          "id": "mon-side-r17",
+          "row": 17,
+          "type": "meal",
+          "index": "5",
+          "title": "Julia",
+          "detail": "雞腿",
+          "amount": "95"
+        },
+        {
+          "id": "mon-pickup-r18",
+          "row": 18,
+          "type": "pickup",
+          "index": "",
+          "title": "小港 / 二苓",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "mon-side-r18",
+          "row": 18,
+          "type": "meal",
+          "index": "6",
+          "title": "Kubbe",
+          "detail": "雞腿",
+          "amount": "95"
+        },
+        {
+          "id": "mon-pickup-r19",
+          "row": 19,
+          "type": "pickup",
+          "index": "",
+          "title": "港和",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "mon-pickup-r20",
+          "row": 20,
+          "type": "pickup",
+          "index": "",
+          "title": "沿/漢",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "mon-pickup-r23",
+          "row": 23,
+          "type": "pickup",
+          "index": "",
+          "title": "晚餐",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "mon-side-r24",
+          "row": 24,
+          "type": "meal",
+          "index": "1",
+          "title": "Henry",
+          "detail": "椒麻",
+          "amount": "115"
+        },
+        {
+          "id": "mon-pickup-r25",
+          "row": 25,
+          "type": "pickup",
+          "index": "",
+          "title": "1",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "mon-side-r25",
+          "row": 25,
+          "type": "meal",
+          "index": "2",
+          "title": "Steph",
+          "detail": "椒麻",
+          "amount": "115"
+        }
+      ],
+      "itemCount": 15
+    },
+    {
+      "id": "tue",
+      "label": "二",
+      "englishLabel": "TUE",
+      "startRow": 46,
+      "endRow": 88,
+      "dateSerial": "46140.0",
+      "slots": [
+        {
+          "id": "tue-r46",
+          "row": 46,
+          "hourLabel": "12 pm",
+          "minuteLabel": "00~15",
+          "time": "12:00",
+          "items": []
+        },
+        {
+          "id": "tue-r47",
+          "row": 47,
+          "hourLabel": "12 pm",
+          "minuteLabel": "15~30",
+          "time": "12:15",
+          "items": []
+        },
+        {
+          "id": "tue-r48",
+          "row": 48,
+          "hourLabel": "12 pm",
+          "minuteLabel": "30~45",
+          "time": "12:30",
+          "items": []
+        },
+        {
+          "id": "tue-r49",
+          "row": 49,
+          "hourLabel": "12 pm",
+          "minuteLabel": "45~00",
+          "time": "12:45",
+          "items": []
+        },
+        {
+          "id": "tue-r50",
+          "row": 50,
+          "hourLabel": "01 pm",
+          "minuteLabel": "00~15",
+          "time": "13:00",
+          "items": []
+        },
+        {
+          "id": "tue-r51",
+          "row": 51,
+          "hourLabel": "01 pm",
+          "minuteLabel": "15~30",
+          "time": "13:15",
+          "items": []
+        },
+        {
+          "id": "tue-r52",
+          "row": 52,
+          "hourLabel": "01 pm",
+          "minuteLabel": "30~45",
+          "time": "13:30",
+          "items": []
+        },
+        {
+          "id": "tue-r53",
+          "row": 53,
+          "hourLabel": "01 pm",
+          "minuteLabel": "45~00",
+          "time": "13:45",
+          "items": []
+        },
+        {
+          "id": "tue-r54",
+          "row": 54,
+          "hourLabel": "02 pm",
+          "minuteLabel": "00~15",
+          "time": "14:00",
+          "items": []
+        },
+        {
+          "id": "tue-r55",
+          "row": 55,
+          "hourLabel": "02 pm",
+          "minuteLabel": "15~30",
+          "time": "14:15",
+          "items": []
+        },
+        {
+          "id": "tue-r56",
+          "row": 56,
+          "hourLabel": "02 pm",
+          "minuteLabel": "30~45",
+          "time": "14:30",
+          "items": []
+        },
+        {
+          "id": "tue-r57",
+          "row": 57,
+          "hourLabel": "02 pm",
+          "minuteLabel": "45~00",
+          "time": "14:45",
+          "items": []
+        },
+        {
+          "id": "tue-r58",
+          "row": 58,
+          "hourLabel": "03 pm",
+          "minuteLabel": "00~15",
+          "time": "15:00",
+          "items": []
+        },
+        {
+          "id": "tue-r59",
+          "row": 59,
+          "hourLabel": "03 pm",
+          "minuteLabel": "15~30",
+          "time": "15:15",
+          "items": []
+        },
+        {
+          "id": "tue-r60",
+          "row": 60,
+          "hourLabel": "03 pm",
+          "minuteLabel": "30~45",
+          "time": "15:30",
+          "items": []
+        },
+        {
+          "id": "tue-r61",
+          "row": 61,
+          "hourLabel": "03 pm",
+          "minuteLabel": "45~00",
+          "time": "15:45",
+          "items": []
+        },
+        {
+          "id": "tue-r62",
+          "row": 62,
+          "hourLabel": "4 pm",
+          "minuteLabel": "00~15",
+          "time": "16:00",
+          "items": []
+        },
+        {
+          "id": "tue-r63",
+          "row": 63,
+          "hourLabel": "4 pm",
+          "minuteLabel": "15~30",
+          "time": "16:15",
+          "items": [
+            {
+              "id": "tue-r63-public-0",
+              "sectionId": "public",
+              "row": 63,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N63",
+              "title": "點心",
+              "subtitle": "點心",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "點心",
+                "點心"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "tue-r64",
+          "row": 64,
+          "hourLabel": "4 pm",
+          "minuteLabel": "30~45",
+          "time": "16:30",
+          "items": [
+            {
+              "id": "tue-r64-public-0",
+              "sectionId": "public",
+              "row": 64,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N64",
+              "title": "低中高\n作業",
+              "subtitle": "低中高\n作業",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低中高\n作業",
+                "低中高\n作業"
+              ]
+            },
+            {
+              "id": "tue-r64-extension-0",
+              "sectionId": "extension",
+              "row": 64,
+              "startCol": 16,
+              "endCol": 16,
+              "cell": "P64",
+              "title": "低中高\n作業",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低中高\n作業"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "tue-r65",
+          "row": 65,
+          "hourLabel": "4 pm",
+          "minuteLabel": "45~00",
+          "time": "16:45",
+          "items": []
+        },
+        {
+          "id": "tue-r66",
+          "row": 66,
+          "hourLabel": "5 pm",
+          "minuteLabel": "00~15",
+          "time": "17:00",
+          "items": []
+        },
+        {
+          "id": "tue-r67",
+          "row": 67,
+          "hourLabel": "5 pm",
+          "minuteLabel": "15~30",
+          "time": "17:15",
+          "items": []
+        },
+        {
+          "id": "tue-r68",
+          "row": 68,
+          "hourLabel": "5 pm",
+          "minuteLabel": "30~45",
+          "time": "17:30",
+          "items": []
+        },
+        {
+          "id": "tue-r69",
+          "row": 69,
+          "hourLabel": "5 pm",
+          "minuteLabel": "45~00",
+          "time": "17:45",
+          "items": [
+            {
+              "id": "tue-r69-public-0",
+              "sectionId": "public",
+              "row": 69,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N69",
+              "title": "晚餐",
+              "subtitle": "晚餐",
+              "status": null,
+              "kind": "meal",
+              "raw": [
+                "晚餐",
+                "晚餐"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "tue-r70",
+          "row": 70,
+          "hourLabel": "6 pm",
+          "minuteLabel": "00~15",
+          "time": "18:00",
+          "items": [
+            {
+              "id": "tue-r70-public-0",
+              "sectionId": "public",
+              "row": 70,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N70",
+              "title": "強化",
+              "subtitle": "強化",
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "強化",
+                "強化"
+              ]
+            },
+            {
+              "id": "tue-r70-roomB-0",
+              "sectionId": "roomB",
+              "row": 70,
+              "startCol": 20,
+              "endCol": 20,
+              "cell": "T70",
+              "title": "發音B4\nE*3",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "發音B4\nE*3"
+              ]
+            },
+            {
+              "id": "tue-r70-stairs-0",
+              "sectionId": "stairs",
+              "row": 70,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V70",
+              "title": "小檢B0\nJ*14",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "小檢B0\nJ*14"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "tue-r71",
+          "row": 71,
+          "hourLabel": "6 pm",
+          "minuteLabel": "15~30",
+          "time": "18:15",
+          "items": []
+        },
+        {
+          "id": "tue-r72",
+          "row": 72,
+          "hourLabel": "6 pm",
+          "minuteLabel": "30~45",
+          "time": "18:30",
+          "items": []
+        },
+        {
+          "id": "tue-r73",
+          "row": 73,
+          "hourLabel": "6 pm",
+          "minuteLabel": "45~00",
+          "time": "18:45",
+          "items": []
+        },
+        {
+          "id": "tue-r74",
+          "row": 74,
+          "hourLabel": "7 pm",
+          "minuteLabel": "00~15",
+          "time": "19:00",
+          "items": []
+        },
+        {
+          "id": "tue-r75",
+          "row": 75,
+          "hourLabel": "7 pm",
+          "minuteLabel": "15~30",
+          "time": "19:15",
+          "items": []
+        },
+        {
+          "id": "tue-r76",
+          "row": 76,
+          "hourLabel": "7 pm",
+          "minuteLabel": "30~45",
+          "time": "19:30",
+          "items": [
+            {
+              "id": "tue-r76-roomB-0",
+              "sectionId": "roomB",
+              "row": 76,
+              "startCol": 20,
+              "endCol": 20,
+              "cell": "T76",
+              "title": "Sandy\nZ*1",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "Sandy\nZ*1"
+              ]
+            },
+            {
+              "id": "tue-r76-stairs-0",
+              "sectionId": "stairs",
+              "row": 76,
+              "startCol": 22,
+              "endCol": 23,
+              "cell": "V76",
+              "title": "發個指\nP*3",
+              "subtitle": "Phoebe\nZ*1",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "發個指\nP*3",
+                "Phoebe\nZ*1"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "tue-r77",
+          "row": 77,
+          "hourLabel": "7 pm",
+          "minuteLabel": "45~00",
+          "time": "19:45",
+          "items": []
+        },
+        {
+          "id": "tue-r78",
+          "row": 78,
+          "hourLabel": "8 pm",
+          "minuteLabel": "00~15",
+          "time": "20:00",
+          "items": []
+        },
+        {
+          "id": "tue-r79",
+          "row": 79,
+          "hourLabel": "8 pm",
+          "minuteLabel": "15~30",
+          "time": "20:15",
+          "items": []
+        },
+        {
+          "id": "tue-r80",
+          "row": 80,
+          "hourLabel": "8 pm",
+          "minuteLabel": "30~45",
+          "time": "20:30",
+          "items": []
+        },
+        {
+          "id": "tue-r81",
+          "row": 81,
+          "hourLabel": "8 pm",
+          "minuteLabel": "45~00",
+          "time": "20:45",
+          "items": []
+        },
+        {
+          "id": "tue-r82",
+          "row": 82,
+          "hourLabel": "9 pm",
+          "minuteLabel": "00~15",
+          "time": "21:00",
+          "items": []
+        },
+        {
+          "id": "tue-r83",
+          "row": 83,
+          "hourLabel": "9 pm",
+          "minuteLabel": "15~30",
+          "time": "21:15",
+          "items": []
+        },
+        {
+          "id": "tue-r84",
+          "row": 84,
+          "hourLabel": "9 pm",
+          "minuteLabel": "30~45",
+          "time": "21:30",
+          "items": []
+        },
+        {
+          "id": "tue-r85",
+          "row": 85,
+          "hourLabel": "9 pm",
+          "minuteLabel": "45~00",
+          "time": "21:45",
+          "items": []
+        }
+      ],
+      "sideNotes": [
+        {
+          "id": "tue-side-r56",
+          "row": 56,
+          "type": "meal",
+          "index": "1",
+          "title": "Alisa",
+          "detail": "肉燥",
+          "amount": "90"
+        },
+        {
+          "id": "tue-side-r57",
+          "row": 57,
+          "type": "meal",
+          "index": "2",
+          "title": "Max",
+          "detail": "肉燥",
+          "amount": "90"
+        },
+        {
+          "id": "tue-pickup-r60",
+          "row": 60,
+          "type": "pickup",
+          "index": "",
+          "title": "小港",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "tue-pickup-r61",
+          "row": 61,
+          "type": "pickup",
+          "index": "",
+          "title": "港和 / 二苓",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "tue-pickup-r62",
+          "row": 62,
+          "type": "pickup",
+          "index": "",
+          "title": "華山",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "tue-pickup-r63",
+          "row": 63,
+          "type": "pickup",
+          "index": "",
+          "title": "漢民",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "tue-pickup-r66",
+          "row": 66,
+          "type": "pickup",
+          "index": "",
+          "title": "晚餐",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "tue-side-r67",
+          "row": 67,
+          "type": "meal",
+          "index": "1",
+          "title": "Henry",
+          "detail": "滷肉",
+          "amount": "105"
+        },
+        {
+          "id": "tue-pickup-r68",
+          "row": 68,
+          "type": "pickup",
+          "index": "",
+          "title": "1",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "tue-side-r68",
+          "row": 68,
+          "type": "meal",
+          "index": "2",
+          "title": "Steph",
+          "detail": "滷肉",
+          "amount": "105"
+        }
+      ],
+      "itemCount": 9
+    },
+    {
+      "id": "wed",
+      "label": "三",
+      "englishLabel": "WED",
+      "startRow": 89,
+      "endRow": 131,
+      "dateSerial": "46141.0",
+      "slots": [
+        {
+          "id": "wed-r89",
+          "row": 89,
+          "hourLabel": "12 pm",
+          "minuteLabel": "00~15",
+          "time": "12:00",
+          "items": []
+        },
+        {
+          "id": "wed-r90",
+          "row": 90,
+          "hourLabel": "12 pm",
+          "minuteLabel": "15~30",
+          "time": "12:15",
+          "items": []
+        },
+        {
+          "id": "wed-r91",
+          "row": 91,
+          "hourLabel": "12 pm",
+          "minuteLabel": "30~45",
+          "time": "12:30",
+          "items": []
+        },
+        {
+          "id": "wed-r92",
+          "row": 92,
+          "hourLabel": "12 pm",
+          "minuteLabel": "45~00",
+          "time": "12:45",
+          "items": []
+        },
+        {
+          "id": "wed-r93",
+          "row": 93,
+          "hourLabel": "01 pm",
+          "minuteLabel": "00~15",
+          "time": "13:00",
+          "items": []
+        },
+        {
+          "id": "wed-r94",
+          "row": 94,
+          "hourLabel": "01 pm",
+          "minuteLabel": "15~30",
+          "time": "13:15",
+          "items": [
+            {
+              "id": "wed-r94-public-0",
+              "sectionId": "public",
+              "row": 94,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N94",
+              "title": "低中高\n作業",
+              "subtitle": "低中高\n作業",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低中高\n作業",
+                "低中高\n作業"
+              ]
+            },
+            {
+              "id": "wed-r94-stairs-0",
+              "sectionId": "stairs",
+              "row": 94,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V94",
+              "title": "P發B2\nS*5-1",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "P發B2\nS*5-1"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r95",
+          "row": 95,
+          "hourLabel": "01 pm",
+          "minuteLabel": "30~45",
+          "time": "13:30",
+          "items": []
+        },
+        {
+          "id": "wed-r96",
+          "row": 96,
+          "hourLabel": "01 pm",
+          "minuteLabel": "45~00",
+          "time": "13:45",
+          "items": []
+        },
+        {
+          "id": "wed-r97",
+          "row": 97,
+          "hourLabel": "02 pm",
+          "minuteLabel": "00~15",
+          "time": "14:00",
+          "items": []
+        },
+        {
+          "id": "wed-r98",
+          "row": 98,
+          "hourLabel": "02 pm",
+          "minuteLabel": "15~30",
+          "time": "14:15",
+          "items": []
+        },
+        {
+          "id": "wed-r99",
+          "row": 99,
+          "hourLabel": "02 pm",
+          "minuteLabel": "30~45",
+          "time": "14:30",
+          "items": []
+        },
+        {
+          "id": "wed-r100",
+          "row": 100,
+          "hourLabel": "02 pm",
+          "minuteLabel": "45~00",
+          "time": "14:45",
+          "items": []
+        },
+        {
+          "id": "wed-r101",
+          "row": 101,
+          "hourLabel": "03 pm",
+          "minuteLabel": "00~15",
+          "time": "15:00",
+          "items": [
+            {
+              "id": "wed-r101-public-0",
+              "sectionId": "public",
+              "row": 101,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N101",
+              "title": "低中高\n作業",
+              "subtitle": "低中高\n作業",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低中高\n作業",
+                "低中高\n作業"
+              ]
+            },
+            {
+              "id": "wed-r101-stairs-0",
+              "sectionId": "stairs",
+              "row": 101,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V101",
+              "title": "小檢B1\nS*5",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "小檢B1\nS*5"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r102",
+          "row": 102,
+          "hourLabel": "03 pm",
+          "minuteLabel": "15~30",
+          "time": "15:15",
+          "items": [
+            {
+              "id": "wed-r102-stairs-0",
+              "sectionId": "stairs",
+              "row": 102,
+              "startCol": 23,
+              "endCol": 23,
+              "cell": "W102",
+              "title": "觀",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "觀"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r103",
+          "row": 103,
+          "hourLabel": "03 pm",
+          "minuteLabel": "30~45",
+          "time": "15:30",
+          "items": []
+        },
+        {
+          "id": "wed-r104",
+          "row": 104,
+          "hourLabel": "03 pm",
+          "minuteLabel": "45~00",
+          "time": "15:45",
+          "items": [
+            {
+              "id": "wed-r104-stairs-0",
+              "sectionId": "stairs",
+              "row": 104,
+              "startCol": 22,
+              "endCol": 23,
+              "cell": "V104",
+              "title": "小檢B1",
+              "subtitle": "Ryan\n補上(五)",
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "小檢B1",
+                "Ryan\n補上(五)"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r105",
+          "row": 105,
+          "hourLabel": "4 pm",
+          "minuteLabel": "00~15",
+          "time": "16:00",
+          "items": []
+        },
+        {
+          "id": "wed-r106",
+          "row": 106,
+          "hourLabel": "4 pm",
+          "minuteLabel": "15~30",
+          "time": "16:15",
+          "items": [
+            {
+              "id": "wed-r106-public-0",
+              "sectionId": "public",
+              "row": 106,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N106",
+              "title": "點心",
+              "subtitle": "點心",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "點心",
+                "點心"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r107",
+          "row": 107,
+          "hourLabel": "4 pm",
+          "minuteLabel": "30~45",
+          "time": "16:30",
+          "items": [
+            {
+              "id": "wed-r107-public-0",
+              "sectionId": "public",
+              "row": 107,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N107",
+              "title": "中\n評量",
+              "subtitle": "低\n評量",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "中\n評量",
+                "低\n評量"
+              ]
+            },
+            {
+              "id": "wed-r107-stairs-0",
+              "sectionId": "stairs",
+              "row": 107,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V107",
+              "title": "小檢B0\nS*5",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "小檢B0\nS*5"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r108",
+          "row": 108,
+          "hourLabel": "4 pm",
+          "minuteLabel": "45~00",
+          "time": "16:45",
+          "items": [
+            {
+              "id": "wed-r108-stairs-0",
+              "sectionId": "stairs",
+              "row": 108,
+              "startCol": 23,
+              "endCol": 23,
+              "cell": "W108",
+              "title": "觀",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "觀"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r109",
+          "row": 109,
+          "hourLabel": "5 pm",
+          "minuteLabel": "00~15",
+          "time": "17:00",
+          "items": []
+        },
+        {
+          "id": "wed-r110",
+          "row": 110,
+          "hourLabel": "5 pm",
+          "minuteLabel": "15~30",
+          "time": "17:15",
+          "items": []
+        },
+        {
+          "id": "wed-r111",
+          "row": 111,
+          "hourLabel": "5 pm",
+          "minuteLabel": "30~45",
+          "time": "17:30",
+          "items": [
+            {
+              "id": "wed-r111-stairs-0",
+              "sectionId": "stairs",
+              "row": 111,
+              "startCol": 23,
+              "endCol": 23,
+              "cell": "W111",
+              "title": "Reading\nReady 3",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "Reading\nReady 3"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r112",
+          "row": 112,
+          "hourLabel": "5 pm",
+          "minuteLabel": "45~00",
+          "time": "17:45",
+          "items": [
+            {
+              "id": "wed-r112-public-0",
+              "sectionId": "public",
+              "row": 112,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N112",
+              "title": "晚餐",
+              "subtitle": "晚餐",
+              "status": null,
+              "kind": "meal",
+              "raw": [
+                "晚餐",
+                "晚餐"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r113",
+          "row": 113,
+          "hourLabel": "6 pm",
+          "minuteLabel": "00~15",
+          "time": "18:00",
+          "items": [
+            {
+              "id": "wed-r113-public-0",
+              "sectionId": "public",
+              "row": 113,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N113",
+              "title": "強化",
+              "subtitle": "強化",
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "強化",
+                "強化"
+              ]
+            },
+            {
+              "id": "wed-r113-roomB-0",
+              "sectionId": "roomB",
+              "row": 113,
+              "startCol": 20,
+              "endCol": 20,
+              "cell": "T113",
+              "title": "G2\nQ*4",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "G2\nQ*4"
+              ]
+            },
+            {
+              "id": "wed-r113-stairs-0",
+              "sectionId": "stairs",
+              "row": 113,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V113",
+              "title": "發音B3",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "發音B3"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r114",
+          "row": 114,
+          "hourLabel": "6 pm",
+          "minuteLabel": "15~30",
+          "time": "18:15",
+          "items": []
+        },
+        {
+          "id": "wed-r115",
+          "row": 115,
+          "hourLabel": "6 pm",
+          "minuteLabel": "30~45",
+          "time": "18:30",
+          "items": []
+        },
+        {
+          "id": "wed-r116",
+          "row": 116,
+          "hourLabel": "6 pm",
+          "minuteLabel": "45~00",
+          "time": "18:45",
+          "items": []
+        },
+        {
+          "id": "wed-r117",
+          "row": 117,
+          "hourLabel": "7 pm",
+          "minuteLabel": "00~15",
+          "time": "19:00",
+          "items": [
+            {
+              "id": "wed-r117-roomA-0",
+              "sectionId": "roomA",
+              "row": 117,
+              "startCol": 18,
+              "endCol": 18,
+              "cell": "R117",
+              "title": "G3\nT*7",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "G3\nT*7"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "wed-r118",
+          "row": 118,
+          "hourLabel": "7 pm",
+          "minuteLabel": "15~30",
+          "time": "19:15",
+          "items": []
+        },
+        {
+          "id": "wed-r119",
+          "row": 119,
+          "hourLabel": "7 pm",
+          "minuteLabel": "30~45",
+          "time": "19:30",
+          "items": []
+        },
+        {
+          "id": "wed-r120",
+          "row": 120,
+          "hourLabel": "7 pm",
+          "minuteLabel": "45~00",
+          "time": "19:45",
+          "items": []
+        },
+        {
+          "id": "wed-r121",
+          "row": 121,
+          "hourLabel": "8 pm",
+          "minuteLabel": "00~15",
+          "time": "20:00",
+          "items": []
+        },
+        {
+          "id": "wed-r122",
+          "row": 122,
+          "hourLabel": "8 pm",
+          "minuteLabel": "15~30",
+          "time": "20:15",
+          "items": []
+        },
+        {
+          "id": "wed-r123",
+          "row": 123,
+          "hourLabel": "8 pm",
+          "minuteLabel": "30~45",
+          "time": "20:30",
+          "items": []
+        },
+        {
+          "id": "wed-r124",
+          "row": 124,
+          "hourLabel": "8 pm",
+          "minuteLabel": "45~00",
+          "time": "20:45",
+          "items": []
+        },
+        {
+          "id": "wed-r125",
+          "row": 125,
+          "hourLabel": "9 pm",
+          "minuteLabel": "00~15",
+          "time": "21:00",
+          "items": []
+        },
+        {
+          "id": "wed-r126",
+          "row": 126,
+          "hourLabel": "9 pm",
+          "minuteLabel": "15~30",
+          "time": "21:15",
+          "items": []
+        },
+        {
+          "id": "wed-r127",
+          "row": 127,
+          "hourLabel": "9 pm",
+          "minuteLabel": "30~45",
+          "time": "21:30",
+          "items": []
+        },
+        {
+          "id": "wed-r128",
+          "row": 128,
+          "hourLabel": "9 pm",
+          "minuteLabel": "45~00",
+          "time": "21:45",
+          "items": []
+        }
+      ],
+      "sideNotes": [
+        {
+          "id": "wed-pickup-r91",
+          "row": 91,
+          "type": "pickup",
+          "index": "",
+          "title": "小港 / 鳳/太",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "wed-pickup-r92",
+          "row": 92,
+          "type": "pickup",
+          "index": "",
+          "title": "港和 / 華山",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "wed-pickup-r93",
+          "row": 93,
+          "type": "pickup",
+          "index": "",
+          "title": "漢民 / 漢民",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "wed-pickup-r94",
+          "row": 94,
+          "type": "pickup",
+          "index": "",
+          "title": "沿海 / 沿海",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "wed-side-r99",
+          "row": 99,
+          "type": "meal",
+          "index": "1",
+          "title": "Annie",
+          "detail": "11/檸",
+          "amount": "89"
+        },
+        {
+          "id": "wed-pickup-r105",
+          "row": 105,
+          "type": "pickup",
+          "index": "",
+          "title": "華山",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "wed-pickup-r109",
+          "row": 109,
+          "type": "pickup",
+          "index": "",
+          "title": "晚餐",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "wed-side-r110",
+          "row": 110,
+          "type": "meal",
+          "index": "1",
+          "title": "Sammi",
+          "detail": "13/烏/狗",
+          "amount": "158"
+        },
+        {
+          "id": "wed-side-r111",
+          "row": 111,
+          "type": "meal",
+          "index": "2",
+          "title": "Oscar",
+          "detail": "7/奶/狗",
+          "amount": "148"
+        },
+        {
+          "id": "wed-side-r112",
+          "row": 112,
+          "type": "meal",
+          "index": "3",
+          "title": "Stephen",
+          "detail": "11/奶/狗",
+          "amount": "125"
+        }
+      ],
+      "itemCount": 16
+    },
+    {
+      "id": "thu",
+      "label": "四",
+      "englishLabel": "THUR",
+      "startRow": 132,
+      "endRow": 174,
+      "dateSerial": "46142.0",
+      "slots": [
+        {
+          "id": "thu-r132",
+          "row": 132,
+          "hourLabel": "12 pm",
+          "minuteLabel": "00~15",
+          "time": "12:00",
+          "items": []
+        },
+        {
+          "id": "thu-r133",
+          "row": 133,
+          "hourLabel": "12 pm",
+          "minuteLabel": "15~30",
+          "time": "12:15",
+          "items": []
+        },
+        {
+          "id": "thu-r134",
+          "row": 134,
+          "hourLabel": "12 pm",
+          "minuteLabel": "30~45",
+          "time": "12:30",
+          "items": []
+        },
+        {
+          "id": "thu-r135",
+          "row": 135,
+          "hourLabel": "12 pm",
+          "minuteLabel": "45~00",
+          "time": "12:45",
+          "items": []
+        },
+        {
+          "id": "thu-r136",
+          "row": 136,
+          "hourLabel": "01 pm",
+          "minuteLabel": "00~15",
+          "time": "13:00",
+          "items": []
+        },
+        {
+          "id": "thu-r137",
+          "row": 137,
+          "hourLabel": "01 pm",
+          "minuteLabel": "15~30",
+          "time": "13:15",
+          "items": [
+            {
+              "id": "thu-r137-public-0",
+              "sectionId": "public",
+              "row": 137,
+              "startCol": 14,
+              "endCol": 14,
+              "cell": "N137",
+              "title": "低\n作業",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低\n作業"
+              ]
+            },
+            {
+              "id": "thu-r137-stairs-0",
+              "sectionId": "stairs",
+              "row": 137,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V137",
+              "title": "發B2\nS*5",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "發B2\nS*5"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thu-r138",
+          "row": 138,
+          "hourLabel": "01 pm",
+          "minuteLabel": "30~45",
+          "time": "13:30",
+          "items": []
+        },
+        {
+          "id": "thu-r139",
+          "row": 139,
+          "hourLabel": "01 pm",
+          "minuteLabel": "45~00",
+          "time": "13:45",
+          "items": []
+        },
+        {
+          "id": "thu-r140",
+          "row": 140,
+          "hourLabel": "02 pm",
+          "minuteLabel": "00~15",
+          "time": "14:00",
+          "items": []
+        },
+        {
+          "id": "thu-r141",
+          "row": 141,
+          "hourLabel": "02 pm",
+          "minuteLabel": "15~30",
+          "time": "14:15",
+          "items": []
+        },
+        {
+          "id": "thu-r142",
+          "row": 142,
+          "hourLabel": "02 pm",
+          "minuteLabel": "30~45",
+          "time": "14:30",
+          "items": []
+        },
+        {
+          "id": "thu-r143",
+          "row": 143,
+          "hourLabel": "02 pm",
+          "minuteLabel": "45~00",
+          "time": "14:45",
+          "items": []
+        },
+        {
+          "id": "thu-r144",
+          "row": 144,
+          "hourLabel": "03 pm",
+          "minuteLabel": "00~15",
+          "time": "15:00",
+          "items": [
+            {
+              "id": "thu-r144-public-0",
+              "sectionId": "public",
+              "row": 144,
+              "startCol": 14,
+              "endCol": 14,
+              "cell": "N144",
+              "title": "低\n作業",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低\n作業"
+              ]
+            },
+            {
+              "id": "thu-r144-stairs-0",
+              "sectionId": "stairs",
+              "row": 144,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V144",
+              "title": "小B0\n發B2\nS*3",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "小B0\n發B2\nS*3"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thu-r145",
+          "row": 145,
+          "hourLabel": "03 pm",
+          "minuteLabel": "15~30",
+          "time": "15:15",
+          "items": []
+        },
+        {
+          "id": "thu-r146",
+          "row": 146,
+          "hourLabel": "03 pm",
+          "minuteLabel": "30~45",
+          "time": "15:30",
+          "items": []
+        },
+        {
+          "id": "thu-r147",
+          "row": 147,
+          "hourLabel": "03 pm",
+          "minuteLabel": "45~00",
+          "time": "15:45",
+          "items": []
+        },
+        {
+          "id": "thu-r148",
+          "row": 148,
+          "hourLabel": "4 pm",
+          "minuteLabel": "00~15",
+          "time": "16:00",
+          "items": []
+        },
+        {
+          "id": "thu-r149",
+          "row": 149,
+          "hourLabel": "4 pm",
+          "minuteLabel": "15~30",
+          "time": "16:15",
+          "items": [
+            {
+              "id": "thu-r149-public-0",
+              "sectionId": "public",
+              "row": 149,
+              "startCol": 14,
+              "endCol": 14,
+              "cell": "N149",
+              "title": "點心",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "點心"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thu-r150",
+          "row": 150,
+          "hourLabel": "4 pm",
+          "minuteLabel": "30~45",
+          "time": "16:30",
+          "items": [
+            {
+              "id": "thu-r150-public-0",
+              "sectionId": "public",
+              "row": 150,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N150",
+              "title": "低中高\n作業",
+              "subtitle": "低中高\n作業",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低中高\n作業",
+                "低中高\n作業"
+              ]
+            },
+            {
+              "id": "thu-r150-extension-0",
+              "sectionId": "extension",
+              "row": 150,
+              "startCol": 16,
+              "endCol": 16,
+              "cell": "P150",
+              "title": "低中高\n作業",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低中高\n作業"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thu-r151",
+          "row": 151,
+          "hourLabel": "4 pm",
+          "minuteLabel": "45~00",
+          "time": "16:45",
+          "items": []
+        },
+        {
+          "id": "thu-r152",
+          "row": 152,
+          "hourLabel": "5 pm",
+          "minuteLabel": "00~15",
+          "time": "17:00",
+          "items": []
+        },
+        {
+          "id": "thu-r153",
+          "row": 153,
+          "hourLabel": "5 pm",
+          "minuteLabel": "15~30",
+          "time": "17:15",
+          "items": []
+        },
+        {
+          "id": "thu-r154",
+          "row": 154,
+          "hourLabel": "5 pm",
+          "minuteLabel": "30~45",
+          "time": "17:30",
+          "items": []
+        },
+        {
+          "id": "thu-r155",
+          "row": 155,
+          "hourLabel": "5 pm",
+          "minuteLabel": "45~00",
+          "time": "17:45",
+          "items": [
+            {
+              "id": "thu-r155-public-0",
+              "sectionId": "public",
+              "row": 155,
+              "startCol": 14,
+              "endCol": 14,
+              "cell": "N155",
+              "title": "晚餐",
+              "subtitle": null,
+              "status": null,
+              "kind": "meal",
+              "raw": [
+                "晚餐"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thu-r156",
+          "row": 156,
+          "hourLabel": "6 pm",
+          "minuteLabel": "00~15",
+          "time": "18:00",
+          "items": [
+            {
+              "id": "thu-r156-public-0",
+              "sectionId": "public",
+              "row": 156,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N156",
+              "title": "強化",
+              "subtitle": "強化",
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "強化",
+                "強化"
+              ]
+            },
+            {
+              "id": "thu-r156-extension-0",
+              "sectionId": "extension",
+              "row": 156,
+              "startCol": 16,
+              "endCol": 16,
+              "cell": "P156",
+              "title": "強化",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "強化"
+              ]
+            },
+            {
+              "id": "thu-r156-roomB-0",
+              "sectionId": "roomB",
+              "row": 156,
+              "startCol": 20,
+              "endCol": 20,
+              "cell": "T156",
+              "title": "發音B4\nE*3",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "發音B4\nE*3"
+              ]
+            },
+            {
+              "id": "thu-r156-stairs-0",
+              "sectionId": "stairs",
+              "row": 156,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V156",
+              "title": "初級B1\nD*10",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "初級B1\nD*10"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thu-r157",
+          "row": 157,
+          "hourLabel": "6 pm",
+          "minuteLabel": "15~30",
+          "time": "18:15",
+          "items": []
+        },
+        {
+          "id": "thu-r158",
+          "row": 158,
+          "hourLabel": "6 pm",
+          "minuteLabel": "30~45",
+          "time": "18:30",
+          "items": []
+        },
+        {
+          "id": "thu-r159",
+          "row": 159,
+          "hourLabel": "6 pm",
+          "minuteLabel": "45~00",
+          "time": "18:45",
+          "items": [
+            {
+              "id": "thu-r159-public-0",
+              "sectionId": "public",
+              "row": 159,
+              "startCol": 15,
+              "endCol": 15,
+              "cell": "O159",
+              "title": "盯小檢\n強化",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "盯小檢\n強化"
+              ]
+            },
+            {
+              "id": "thu-r159-stairs-0",
+              "sectionId": "stairs",
+              "row": 159,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V159",
+              "title": "初級B1",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "初級B1"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thu-r160",
+          "row": 160,
+          "hourLabel": "7 pm",
+          "minuteLabel": "00~15",
+          "time": "19:00",
+          "items": [
+            {
+              "id": "thu-r160-roomA-0",
+              "sectionId": "roomA",
+              "row": 160,
+              "startCol": 18,
+              "endCol": 18,
+              "cell": "R160",
+              "title": "高中\nF*9",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "高中\nF*9"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thu-r161",
+          "row": 161,
+          "hourLabel": "7 pm",
+          "minuteLabel": "15~30",
+          "time": "19:15",
+          "items": []
+        },
+        {
+          "id": "thu-r162",
+          "row": 162,
+          "hourLabel": "7 pm",
+          "minuteLabel": "30~45",
+          "time": "19:30",
+          "items": [
+            {
+              "id": "thu-r162-public-0",
+              "sectionId": "public",
+              "row": 162,
+              "startCol": 15,
+              "endCol": 15,
+              "cell": "O162",
+              "title": "升英G2\nI*4",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "升英G2\nI*4"
+              ]
+            },
+            {
+              "id": "thu-r162-roomB-0",
+              "sectionId": "roomB",
+              "row": 162,
+              "startCol": 20,
+              "endCol": 20,
+              "cell": "T162",
+              "title": "Sandy\nZ*1",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "Sandy\nZ*1"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "thu-r163",
+          "row": 163,
+          "hourLabel": "7 pm",
+          "minuteLabel": "45~00",
+          "time": "19:45",
+          "items": []
+        },
+        {
+          "id": "thu-r164",
+          "row": 164,
+          "hourLabel": "8 pm",
+          "minuteLabel": "00~15",
+          "time": "20:00",
+          "items": []
+        },
+        {
+          "id": "thu-r165",
+          "row": 165,
+          "hourLabel": "8 pm",
+          "minuteLabel": "15~30",
+          "time": "20:15",
+          "items": []
+        },
+        {
+          "id": "thu-r166",
+          "row": 166,
+          "hourLabel": "8 pm",
+          "minuteLabel": "30~45",
+          "time": "20:30",
+          "items": []
+        },
+        {
+          "id": "thu-r167",
+          "row": 167,
+          "hourLabel": "8 pm",
+          "minuteLabel": "45~00",
+          "time": "20:45",
+          "items": []
+        },
+        {
+          "id": "thu-r168",
+          "row": 168,
+          "hourLabel": "9 pm",
+          "minuteLabel": "00~15",
+          "time": "21:00",
+          "items": []
+        },
+        {
+          "id": "thu-r169",
+          "row": 169,
+          "hourLabel": "9 pm",
+          "minuteLabel": "15~30",
+          "time": "21:15",
+          "items": []
+        },
+        {
+          "id": "thu-r170",
+          "row": 170,
+          "hourLabel": "9 pm",
+          "minuteLabel": "30~45",
+          "time": "21:30",
+          "items": []
+        },
+        {
+          "id": "thu-r171",
+          "row": 171,
+          "hourLabel": "9 pm",
+          "minuteLabel": "45~00",
+          "time": "21:45",
+          "items": []
+        }
+      ],
+      "sideNotes": [
+        {
+          "id": "thu-pickup-r133",
+          "row": 133,
+          "type": "pickup",
+          "index": "",
+          "title": "華山",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "thu-pickup-r134",
+          "row": 134,
+          "type": "pickup",
+          "index": "",
+          "title": "小港 / 鳳陽",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "thu-pickup-r135",
+          "row": 135,
+          "type": "pickup",
+          "index": "",
+          "title": "二苓 / 漢民",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "thu-pickup-r136",
+          "row": 136,
+          "type": "pickup",
+          "index": "",
+          "title": "沿海 / 華山",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "thu-pickup-r137",
+          "row": 137,
+          "type": "pickup",
+          "index": "",
+          "title": "漢民",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "thu-side-r142",
+          "row": 142,
+          "type": "meal",
+          "index": "1",
+          "title": "Yulisa",
+          "detail": "肉絲蛋炒飯",
+          "amount": "90"
+        },
+        {
+          "id": "thu-side-r143",
+          "row": 143,
+          "type": "meal",
+          "index": "2",
+          "title": "Alisa",
+          "detail": "肉絲蛋炒飯",
+          "amount": "90"
+        },
+        {
+          "id": "thu-side-r144",
+          "row": 144,
+          "type": "meal",
+          "index": "3",
+          "title": "Winnie",
+          "detail": "肉絲蛋炒飯",
+          "amount": "90"
+        },
+        {
+          "id": "thu-side-r145",
+          "row": 145,
+          "type": "meal",
+          "index": "4",
+          "title": "Max",
+          "detail": "肉絲蛋炒飯",
+          "amount": "90"
+        },
+        {
+          "id": "thu-side-r146",
+          "row": 146,
+          "type": "meal",
+          "index": "5",
+          "title": "Andrea",
+          "detail": "肉絲蛋炒飯",
+          "amount": "90"
+        },
+        {
+          "id": "thu-pickup-r147",
+          "row": 147,
+          "type": "pickup",
+          "index": "",
+          "title": "小港 / 二苓",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "thu-side-r147",
+          "row": 147,
+          "type": "meal",
+          "index": "6",
+          "title": "Lucy",
+          "detail": "肉絲蛋炒飯",
+          "amount": "90"
+        },
+        {
+          "id": "thu-pickup-r148",
+          "row": 148,
+          "type": "pickup",
+          "index": "",
+          "title": "港和",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "thu-side-r148",
+          "row": 148,
+          "type": "meal",
+          "index": "7",
+          "title": "Julia",
+          "detail": "肉絲蛋炒飯",
+          "amount": "90"
+        },
+        {
+          "id": "thu-pickup-r149",
+          "row": 149,
+          "type": "pickup",
+          "index": "",
+          "title": "沿/漢",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "thu-pickup-r152",
+          "row": 152,
+          "type": "pickup",
+          "index": "",
+          "title": "晚餐",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "thu-side-r153",
+          "row": 153,
+          "type": "meal",
+          "index": "1",
+          "title": "Stephen",
+          "detail": "青椒肉絲蛋炒飯",
+          "amount": "110"
+        },
+        {
+          "id": "thu-side-r154",
+          "row": 154,
+          "type": "meal",
+          "index": "2",
+          "title": "Sammi",
+          "detail": "青椒肉絲蛋炒飯",
+          "amount": "110"
+        },
+        {
+          "id": "thu-side-r155",
+          "row": 155,
+          "type": "meal",
+          "index": "3",
+          "title": "蛋花湯",
+          "detail": null,
+          "amount": "40"
+        },
+        {
+          "id": "thu-side-r160",
+          "row": 160,
+          "type": "todo",
+          "index": "1",
+          "title": "繳會費",
+          "detail": "",
+          "amount": "1"
+        },
+        {
+          "id": "thu-side-r161",
+          "row": 161,
+          "type": "todo",
+          "index": "2",
+          "title": "聯絡羅  (V)",
+          "detail": "",
+          "amount": "1"
+        },
+        {
+          "id": "thu-side-r162",
+          "row": 162,
+          "type": "todo",
+          "index": "3",
+          "title": "聯絡川益",
+          "detail": "",
+          "amount": "0"
+        }
+      ],
+      "itemCount": 17
+    },
+    {
+      "id": "fri",
+      "label": "五",
+      "englishLabel": "FRI",
+      "startRow": 175,
+      "endRow": 217,
+      "dateSerial": "46143.0",
+      "slots": [
+        {
+          "id": "fri-r175",
+          "row": 175,
+          "hourLabel": "12 pm",
+          "minuteLabel": "00~15",
+          "time": "12:00",
+          "items": []
+        },
+        {
+          "id": "fri-r176",
+          "row": 176,
+          "hourLabel": "12 pm",
+          "minuteLabel": "15~30",
+          "time": "12:15",
+          "items": []
+        },
+        {
+          "id": "fri-r177",
+          "row": 177,
+          "hourLabel": "12 pm",
+          "minuteLabel": "30~45",
+          "time": "12:30",
+          "items": []
+        },
+        {
+          "id": "fri-r178",
+          "row": 178,
+          "hourLabel": "12 pm",
+          "minuteLabel": "45~00",
+          "time": "12:45",
+          "items": []
+        },
+        {
+          "id": "fri-r179",
+          "row": 179,
+          "hourLabel": "01 pm",
+          "minuteLabel": "00~15",
+          "time": "13:00",
+          "items": []
+        },
+        {
+          "id": "fri-r180",
+          "row": 180,
+          "hourLabel": "01 pm",
+          "minuteLabel": "15~30",
+          "time": "13:15",
+          "items": [
+            {
+              "id": "fri-r180-public-0",
+              "sectionId": "public",
+              "row": 180,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N180",
+              "title": "低中\n作業",
+              "subtitle": "低中\n作業",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低中\n作業",
+                "低中\n作業"
+              ]
+            },
+            {
+              "id": "fri-r180-stairs-0",
+              "sectionId": "stairs",
+              "row": 180,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V180",
+              "title": "P發B2\nS*5",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "P發B2\nS*5"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r181",
+          "row": 181,
+          "hourLabel": "01 pm",
+          "minuteLabel": "30~45",
+          "time": "13:30",
+          "items": []
+        },
+        {
+          "id": "fri-r182",
+          "row": 182,
+          "hourLabel": "01 pm",
+          "minuteLabel": "45~00",
+          "time": "13:45",
+          "items": []
+        },
+        {
+          "id": "fri-r183",
+          "row": 183,
+          "hourLabel": "02 pm",
+          "minuteLabel": "00~15",
+          "time": "14:00",
+          "items": []
+        },
+        {
+          "id": "fri-r184",
+          "row": 184,
+          "hourLabel": "02 pm",
+          "minuteLabel": "15~30",
+          "time": "14:15",
+          "items": []
+        },
+        {
+          "id": "fri-r185",
+          "row": 185,
+          "hourLabel": "02 pm",
+          "minuteLabel": "30~45",
+          "time": "14:30",
+          "items": []
+        },
+        {
+          "id": "fri-r186",
+          "row": 186,
+          "hourLabel": "02 pm",
+          "minuteLabel": "45~00",
+          "time": "14:45",
+          "items": []
+        },
+        {
+          "id": "fri-r187",
+          "row": 187,
+          "hourLabel": "03 pm",
+          "minuteLabel": "00~15",
+          "time": "15:00",
+          "items": [
+            {
+              "id": "fri-r187-public-0",
+              "sectionId": "public",
+              "row": 187,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N187",
+              "title": "低中\n作業",
+              "subtitle": "低中\n作業",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低中\n作業",
+                "低中\n作業"
+              ]
+            },
+            {
+              "id": "fri-r187-stairs-0",
+              "sectionId": "stairs",
+              "row": 187,
+              "startCol": 22,
+              "endCol": 23,
+              "cell": "V187",
+              "title": "小檢B1\nS*5",
+              "subtitle": "小檢B0\nS*5",
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "小檢B1\nS*5",
+                "小檢B0\nS*5"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r188",
+          "row": 188,
+          "hourLabel": "03 pm",
+          "minuteLabel": "15~30",
+          "time": "15:15",
+          "items": []
+        },
+        {
+          "id": "fri-r189",
+          "row": 189,
+          "hourLabel": "03 pm",
+          "minuteLabel": "30~45",
+          "time": "15:30",
+          "items": []
+        },
+        {
+          "id": "fri-r190",
+          "row": 190,
+          "hourLabel": "03 pm",
+          "minuteLabel": "45~00",
+          "time": "15:45",
+          "items": [
+            {
+              "id": "fri-r190-stairs-0",
+              "sectionId": "stairs",
+              "row": 190,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V190",
+              "title": "小檢B1",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "小檢B1"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r191",
+          "row": 191,
+          "hourLabel": "4 pm",
+          "minuteLabel": "00~15",
+          "time": "16:00",
+          "items": [
+            {
+              "id": "fri-r191-stairs-0",
+              "sectionId": "stairs",
+              "row": 191,
+              "startCol": 23,
+              "endCol": 23,
+              "cell": "W191",
+              "title": "小檢B0",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "小檢B0"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r192",
+          "row": 192,
+          "hourLabel": "4 pm",
+          "minuteLabel": "15~30",
+          "time": "16:15",
+          "items": [
+            {
+              "id": "fri-r192-public-0",
+              "sectionId": "public",
+              "row": 192,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N192",
+              "title": "點心",
+              "subtitle": "點心",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "點心",
+                "點心"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r193",
+          "row": 193,
+          "hourLabel": "4 pm",
+          "minuteLabel": "30~45",
+          "time": "16:30",
+          "items": [
+            {
+              "id": "fri-r193-public-0",
+              "sectionId": "public",
+              "row": 193,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N193",
+              "title": "低高\n作業",
+              "subtitle": "中\n評量",
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "低高\n作業",
+                "中\n評量"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r194",
+          "row": 194,
+          "hourLabel": "4 pm",
+          "minuteLabel": "45~00",
+          "time": "16:45",
+          "items": []
+        },
+        {
+          "id": "fri-r195",
+          "row": 195,
+          "hourLabel": "5 pm",
+          "minuteLabel": "00~15",
+          "time": "17:00",
+          "items": []
+        },
+        {
+          "id": "fri-r196",
+          "row": 196,
+          "hourLabel": "5 pm",
+          "minuteLabel": "15~30",
+          "time": "17:15",
+          "items": []
+        },
+        {
+          "id": "fri-r197",
+          "row": 197,
+          "hourLabel": "5 pm",
+          "minuteLabel": "30~45",
+          "time": "17:30",
+          "items": []
+        },
+        {
+          "id": "fri-r198",
+          "row": 198,
+          "hourLabel": "5 pm",
+          "minuteLabel": "45~00",
+          "time": "17:45",
+          "items": [
+            {
+              "id": "fri-r198-public-0",
+              "sectionId": "public",
+              "row": 198,
+              "startCol": 14,
+              "endCol": 15,
+              "cell": "N198",
+              "title": "晚餐",
+              "subtitle": "晚餐",
+              "status": null,
+              "kind": "meal",
+              "raw": [
+                "晚餐",
+                "晚餐"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r199",
+          "row": 199,
+          "hourLabel": "6 pm",
+          "minuteLabel": "00~15",
+          "time": "18:00",
+          "items": [
+            {
+              "id": "fri-r199-public-0",
+              "sectionId": "public",
+              "row": 199,
+              "startCol": 14,
+              "endCol": 14,
+              "cell": "N199",
+              "title": "強化",
+              "subtitle": null,
+              "status": null,
+              "kind": "class",
+              "raw": [
+                "強化"
+              ]
+            },
+            {
+              "id": "fri-r199-extension-0",
+              "sectionId": "extension",
+              "row": 199,
+              "startCol": 16,
+              "endCol": 16,
+              "cell": "P199",
+              "title": "G1\nC*6",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "G1\nC*6"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r200",
+          "row": 200,
+          "hourLabel": "6 pm",
+          "minuteLabel": "15~30",
+          "time": "18:15",
+          "items": []
+        },
+        {
+          "id": "fri-r201",
+          "row": 201,
+          "hourLabel": "6 pm",
+          "minuteLabel": "30~45",
+          "time": "18:30",
+          "items": []
+        },
+        {
+          "id": "fri-r202",
+          "row": 202,
+          "hourLabel": "6 pm",
+          "minuteLabel": "45~00",
+          "time": "18:45",
+          "items": []
+        },
+        {
+          "id": "fri-r203",
+          "row": 203,
+          "hourLabel": "7 pm",
+          "minuteLabel": "00~15",
+          "time": "19:00",
+          "items": [
+            {
+              "id": "fri-r203-stairs-0",
+              "sectionId": "stairs",
+              "row": 203,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V203",
+              "title": "Z *1\nPhoebe",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "Z *1\nPhoebe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r204",
+          "row": 204,
+          "hourLabel": "7 pm",
+          "minuteLabel": "15~30",
+          "time": "19:15",
+          "items": []
+        },
+        {
+          "id": "fri-r205",
+          "row": 205,
+          "hourLabel": "7 pm",
+          "minuteLabel": "30~45",
+          "time": "19:30",
+          "items": [
+            {
+              "id": "fri-r205-public-0",
+              "sectionId": "public",
+              "row": 205,
+              "startCol": 15,
+              "endCol": 15,
+              "cell": "O205",
+              "title": "B *5\nB4",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "B *5\nB4"
+              ]
+            },
+            {
+              "id": "fri-r205-extension-0",
+              "sectionId": "extension",
+              "row": 205,
+              "startCol": 16,
+              "endCol": 16,
+              "cell": "P205",
+              "title": "中銜\nA *9人",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "中銜\nA *9人"
+              ]
+            },
+            {
+              "id": "fri-r205-stairs-0",
+              "sectionId": "stairs",
+              "row": 205,
+              "startCol": 23,
+              "endCol": 23,
+              "cell": "W205",
+              "title": "P *4\n發特",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "P *4\n發特"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r206",
+          "row": 206,
+          "hourLabel": "7 pm",
+          "minuteLabel": "45~00",
+          "time": "19:45",
+          "items": []
+        },
+        {
+          "id": "fri-r207",
+          "row": 207,
+          "hourLabel": "8 pm",
+          "minuteLabel": "00~15",
+          "time": "20:00",
+          "items": [
+            {
+              "id": "fri-r207-stairs-0",
+              "sectionId": "stairs",
+              "row": 207,
+              "startCol": 22,
+              "endCol": 22,
+              "cell": "V207",
+              "title": "Phoebe",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "Phoebe"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r208",
+          "row": 208,
+          "hourLabel": "8 pm",
+          "minuteLabel": "15~30",
+          "time": "20:15",
+          "items": [
+            {
+              "id": "fri-r208-stairs-0",
+              "sectionId": "stairs",
+              "row": 208,
+              "startCol": 23,
+              "endCol": 23,
+              "cell": "W208",
+              "title": "發特",
+              "subtitle": null,
+              "status": null,
+              "kind": "note",
+              "raw": [
+                "發特"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fri-r209",
+          "row": 209,
+          "hourLabel": "8 pm",
+          "minuteLabel": "30~45",
+          "time": "20:30",
+          "items": []
+        },
+        {
+          "id": "fri-r210",
+          "row": 210,
+          "hourLabel": "8 pm",
+          "minuteLabel": "45~00",
+          "time": "20:45",
+          "items": []
+        },
+        {
+          "id": "fri-r211",
+          "row": 211,
+          "hourLabel": "9 pm",
+          "minuteLabel": "00~15",
+          "time": "21:00",
+          "items": []
+        },
+        {
+          "id": "fri-r212",
+          "row": 212,
+          "hourLabel": "9 pm",
+          "minuteLabel": "15~30",
+          "time": "21:15",
+          "items": []
+        },
+        {
+          "id": "fri-r213",
+          "row": 213,
+          "hourLabel": "9 pm",
+          "minuteLabel": "30~45",
+          "time": "21:30",
+          "items": []
+        },
+        {
+          "id": "fri-r214",
+          "row": 214,
+          "hourLabel": "9 pm",
+          "minuteLabel": "45~00",
+          "time": "21:45",
+          "items": []
+        }
+      ],
+      "sideNotes": [
+        {
+          "id": "fri-pickup-r177",
+          "row": 177,
+          "type": "pickup",
+          "index": "",
+          "title": "小港",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "fri-pickup-r178",
+          "row": 178,
+          "type": "pickup",
+          "index": "",
+          "title": "港和 / 二苓",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "fri-pickup-r179",
+          "row": 179,
+          "type": "pickup",
+          "index": "",
+          "title": "漢民",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "fri-pickup-r180",
+          "row": 180,
+          "type": "pickup",
+          "index": "",
+          "title": "沿海",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "fri-pickup-r191",
+          "row": 191,
+          "type": "pickup",
+          "index": "",
+          "title": "華山",
+          "detail": null,
+          "amount": null
+        },
+        {
+          "id": "fri-pickup-r195",
+          "row": 195,
+          "type": "pickup",
+          "index": "",
+          "title": "晚餐",
+          "detail": null,
+          "amount": null
+        }
+      ],
+      "itemCount": 17
+    },
+    {
+      "id": "sat",
+      "label": "六",
+      "englishLabel": "SAT",
+      "startRow": 218,
+      "endRow": 260,
+      "dateSerial": "46144.0",
+      "slots": [
+        {
+          "id": "sat-r218",
+          "row": 218,
+          "hourLabel": "09 am",
+          "minuteLabel": "00~15",
+          "time": "09:00",
+          "items": []
+        },
+        {
+          "id": "sat-r219",
+          "row": 219,
+          "hourLabel": "09 am",
+          "minuteLabel": "15~30",
+          "time": "09:15",
+          "items": []
+        },
+        {
+          "id": "sat-r220",
+          "row": 220,
+          "hourLabel": "09 am",
+          "minuteLabel": "30~45",
+          "time": "09:30",
+          "items": []
+        },
+        {
+          "id": "sat-r221",
+          "row": 221,
+          "hourLabel": "09 am",
+          "minuteLabel": "45~00",
+          "time": "09:45",
+          "items": []
+        },
+        {
+          "id": "sat-r222",
+          "row": 222,
+          "hourLabel": "10 am",
+          "minuteLabel": "00~15",
+          "time": "10:00",
+          "items": []
+        },
+        {
+          "id": "sat-r223",
+          "row": 223,
+          "hourLabel": "10 am",
+          "minuteLabel": "15~30",
+          "time": "10:15",
+          "items": []
+        },
+        {
+          "id": "sat-r224",
+          "row": 224,
+          "hourLabel": "10 am",
+          "minuteLabel": "30~45",
+          "time": "10:30",
+          "items": []
+        },
+        {
+          "id": "sat-r225",
+          "row": 225,
+          "hourLabel": "10 am",
+          "minuteLabel": "45~00",
+          "time": "10:45",
+          "items": []
+        },
+        {
+          "id": "sat-r226",
+          "row": 226,
+          "hourLabel": "11 am",
+          "minuteLabel": "00~15",
+          "time": "11:00",
+          "items": []
+        },
+        {
+          "id": "sat-r227",
+          "row": 227,
+          "hourLabel": "11 am",
+          "minuteLabel": "15~30",
+          "time": "11:15",
+          "items": []
+        },
+        {
+          "id": "sat-r228",
+          "row": 228,
+          "hourLabel": "11 am",
+          "minuteLabel": "30~45",
+          "time": "11:30",
+          "items": []
+        },
+        {
+          "id": "sat-r229",
+          "row": 229,
+          "hourLabel": "11 am",
+          "minuteLabel": "45~00",
+          "time": "11:45",
+          "items": []
+        },
+        {
+          "id": "sat-r230",
+          "row": 230,
+          "hourLabel": "12 pm",
+          "minuteLabel": "00~15",
+          "time": "12:00",
+          "items": []
+        },
+        {
+          "id": "sat-r231",
+          "row": 231,
+          "hourLabel": "12 pm",
+          "minuteLabel": "15~30",
+          "time": "12:15",
+          "items": []
+        },
+        {
+          "id": "sat-r232",
+          "row": 232,
+          "hourLabel": "12 pm",
+          "minuteLabel": "30~45",
+          "time": "12:30",
+          "items": []
+        },
+        {
+          "id": "sat-r233",
+          "row": 233,
+          "hourLabel": "12 pm",
+          "minuteLabel": "45~00",
+          "time": "12:45",
+          "items": []
+        },
+        {
+          "id": "sat-r234",
+          "row": 234,
+          "hourLabel": "1 pm",
+          "minuteLabel": "00~15",
+          "time": "13:00",
+          "items": []
+        },
+        {
+          "id": "sat-r235",
+          "row": 235,
+          "hourLabel": "1 pm",
+          "minuteLabel": "15~30",
+          "time": "13:15",
+          "items": []
+        },
+        {
+          "id": "sat-r236",
+          "row": 236,
+          "hourLabel": "1 pm",
+          "minuteLabel": "30~45",
+          "time": "13:30",
+          "items": []
+        },
+        {
+          "id": "sat-r237",
+          "row": 237,
+          "hourLabel": "1 pm",
+          "minuteLabel": "45~00",
+          "time": "13:45",
+          "items": []
+        },
+        {
+          "id": "sat-r238",
+          "row": 238,
+          "hourLabel": "2 pm",
+          "minuteLabel": "00~15",
+          "time": "14:00",
+          "items": []
+        },
+        {
+          "id": "sat-r239",
+          "row": 239,
+          "hourLabel": "2 pm",
+          "minuteLabel": "15~30",
+          "time": "14:15",
+          "items": []
+        },
+        {
+          "id": "sat-r240",
+          "row": 240,
+          "hourLabel": "2 pm",
+          "minuteLabel": "30~45",
+          "time": "14:30",
+          "items": []
+        },
+        {
+          "id": "sat-r241",
+          "row": 241,
+          "hourLabel": "2 pm",
+          "minuteLabel": "45~00",
+          "time": "14:45",
+          "items": []
+        },
+        {
+          "id": "sat-r242",
+          "row": 242,
+          "hourLabel": "3 pm",
+          "minuteLabel": "00~15",
+          "time": "15:00",
+          "items": []
+        },
+        {
+          "id": "sat-r243",
+          "row": 243,
+          "hourLabel": "3 pm",
+          "minuteLabel": "15~30",
+          "time": "15:15",
+          "items": []
+        },
+        {
+          "id": "sat-r244",
+          "row": 244,
+          "hourLabel": "3 pm",
+          "minuteLabel": "30~45",
+          "time": "15:30",
+          "items": []
+        },
+        {
+          "id": "sat-r245",
+          "row": 245,
+          "hourLabel": "3 pm",
+          "minuteLabel": "45~00",
+          "time": "15:45",
+          "items": []
+        },
+        {
+          "id": "sat-r246",
+          "row": 246,
+          "hourLabel": "4 pm",
+          "minuteLabel": "00~15",
+          "time": "16:00",
+          "items": []
+        },
+        {
+          "id": "sat-r247",
+          "row": 247,
+          "hourLabel": "4 pm",
+          "minuteLabel": "15~30",
+          "time": "16:15",
+          "items": []
+        },
+        {
+          "id": "sat-r248",
+          "row": 248,
+          "hourLabel": "4 pm",
+          "minuteLabel": "30~45",
+          "time": "16:30",
+          "items": []
+        },
+        {
+          "id": "sat-r249",
+          "row": 249,
+          "hourLabel": "4 pm",
+          "minuteLabel": "45~00",
+          "time": "16:45",
+          "items": []
+        },
+        {
+          "id": "sat-r250",
+          "row": 250,
+          "hourLabel": "5 pm",
+          "minuteLabel": "00~15",
+          "time": "17:00",
+          "items": []
+        },
+        {
+          "id": "sat-r251",
+          "row": 251,
+          "hourLabel": "5 pm",
+          "minuteLabel": "15~30",
+          "time": "17:15",
+          "items": []
+        },
+        {
+          "id": "sat-r252",
+          "row": 252,
+          "hourLabel": "5 pm",
+          "minuteLabel": "30~45",
+          "time": "17:30",
+          "items": []
+        },
+        {
+          "id": "sat-r253",
+          "row": 253,
+          "hourLabel": "5 pm",
+          "minuteLabel": "45~00",
+          "time": "17:45",
+          "items": []
+        },
+        {
+          "id": "sat-r254",
+          "row": 254,
+          "hourLabel": "6 pm",
+          "minuteLabel": "00~15",
+          "time": "18:00",
+          "items": []
+        },
+        {
+          "id": "sat-r255",
+          "row": 255,
+          "hourLabel": "6 pm",
+          "minuteLabel": "15~30",
+          "time": "18:15",
+          "items": []
+        },
+        {
+          "id": "sat-r256",
+          "row": 256,
+          "hourLabel": "6 pm",
+          "minuteLabel": "30~45",
+          "time": "18:30",
+          "items": []
+        },
+        {
+          "id": "sat-r257",
+          "row": 257,
+          "hourLabel": "6 pm",
+          "minuteLabel": "45~00",
+          "time": "18:45",
+          "items": []
+        }
+      ],
+      "sideNotes": [
+        {
+          "id": "sat-side-r246",
+          "row": 246,
+          "type": "todo",
+          "index": "1",
+          "title": "繳會費",
+          "detail": "",
+          "amount": "1"
+        },
+        {
+          "id": "sat-side-r247",
+          "row": 247,
+          "type": "todo",
+          "index": "2",
+          "title": "聯絡羅  (V)",
+          "detail": "",
+          "amount": "1"
+        },
+        {
+          "id": "sat-side-r248",
+          "row": 248,
+          "type": "todo",
+          "index": "3",
+          "title": "聯絡川益",
+          "detail": "",
+          "amount": "0"
+        }
+      ],
+      "itemCount": 0
+    },
+    {
+      "id": "sun",
+      "label": "日",
+      "englishLabel": "SUN",
+      "startRow": 261,
+      "endRow": 300,
+      "dateSerial": "46145.0",
+      "slots": [
+        {
+          "id": "sun-r261",
+          "row": 261,
+          "hourLabel": "09 am",
+          "minuteLabel": "00~15",
+          "time": "09:00",
+          "items": []
+        },
+        {
+          "id": "sun-r262",
+          "row": 262,
+          "hourLabel": "09 am",
+          "minuteLabel": "15~30",
+          "time": "09:15",
+          "items": []
+        },
+        {
+          "id": "sun-r263",
+          "row": 263,
+          "hourLabel": "09 am",
+          "minuteLabel": "30~45",
+          "time": "09:30",
+          "items": []
+        },
+        {
+          "id": "sun-r264",
+          "row": 264,
+          "hourLabel": "09 am",
+          "minuteLabel": "45~00",
+          "time": "09:45",
+          "items": []
+        },
+        {
+          "id": "sun-r265",
+          "row": 265,
+          "hourLabel": "10 am",
+          "minuteLabel": "00~15",
+          "time": "10:00",
+          "items": []
+        },
+        {
+          "id": "sun-r266",
+          "row": 266,
+          "hourLabel": "10 am",
+          "minuteLabel": "15~30",
+          "time": "10:15",
+          "items": []
+        },
+        {
+          "id": "sun-r267",
+          "row": 267,
+          "hourLabel": "10 am",
+          "minuteLabel": "30~45",
+          "time": "10:30",
+          "items": []
+        },
+        {
+          "id": "sun-r268",
+          "row": 268,
+          "hourLabel": "10 am",
+          "minuteLabel": "45~00",
+          "time": "10:45",
+          "items": []
+        },
+        {
+          "id": "sun-r269",
+          "row": 269,
+          "hourLabel": "11 am",
+          "minuteLabel": "00~15",
+          "time": "11:00",
+          "items": []
+        },
+        {
+          "id": "sun-r270",
+          "row": 270,
+          "hourLabel": "11 am",
+          "minuteLabel": "15~30",
+          "time": "11:15",
+          "items": []
+        },
+        {
+          "id": "sun-r271",
+          "row": 271,
+          "hourLabel": "11 am",
+          "minuteLabel": "30~45",
+          "time": "11:30",
+          "items": []
+        },
+        {
+          "id": "sun-r272",
+          "row": 272,
+          "hourLabel": "11 am",
+          "minuteLabel": "45~00",
+          "time": "11:45",
+          "items": []
+        },
+        {
+          "id": "sun-r273",
+          "row": 273,
+          "hourLabel": "12 pm",
+          "minuteLabel": "00~15",
+          "time": "12:00",
+          "items": []
+        },
+        {
+          "id": "sun-r274",
+          "row": 274,
+          "hourLabel": "12 pm",
+          "minuteLabel": "15~30",
+          "time": "12:15",
+          "items": []
+        },
+        {
+          "id": "sun-r275",
+          "row": 275,
+          "hourLabel": "12 pm",
+          "minuteLabel": "30~45",
+          "time": "12:30",
+          "items": []
+        },
+        {
+          "id": "sun-r276",
+          "row": 276,
+          "hourLabel": "12 pm",
+          "minuteLabel": "45~00",
+          "time": "12:45",
+          "items": []
+        },
+        {
+          "id": "sun-r277",
+          "row": 277,
+          "hourLabel": "1 pm",
+          "minuteLabel": "00~15",
+          "time": "13:00",
+          "items": []
+        },
+        {
+          "id": "sun-r278",
+          "row": 278,
+          "hourLabel": "1 pm",
+          "minuteLabel": "15~30",
+          "time": "13:15",
+          "items": []
+        },
+        {
+          "id": "sun-r279",
+          "row": 279,
+          "hourLabel": "1 pm",
+          "minuteLabel": "30~45",
+          "time": "13:30",
+          "items": []
+        },
+        {
+          "id": "sun-r280",
+          "row": 280,
+          "hourLabel": "1 pm",
+          "minuteLabel": "45~00",
+          "time": "13:45",
+          "items": []
+        },
+        {
+          "id": "sun-r281",
+          "row": 281,
+          "hourLabel": "2 pm",
+          "minuteLabel": "00~15",
+          "time": "14:00",
+          "items": []
+        },
+        {
+          "id": "sun-r282",
+          "row": 282,
+          "hourLabel": "2 pm",
+          "minuteLabel": "15~30",
+          "time": "14:15",
+          "items": []
+        },
+        {
+          "id": "sun-r283",
+          "row": 283,
+          "hourLabel": "2 pm",
+          "minuteLabel": "30~45",
+          "time": "14:30",
+          "items": []
+        },
+        {
+          "id": "sun-r284",
+          "row": 284,
+          "hourLabel": "2 pm",
+          "minuteLabel": "45~00",
+          "time": "14:45",
+          "items": []
+        },
+        {
+          "id": "sun-r285",
+          "row": 285,
+          "hourLabel": "3 pm",
+          "minuteLabel": "00~15",
+          "time": "15:00",
+          "items": []
+        },
+        {
+          "id": "sun-r286",
+          "row": 286,
+          "hourLabel": "3 pm",
+          "minuteLabel": "15~30",
+          "time": "15:15",
+          "items": []
+        },
+        {
+          "id": "sun-r287",
+          "row": 287,
+          "hourLabel": "3 pm",
+          "minuteLabel": "30~45",
+          "time": "15:30",
+          "items": []
+        },
+        {
+          "id": "sun-r288",
+          "row": 288,
+          "hourLabel": "3 pm",
+          "minuteLabel": "45~00",
+          "time": "15:45",
+          "items": []
+        },
+        {
+          "id": "sun-r289",
+          "row": 289,
+          "hourLabel": "4 pm",
+          "minuteLabel": "00~15",
+          "time": "16:00",
+          "items": []
+        },
+        {
+          "id": "sun-r290",
+          "row": 290,
+          "hourLabel": "4 pm",
+          "minuteLabel": "15~30",
+          "time": "16:15",
+          "items": []
+        },
+        {
+          "id": "sun-r291",
+          "row": 291,
+          "hourLabel": "4 pm",
+          "minuteLabel": "30~45",
+          "time": "16:30",
+          "items": []
+        },
+        {
+          "id": "sun-r292",
+          "row": 292,
+          "hourLabel": "4 pm",
+          "minuteLabel": "45~00",
+          "time": "16:45",
+          "items": []
+        },
+        {
+          "id": "sun-r293",
+          "row": 293,
+          "hourLabel": "5 pm",
+          "minuteLabel": "00~15",
+          "time": "17:00",
+          "items": []
+        },
+        {
+          "id": "sun-r294",
+          "row": 294,
+          "hourLabel": "5 pm",
+          "minuteLabel": "15~30",
+          "time": "17:15",
+          "items": []
+        },
+        {
+          "id": "sun-r295",
+          "row": 295,
+          "hourLabel": "5 pm",
+          "minuteLabel": "30~45",
+          "time": "17:30",
+          "items": []
+        },
+        {
+          "id": "sun-r296",
+          "row": 296,
+          "hourLabel": "5 pm",
+          "minuteLabel": "45~00",
+          "time": "17:45",
+          "items": []
+        },
+        {
+          "id": "sun-r297",
+          "row": 297,
+          "hourLabel": "6 pm",
+          "minuteLabel": "00~15",
+          "time": "18:00",
+          "items": []
+        },
+        {
+          "id": "sun-r298",
+          "row": 298,
+          "hourLabel": "6 pm",
+          "minuteLabel": "15~30",
+          "time": "18:15",
+          "items": []
+        },
+        {
+          "id": "sun-r299",
+          "row": 299,
+          "hourLabel": "6 pm",
+          "minuteLabel": "30~45",
+          "time": "18:30",
+          "items": []
+        },
+        {
+          "id": "sun-r300",
+          "row": 300,
+          "hourLabel": "6 pm",
+          "minuteLabel": "45~00",
+          "time": "18:45",
+          "items": []
+        }
+      ],
+      "sideNotes": [
+        {
+          "id": "sun-side-r289",
+          "row": 289,
+          "type": "todo",
+          "index": "1",
+          "title": "設計公告",
+          "detail": "",
+          "amount": "0"
+        },
+        {
+          "id": "sun-side-r290",
+          "row": 290,
+          "type": "todo",
+          "index": "2",
+          "title": "聯絡羅  (V)",
+          "detail": "",
+          "amount": "0"
+        },
+        {
+          "id": "sun-side-r291",
+          "row": 291,
+          "type": "todo",
+          "index": "3",
+          "title": "聯絡川益",
+          "detail": "",
+          "amount": "0"
+        },
+        {
+          "id": "sun-side-r292",
+          "row": 292,
+          "type": "todo",
+          "index": "4",
+          "title": "評量討論",
+          "detail": "",
+          "amount": "0"
+        },
+        {
+          "id": "sun-side-r293",
+          "row": 293,
+          "type": "todo",
+          "index": "5",
+          "title": "二段進度討論",
+          "detail": "",
+          "amount": "0"
+        },
+        {
+          "id": "sun-side-r294",
+          "row": 294,
+          "type": "todo",
+          "index": "6",
+          "title": "5/11-15排課",
+          "detail": "",
+          "amount": "0"
+        },
+        {
+          "id": "sun-side-r295",
+          "row": 295,
+          "type": "todo",
+          "index": "7",
+          "title": "確認目前出題進度",
+          "detail": "",
+          "amount": "0"
+        }
+      ],
+      "itemCount": 0
+    }
+  ]
+}

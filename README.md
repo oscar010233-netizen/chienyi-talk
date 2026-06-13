@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ChienYi Talk / JianYi OS
 
-## Getting Started
+Next.js 16 App Router project for JianYi internal tools:
 
-First, run the development server:
+- English speaking practice with Azure Speech Pronunciation Assessment.
+- Workspace schedule view.
+- Exam answer-sheet grading with Gemini.
+
+## Run Locally
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Azure Speech Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Create `.env.local`:
 
-## Learn More
+```bash
+AZURE_SPEECH_KEY=your_speech_resource_key
+AZURE_SPEECH_REGION=eastasia
+AZURE_SPEECH_ENDPOINT=https://your-resource-name.cognitiveservices.azure.com
+AZURE_FOUNDRY_PROJECT_ENDPOINT=
+AZURE_SPEECH_ENGINE=auto
+AZURE_SPEECH_MOCK=false
 
-To learn more about Next.js, take a look at the following resources:
+NEXT_PUBLIC_SUPABASE_URL=
+NEXT_PUBLIC_SUPABASE_ANON_KEY=
+SUPABASE_SERVICE_ROLE_KEY=
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+GEMINI_API_KEY=your_gemini_api_key
+GEMINI_MODEL=gemini-2.5-flash
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Notes:
 
-## Deploy on Vercel
+- Traditional 32-character Speech keys can use `AZURE_SPEECH_REGION`.
+- Newer Foundry / Azure AI Services setups should use `AZURE_SPEECH_ENDPOINT`
+  or `AZURE_FOUNDRY_PROJECT_ENDPOINT`.
+- The endpoint must be from the same Azure Speech resource as the key.
+- Set `AZURE_SPEECH_MOCK=true` to test the UI flow without calling Azure.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Main Routes
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/` - dashboard
+- `/workspace` - workspace schedule
+- `/speaking` - book list
+- `/speaking/[bookId]/practice` - recording practice
+- `/speaking/[bookId]/result` - score result
+- `/exam-grading` - answer-sheet grading
+- `/api/pronunciation-assessment` - server-side Azure REST call
+- `/api/grade` - server-side Gemini answer-sheet reader
+
+## Verify
+
+```bash
+npm run lint
+npm run build
+```
