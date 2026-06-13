@@ -6,6 +6,8 @@ Project: `pmoyvpnbbitnigchvluz`
 
 This runbook is the operational checklist for the local SQL drafts created during the Supabase DB audit. It separates read-only checks from write migrations so live database changes are deliberate.
 
+For the current progress checklist, see `docs/supabase-db-cleanup-status.md`.
+For a non-technical explanation, see `docs/supabase-db-plain-guide.md`.
 For table groups and relationships, see `docs/supabase-db-map.md`.
 
 ## Current Rule

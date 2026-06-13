@@ -7,6 +7,12 @@ Project: `pmoyvpnbbitnigchvluz`
 This is the quick handoff map for JianYiOS Supabase tables. It focuses on how
 tables relate to each other and which track should drive the current Next.js UI.
 
+For the current progress checklist, see `docs/supabase-db-cleanup-status.md`.
+For a plain-language Chinese explanation, start with
+`docs/supabase-db-plain-guide.md`.
+For a table-by-table plain-language dictionary, see
+`docs/supabase-db-table-dictionary.md`.
+
 ## Current Decision
 
 Use `class_students` / `tasks` / `task_records` as the app-facing grade track.
@@ -104,4 +110,3 @@ Do not drop these until after manual review:
 | `class_enrollments`, `class_tasks`, `task_buffer_entries` | Still needed as source-of-truth for imported class/task structure. |
 | `appsh_kanban_rows`, `appsh_xiao_daily_rows` | Preserve original sheet-shaped rows for debugging. |
 | `legacy_sheet_schemas`, `legacy_appscript_files`, `kanban_ranges` | Useful migration map and provenance. |
-
