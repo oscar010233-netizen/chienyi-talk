@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "audit:supabase": "node scripts/audit-supabase-db.mjs",
+    "build:supabase-bundles": "node scripts/build-supabase-sql-bundles.mjs",
     "check:azure": "node scripts/check-azure-speech.mjs"
   },
   "dependencies": {

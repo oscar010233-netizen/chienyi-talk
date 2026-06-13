@@ -11,6 +11,7 @@ Evidence used:
 - Live row counts through the Supabase service role API.
 - Local migrations in `supabase/migrations`.
 - Current Next.js queries in `lib/grade`, `lib/workspace`, and `app/api`.
+- Generated baseline snapshot in `docs/supabase-live-snapshot.md`.
 
 No schema or data changes were applied during this audit.
 
@@ -234,6 +235,34 @@ Recommended decision:
 
 ## Local Migration Drafts
 
+`supabase/migrations/202606120000_reconcile_grade_foundation_schema.sql`
+
+Status: drafted locally, not applied to the live Supabase project during this audit.
+
+Purpose:
+
+- Fixes fresh-DB migration reproducibility between `001_grade_system.sql` and `202606120001_appscript_core_schema.sql`.
+- Adds canonical columns expected by the Apps Script migration:
+  - `students.legacy_student_id`
+  - `students.chinese_name`
+  - `students.english_name`
+  - `classes.legacy_class_id`
+  - `classes.raw_source`
+  - `classes.updated_at`
+- Preserves early prototype aliases:
+  - `students.student_code`
+  - `students.chi_name`
+  - `students.eng_name`
+  - `classes.class_code`
+- Adds sync triggers so old seed/API writes and newer import/API writes keep aliases aligned.
+- Relaxes early prototype not-null/check constraints that would block imported legacy classes.
+
+Verification:
+
+- Run `supabase/verification/202606120000_verify_grade_foundation_reconciliation.sql` after applying the migration.
+- The verification query is read-only.
+- Every returned row should have `ok = true`.
+
 `supabase/migrations/202606130001_harden_class_students_tenant_scope.sql`
 
 Status: drafted locally, not applied to the live Supabase project during this audit.
@@ -253,11 +282,74 @@ Why this comes first:
 - It does not force a decision yet about whether the final enrollment table should be `class_students` or `class_enrollments`.
 - It keeps existing app writes working because the trigger can fill `tenant_id` when the API only sends `class_id` and `student_id`.
 
+Verification:
+
+- After applying the migration, run `supabase/verification/202606130001_verify_class_students_tenant_scope.sql` in Supabase SQL Editor.
+- The verification query is read-only.
+- Every returned row should have `ok = true`.
+- If `class_students tenant values match classes/students` fails, inspect mismatched rows before applying any backfill between the current UI track and the legacy import track.
+
+Backfill preview:
+
+- Run `supabase/verification/202606130002_preview_grade_track_backfill.sql` before writing any backfill migration.
+- This query is read-only.
+- It returns:
+  - `class_summary` rows comparing app-track vs legacy-track enrollment/task counts.
+  - `missing_enrollment` rows that are present in `class_enrollments` but missing from `class_students`.
+  - `missing_task` rows that are present in `class_tasks` but missing from `tasks`.
+- `missing_task.preview_status` must be `candidate` before a row is safe to backfill into `tasks`.
+- If `preview_status` is `blocked_unmapped_task_type` or `blocked_duplicate_task_code`, resolve the mapping/code issue first.
+
+Live read-only preview on 2026-06-13 found:
+
+- 9 missing app-track enrollments:
+  - `CLS-001`: 4
+  - `CLS-002`: 4
+  - `CLS-003`: 1
+- 36 missing app-track tasks:
+  - `CLS-001`: 10
+  - `CLS-002`: 10
+  - `ENG-五B5`: 6
+  - `XIAO-作業`: 10
+- 0 blocked task candidates after mapping legacy task types.
+
+Backfill draft:
+
+`supabase/migrations/202606130002_backfill_grade_ui_from_legacy_track.sql`
+
+Status: drafted locally, not applied to the live Supabase project during this audit.
+
+Purpose:
+
+- Copies missing active `class_enrollments` into `class_students`.
+- Copies missing active `class_tasks` into `tasks`.
+- Maps legacy task types into the current app enum:
+  - `出席` -> `attendance`
+  - `作業` -> `homework`
+  - `練習` -> `practice`
+  - `考試` -> `quiz`
+  - `評論` -> `comment`
+- Stops before writing if any task type is unmapped.
+- Stops before writing if any legacy task would collide with an existing `tasks.task_code` in another class.
+- Does not create `task_records`; use the existing dispatch flow after reviewing the class roster and task list.
+
+Backfill verification:
+
+- After applying the backfill migration, run `supabase/verification/202606130003_verify_grade_track_backfill.sql`.
+- The verification query is read-only.
+- Every returned row should have `ok = true`.
+
 ## Suggested Next SQL Work
 
 Do not run these against production without reviewing first:
 
+- Follow the operational checklist in `docs/supabase-db-cleanup-runbook.md`.
+- Run `npm run audit:supabase` before and after live write migrations to refresh `docs/supabase-live-snapshot.md`.
+- Review and apply `202606120000_reconcile_grade_foundation_schema.sql` if setting up a fresh DB or if live schema lacks the canonical student/class columns.
+- Verify it with `202606120000_verify_grade_foundation_reconciliation.sql`.
 - Review and apply `202606130001_harden_class_students_tenant_scope.sql` if the current Next.js grade UI track should continue to be used.
-- Create a one-time backfill from `class_enrollments` to `class_students` for `CLS-001`, `CLS-002`, and `CLS-003` if the current Next.js class pages should show those classes now.
-- Create a one-time backfill from `class_tasks` to `tasks` if the current class matrix should use the imported task rows now.
+- Verify it with `202606130001_verify_class_students_tenant_scope.sql`.
+- Preview grade-track convergence with `202606130002_preview_grade_track_backfill.sql`.
+- Review and apply `202606130002_backfill_grade_ui_from_legacy_track.sql` if the current Next.js class pages should show imported legacy rosters/tasks.
+- Verify it with `202606130003_verify_grade_track_backfill.sql`.
 - Generate a clean schema-only dump from live Supabase after cleanup and use it as the fresh-environment baseline.

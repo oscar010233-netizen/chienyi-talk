@@ -20,6 +20,38 @@ const TASK_SHORT: Record<TaskType, string> = {
   comment:    '評',
 }
 
+// Low-saturation type chips, one tint per task kind.
+const TASK_CHIP: Record<TaskType, string> = {
+  attendance: 'bg-sky-50 text-sky-600',
+  homework:   'bg-violet-50 text-violet-600',
+  practice:   'bg-amber-50 text-amber-600',
+  quiz:       'bg-rose-50 text-rose-600',
+  comment:    'bg-teal-50 text-teal-600',
+}
+
+const AVATAR_COLORS = [
+  'bg-sky-100 text-sky-700',
+  'bg-violet-100 text-violet-700',
+  'bg-amber-100 text-amber-700',
+  'bg-emerald-100 text-emerald-700',
+  'bg-rose-100 text-rose-700',
+  'bg-indigo-100 text-indigo-700',
+  'bg-teal-100 text-teal-700',
+  'bg-orange-100 text-orange-700',
+]
+
+function initials(chinese: string, english: string): string {
+  if (english?.trim()) return english.trim()[0].toUpperCase()
+  if (chinese?.trim()) return chinese.trim().slice(-1)
+  return '?'
+}
+
+function avatarColor(seed: string): string {
+  let h = 0
+  for (let i = 0; i < seed.length; i++) h = (h + seed.charCodeAt(i)) % AVATAR_COLORS.length
+  return AVATAR_COLORS[h]
+}
+
 interface SelectedCell {
   task: Task
   student: { id: string; chinese_name: string; english_name: string }
@@ -144,71 +176,79 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           <p>{tasks.length === 0 ? '此班尚無任務' : '此班尚無學生'}</p>
         </div>
       ) : (
-        <div className="flex-1 overflow-auto">
-          <table className="border-separate border-spacing-0 bg-white text-sm">
-            <thead>
-              <tr>
-                <th className="sticky left-0 top-0 z-30 min-w-[7rem] border-b border-r border-border bg-white px-3 py-2 text-left text-xs font-medium text-muted-foreground">
-                  任務
-                </th>
-                {students.map(cs => (
-                  <th
-                    key={cs.student_id}
-                    className="sticky top-0 z-20 min-w-[5.5rem] border-b border-r border-border bg-white px-2 py-2 text-center text-xs font-medium"
-                  >
-                    <span className="block leading-tight text-foreground">{cs.student.chinese_name}</span>
-                    <span className="block text-muted-foreground opacity-60">{cs.student.english_name}</span>
+        <div className="flex-1 overflow-hidden p-3 md:p-5">
+          <div className="h-full overflow-auto rounded-2xl bg-white shadow-sm ring-1 ring-black/5">
+            <table className="w-full border-separate border-spacing-0 text-sm">
+              <thead>
+                <tr>
+                  <th className="sticky left-0 top-0 z-30 min-w-[11rem] border-b border-gray-200 bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground">
+                    任務
                   </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {tasks.map((task, rowIdx) => (
-                <tr key={task.id} className={rowIdx % 2 === 1 ? 'bg-muted/30' : ''}>
-                  <td className={cn(
-                    'sticky left-0 z-10 border-b border-r border-border px-3 py-2 text-xs',
-                    rowIdx % 2 === 1 ? 'bg-muted/30' : 'bg-white'
-                  )}>
-                    <span className="flex items-center gap-1">
-                      <span className="rounded bg-muted px-1 font-mono font-semibold text-muted-foreground text-[10px]">
-                        {TASK_SHORT[task.task_type]}
+                  {students.map(cs => (
+                    <th
+                      key={cs.student_id}
+                      className="sticky top-0 z-20 min-w-[6.5rem] border-b border-gray-200 bg-white px-3 py-3 text-center align-bottom font-normal"
+                    >
+                      <span className={cn(
+                        'mx-auto mb-1.5 flex size-8 items-center justify-center rounded-full text-xs font-semibold',
+                        avatarColor(cs.student_id)
+                      )}>
+                        {initials(cs.student.chinese_name, cs.student.english_name)}
                       </span>
-                      <span className="text-foreground">{task.task_name ?? task.task_code}</span>
-                    </span>
-                    {task.threshold != null && (
-                      <span className="text-[10px] text-muted-foreground">門檻 {task.threshold}</span>
-                    )}
-                  </td>
-                  {students.map(cs => {
-                    const record = recordMap.get(`${cs.student_id}:${task.id}`)
-                    const isComment = task.task_type === 'comment'
-                    const display = isComment
-                      ? commentLamp(record?.comment_status)
-                      : lampFor(record?.status, task.task_type)
-                    // Scores only matter for quizzes; prefer the full history.
-                    const detail = task.task_type === 'quiz'
-                      ? (record?.result_history || record?.latest_result)
-                      : null
-                    return (
-                      <td
-                        key={cs.student_id}
-                        className="border-b border-r border-border px-1.5 py-1.5 text-center"
-                      >
-                        <button
-                          onClick={() => handleCellClick(task, cs)}
-                          className="rounded-md px-1 py-0.5 transition-colors hover:bg-muted"
-                        >
-                          {record
-                            ? <LampBadge color={display.color} label={display.label} detail={detail} />
-                            : <span className="text-muted-foreground/40">–</span>}
-                        </button>
-                      </td>
-                    )
-                  })}
+                      <span className="block text-xs font-medium leading-tight text-foreground">{cs.student.chinese_name}</span>
+                      <span className="block text-[10px] text-muted-foreground">{cs.student.english_name}</span>
+                    </th>
+                  ))}
+                  {/* filler keeps the real columns packed to the left */}
+                  <th aria-hidden className="w-full border-b border-gray-200 bg-white" />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {tasks.map(task => (
+                  <tr key={task.id} className="group">
+                    <td className="sticky left-0 z-10 border-b border-gray-100 bg-white px-4 py-3.5 transition-colors group-hover:bg-gray-50/80">
+                      <span className="flex items-center gap-2">
+                        <span className={cn('rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
+                          {TASK_SHORT[task.task_type]}
+                        </span>
+                        <span className="font-medium text-foreground">{task.task_name ?? task.task_code}</span>
+                      </span>
+                      {task.threshold != null && (
+                        <span className="mt-0.5 block pl-7 text-[11px] text-muted-foreground">門檻 {task.threshold}</span>
+                      )}
+                    </td>
+                    {students.map(cs => {
+                      const record = recordMap.get(`${cs.student_id}:${task.id}`)
+                      const isComment = task.task_type === 'comment'
+                      const display = isComment
+                        ? commentLamp(record?.comment_status)
+                        : lampFor(record?.status, task.task_type)
+                      // Scores only matter for quizzes; prefer the full history.
+                      const detail = task.task_type === 'quiz'
+                        ? (record?.result_history || record?.latest_result)
+                        : null
+                      return (
+                        <td
+                          key={cs.student_id}
+                          className="border-b border-gray-100 px-2 py-2.5 text-center transition-colors group-hover:bg-gray-50/80"
+                        >
+                          <button
+                            onClick={() => handleCellClick(task, cs)}
+                            className="inline-flex items-center justify-center rounded-lg px-1.5 py-1 transition-colors hover:bg-gray-100"
+                          >
+                            {record
+                              ? <LampBadge color={display.color} label={display.label} detail={detail} />
+                              : <span className="text-gray-300">–</span>}
+                          </button>
+                        </td>
+                      )
+                    })}
+                    <td aria-hidden className="border-b border-gray-100 transition-colors group-hover:bg-gray-50/80" />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
