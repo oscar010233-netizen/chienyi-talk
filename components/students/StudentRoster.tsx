@@ -86,6 +86,7 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
                 <th>學生</th>
                 <th>學校</th>
                 <th>年級</th>
+                <th>家長電話</th>
                 <th>所屬班級</th>
                 <th>狀態</th>
               </tr>
@@ -93,7 +94,7 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
             <tbody>
               {visible.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-muted-foreground">
+                  <td colSpan={7} className="px-4 py-12 text-center text-muted-foreground">
                     {students.length === 0 ? '尚無學生，點右上角新增' : '查無符合的學生'}
                   </td>
                 </tr>
@@ -120,6 +121,7 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
                     </td>
                     <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06] text-muted-foreground">{s.school ?? '—'}</td>
                     <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06] text-muted-foreground">{s.grade ?? '—'}</td>
+                    <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06] text-muted-foreground font-mono text-xs">{s.parent_phone ?? '—'}</td>
                     <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06]">
                       {s.classes.length === 0
                         ? <span className="text-muted-foreground/50">未分班</span>

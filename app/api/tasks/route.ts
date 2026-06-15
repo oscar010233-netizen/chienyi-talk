@@ -51,6 +51,31 @@ function normalizeTaskInput(input: TaskInput, fallbackWeek: string, fallbackLess
   }
 }
 
+// DELETE /api/tasks?task_id=xxx
+// Removes student_task_records then the class_task itself.
+export async function DELETE(request: NextRequest) {
+  const taskId = request.nextUrl.searchParams.get('task_id')?.trim()
+  if (!taskId) return NextResponse.json({ error: 'task_id required' }, { status: 400 })
+
+  const supabase = await createServiceClient()
+
+  const { error: recError } = await supabase
+    .from('student_task_records')
+    .delete()
+    .eq('class_task_id', taskId)
+
+  if (recError) return NextResponse.json({ error: recError.message }, { status: 500 })
+
+  const { error } = await supabase
+    .from('class_tasks')
+    .delete()
+    .eq('id', taskId)
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  return NextResponse.json({ deleted: true })
+}
+
 // POST /api/tasks
 // - Single task: { class_id, task_type, task_name, week_label, lesson_label }
 // - Weekly batch: { class_id, week_label, lesson_label, tasks: [...] }

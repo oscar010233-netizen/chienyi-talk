@@ -11,6 +11,7 @@ import {
   GraduationCap,
   Home,
   ReceiptText,
+  Table2,
   Users,
   Zap,
   PanelLeftClose,
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/students", icon: Users, label: "學生" },
   { href: "/speaking", icon: BookOpen, label: "口說練習" },
   { href: "/exam-grading", icon: ClipboardCheck, label: "試卷批改" },
+  { href: "/db", icon: Table2, label: "DB 監看" },
 ];
 
 export function Sidebar() {

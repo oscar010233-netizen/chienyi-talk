@@ -61,12 +61,12 @@ function statusToReconciliation(status: ActualAttendanceStatus): ReconciliationS
   return 'extra'
 }
 
-function statusToTask(status: ActualAttendanceStatus): { status: string; lamp: string } {
+function statusToTask(status: ActualAttendanceStatus): { status: string } {
   if (status === 'attended' || status === 'makeup' || status === 'extra') {
-    return { status: 'completed', lamp: 'green' }
+    return { status: 'completed' }
   }
-  if (status === 'absent') return { status: 'missing', lamp: 'black' }
-  return { status: 'wont_do', lamp: 'white' }
+  if (status === 'absent') return { status: 'missing' }
+  return { status: 'wont_do' }
 }
 
 function taskToActual(status: string | null | undefined): ActualAttendanceStatus | null {
@@ -554,7 +554,6 @@ async function ensureAttendanceTasks(
         class_task_id: taskId,
         student_id: student.student_id,
         status: 'pending',
-        lamp: 'red',
       }))
       const { error: recordError } = await supabase
         .from('student_task_records')
@@ -641,7 +640,6 @@ async function mirrorActualToClassTask(
       class_task_id: task.id,
       student_id: studentId,
       status: mapped.status,
-      lamp: mapped.lamp,
     }, { onConflict: 'class_task_id,student_id' })
   if (error) throw new Error(error.message)
 }
@@ -700,7 +698,6 @@ export async function recordExtraAttendance(input: {
       class_task_id: taskId,
       student_id: input.studentId,
       status: 'completed',
-      lamp: 'green',
       teacher_note: input.note?.trim() || null,
     }, { onConflict: 'class_task_id,student_id' })
   if (recordError) throw new Error(recordError.message)

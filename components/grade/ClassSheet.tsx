@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Kanban, Plus, ReceiptText, Send, UserPlus } from 'lucide-react'
+import { ArrowLeft, Kanban, Plus, ReceiptText, Send, Trash2, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { AddTaskModal } from './AddTaskModal'
@@ -78,6 +78,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   const [dispatchMsg, setDispatchMsg] = useState('')
   const [showAddTask, setShowAddTask] = useState(false)
   const [showEnroll, setShowEnroll] = useState(false)
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
   const router = useRouter()
 
   const classSlug = encodeURIComponent(cls.id)
@@ -110,12 +111,28 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? '派發失敗')
 
-      setDispatchMsg(data.dispatched > 0 ? `已派發 ${data.dispatched} 筆` : (data.message ?? '沒有需要派發的任務'))
+      setDispatchMsg(data.dispatched > 0 ? `已建立 ${data.dispatched} 筆待處理紀錄` : (data.message ?? '沒有需要派發的任務'))
       if (data.dispatched > 0) router.refresh()
     } catch (error) {
       setDispatchMsg(error instanceof Error ? error.message : '派發失敗')
     } finally {
       setDispatching(false)
+    }
+  }
+
+  async function handleDeleteTask(taskId: string, taskName: string) {
+    if (!confirm(`刪除任務「${taskName}」？\n同時清除所有學生的相關記錄，無法復原。`)) return
+    setDeletingTaskId(taskId)
+    try {
+      const res = await fetch(`/api/tasks?task_id=${taskId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const data = await res.json()
+        alert(data.error ?? '刪除失敗')
+      } else {
+        router.refresh()
+      }
+    } finally {
+      setDeletingTaskId(null)
     }
   }
 
@@ -229,16 +246,25 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                     <tr key={task.id} className="group">
                       <td className={cn('sticky left-0 z-10 border-b border-border px-4 py-3.5 transition-colors', zebra)}>
                         <div className="flex min-w-0 items-start gap-2">
-                          <span className={cn('mt-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
+                          <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
                             {TASK_SHORT[task.task_type]}
                           </span>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="truncate font-medium text-foreground">{task.task_name ?? '未命名任務'}</p>
                             <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
                               {meta || '未設定週數/課數'}
                               {threshold && <span> · 門檻 {threshold}</span>}
                             </p>
                           </div>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
+                            disabled={deletingTaskId === task.id}
+                            title="刪除任務"
+                            className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/50 hover:!text-red-500 disabled:opacity-50"
+                          >
+                            <Trash2 size={13} />
+                          </button>
                         </div>
                       </td>
 

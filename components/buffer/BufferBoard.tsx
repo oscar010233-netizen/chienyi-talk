@@ -31,14 +31,9 @@ interface BufferRow {
   history: string | null
   threshold: string | null
   week: string | null
-  writeback_status: string | null
-  last_updated: string | null
-  loaded_to: string | null
-  loaded_to_keys: string[] | null
   teacher_note: string | null
   comment_text: string | null
   comment_status: string | null
-  legacy_row_number: number | null
   created_at: string | null
   updated_at: string | null
 }
@@ -112,8 +107,6 @@ function matchesSearch(row: BufferRow, query: string) {
     row.task_id,
     row.status,
     row.week,
-    row.loaded_to,
-    row.writeback_status,
     row.teacher_note,
     row.comment_text,
     row.comment_status,
@@ -368,7 +361,7 @@ export function BufferBoard() {
                         <p className="truncate text-muted-foreground" title={row.teacher_note ?? undefined}>{display(row.teacher_note)}</p>
                       </td>
                       <td className={MUTED_TABLE_CELL}>
-                        <span className="block truncate">{formatDate(row.updated_at ?? row.last_updated)}</span>
+                        <span className="block truncate">{formatDate(row.updated_at)}</span>
                       </td>
                       <td className={`${TABLE_CELL} text-right`}>
                         <span className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-gold dark:text-[#ff8a8a]">

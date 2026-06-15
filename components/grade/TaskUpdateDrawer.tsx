@@ -75,7 +75,6 @@ export function TaskUpdateDrawer({ task, student, record, classDepartment, onClo
         student_id: student.id,
         class_task_id: task.id,
         status: 'pending',
-        lamp: 'red',
       }),
     })
     const json = await response.json()

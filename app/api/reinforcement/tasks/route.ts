@@ -8,7 +8,6 @@ const RECORD_SELECT = `
   student_id,
   class_task_id,
   status,
-  lamp,
   latest_result,
   result_history,
   teacher_note,
@@ -40,7 +39,6 @@ interface JoinedRecord {
   student_id: string
   class_task_id: string
   status: string | null
-  lamp: string | null
   latest_result: string | null
   result_history: string | null
   teacher_note: string | null
@@ -160,7 +158,6 @@ export async function PATCH(request: NextRequest) {
 
   if (decision.shouldWriteRecord) {
     patch.status = decision.newStatus
-    patch.lamp = decision.lamp.color
 
     if (decision.shouldWriteLatestResult) {
       patch.latest_result = decision.latestResultValue

@@ -53,7 +53,6 @@ export interface TaskRecord {
   student_id: string
   class_task_id: string
   status: string
-  lamp: Lamp
   latest_result: string | null
   result_history: string | null
   comment_text: string | null

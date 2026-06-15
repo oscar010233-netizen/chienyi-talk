@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { Camera, Check, Loader2, Search, Trash2, X } from 'lucide-react'
+import { Check, Loader2, Search, Trash2, X } from 'lucide-react'
 import { LampBadge } from '@/components/grade/LampBadge'
 import {
   appendHistory,
@@ -622,13 +622,6 @@ function TaskEditor({ anchor, record, student, draft, onChange, onSubmit, onClos
 
         {/* Actions */}
         <div className="flex items-center gap-1.5 pt-0.5">
-          <button
-            type="button"
-            title="拍照 / 附件（開發中）"
-            className="grid size-8 shrink-0 place-items-center rounded-md border border-border text-muted-foreground/70 hover:border-foreground/30 hover:text-foreground transition-colors"
-          >
-            <Camera size={14} />
-          </button>
           <button
             type="button"
             onClick={() => void onSubmit()}

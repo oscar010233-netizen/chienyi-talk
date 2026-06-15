@@ -89,7 +89,7 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
   const { data: recordsData } = taskIds.length > 0
     ? await supabase
         .from('student_task_records')
-        .select('id, tenant_id, student_id, class_task_id, status, lamp, latest_result, result_history, comment_text, comment_status, teacher_note, updated_at')
+        .select('id, tenant_id, student_id, class_task_id, status, latest_result, result_history, comment_text, comment_status, teacher_note, updated_at')
         .in('class_task_id', taskIds)
     : { data: [] }
 

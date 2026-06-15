@@ -40,6 +40,10 @@ Treat that system as the migration source for the broader JIANYI OS. Do not copy
 
 Migration notes live in `docs/google-sheets-to-supabase-migration.md`.
 
+## DB State (read before touching the database)
+
+`docs/db-state.md` records the current Supabase reality that schema alone does not reveal: removed columns (`student_task_records.lamp`), dropped tables (`schedule_event_students`), tables you must NOT drop (`profiles` = RLS root, `schedule_event_teachers` = joined by the events query), known gaps (`classes.department` has no write UI → buffer ENG/XIAO is dead), and the `audit_log` + `zz_audit` triggers feeding the `/db` monitor page. Column-level source of truth is `lib/db/schema.ts`. Running DDL requires the dashboard token + Management API (see `docs/db-state.md`), not the service-role key.
+
 ## Confirmed Stack
 
 - Next.js 16 App Router with Turbopack.

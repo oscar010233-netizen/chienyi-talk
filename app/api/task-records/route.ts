@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
 const WRITABLE_COLUMNS = [
-  'status',
-  'lamp',
   'latest_result',
   'result_history',
   'teacher_note',

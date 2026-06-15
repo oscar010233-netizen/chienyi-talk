@@ -35,10 +35,13 @@ export async function GET(request: NextRequest) {
   if (!date || !type) return NextResponse.json({ error: 'date and type required' }, { status: 400 })
 
   const supabase = await createServiceClient()
+  const { data: tenant } = await supabase.from('tenants').select('id').limit(1).single()
+  if (!tenant) return NextResponse.json([])
 
   const { data: day } = await supabase
     .from('schedule_days')
     .select('id')
+    .eq('tenant_id', tenant.id)
     .eq('date', date)
     .maybeSingle()
 

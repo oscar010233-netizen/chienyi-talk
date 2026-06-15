@@ -7,7 +7,6 @@ const RECORD_COLUMNS = `
   student_id,
   class_task_id,
   status,
-  lamp,
   latest_result,
   result_history,
   teacher_note,
@@ -54,7 +53,6 @@ interface JoinedRecord {
   student_id: string
   class_task_id: string
   status: string | null
-  lamp: string | null
   latest_result: string | null
   result_history: string | null
   teacher_note: string | null
@@ -127,32 +125,11 @@ function mapRecord(record: JoinedRecord) {
     history: record.result_history,
     threshold: thresholdText(record),
     week: weekText(record),
-    writeback_status: record.comment_status,
-    loaded_to: null,
-    loaded_to_keys: [],
     teacher_note: record.teacher_note,
     comment_text: record.comment_text,
     comment_status: record.comment_status,
-    legacy_row_number: null,
     created_at: record.created_at,
     updated_at: record.updated_at,
-  }
-}
-
-function lampForStatus(status: string | null | undefined, taskType: string | null | undefined) {
-  switch (status) {
-    case 'completed':
-      return 'green'
-    case 'wont_do':
-      return 'white'
-    case 'missing':
-      return 'black'
-    case 'retake_ready':
-      return 'yellow'
-    case 'correcting':
-      return taskType === 'quiz' ? 'blue' : 'yellow'
-    default:
-      return 'red'
   }
 }
 
@@ -193,8 +170,7 @@ export async function PATCH(request: NextRequest) {
 
   if (currentError) return NextResponse.json({ error: currentError.message }, { status: 500 })
 
-  const taskType = (current as { class_task?: { task_type?: string | null } | null } | null)?.class_task?.task_type ?? null
-  const patch: Partial<Record<EditableField | 'lamp' | 'updated_at', unknown>> = {
+  const patch: Partial<Record<EditableField | 'updated_at', unknown>> = {
     updated_at: new Date().toISOString(),
   }
 
@@ -204,10 +180,6 @@ export async function PATCH(request: NextRequest) {
 
   for (const field of EDITABLE_FIELDS) {
     if (field in body) patch[field] = cleanText(body[field])
-  }
-
-  if ('status' in patch) {
-    patch.lamp = lampForStatus(String(patch.status ?? ''), taskType)
   }
 
   const { data, error } = await supabase
