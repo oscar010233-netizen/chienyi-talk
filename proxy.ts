@@ -8,7 +8,14 @@ export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
   const isPublicWorkspacePreview =
     process.env.NODE_ENV === 'development' &&
-    pathname.startsWith('/workspace')
+    (
+      pathname.startsWith('/workspace') ||
+      pathname.startsWith('/billing') ||
+      pathname.startsWith('/api/billing') ||
+      pathname.startsWith('/api/rooms') ||
+      pathname.startsWith('/api/schedule') ||
+      pathname.startsWith('/api/classes')
+    )
 
   if (isPublicExamGrading || isPublicWorkspacePreview || pathname.startsWith('/api/auth')) {
     return supabaseResponse

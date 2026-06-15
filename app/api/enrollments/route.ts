@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
 // POST /api/enrollments — enroll one or more roster students into a class.
-// Appends them after the current roster (slot_order) and re-activates anyone
-// previously dropped. Dispatching their task records is a separate step.
+// Reactivates anyone previously dropped; skips anyone already active.
 export async function POST(request: NextRequest) {
   const body = await request.json() as { class_id?: string; student_ids?: string[] }
   const class_id = body.class_id
@@ -15,30 +14,72 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createServiceClient()
 
-  const { data: existing } = await supabase
-    .from('class_students')
-    .select('slot_order')
-    .eq('class_id', class_id)
+  const { data: cls } = await supabase
+    .from('classes')
+    .select('tenant_id')
+    .eq('id', class_id)
+    .single()
 
-  let slot = (existing ?? []).reduce((m, r) => Math.max(m, r.slot_order ?? 0), 0)
+  if (!cls) return NextResponse.json({ error: 'class not found' }, { status: 404 })
 
-  const rows = student_ids.map(student_id => ({
-    class_id,
-    student_id,
-    slot_order: ++slot,
-    status: 'active',
-  }))
+  // Two separate queries:
+  // (a) max slot across ALL enrollments in the class — determines the next position.
+  // (b) existing rows only for the students being added — determines insert vs reactivate.
+  const [{ data: allSlots }, { data: existing }] = await Promise.all([
+    supabase
+      .from('class_enrollments')
+      .select('slot_order')
+      .eq('class_id', class_id),
+    supabase
+      .from('class_enrollments')
+      .select('id, student_id, status')
+      .eq('class_id', class_id)
+      .in('student_id', student_ids),
+  ])
 
-  // onConflict re-activates a previously dropped enrollment instead of erroring.
-  const { error } = await supabase
-    .from('class_students')
-    .upsert(rows, { onConflict: 'class_id,student_id' })
+  const existingByStudent = new Map((existing ?? []).map(e => [e.student_id, e]))
+  let slot = (allSlots ?? []).reduce((m, r) => Math.max(m, r.slot_order ?? 0), 0)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ enrolled: rows.length })
+  const toInsert: Array<{
+    tenant_id: string; class_id: string; student_id: string;
+    slot_order: number; status: string; joined_at: string
+  }> = []
+  const toReactivate: string[] = []
+
+  for (const student_id of student_ids) {
+    const ex = existingByStudent.get(student_id)
+    if (!ex) {
+      toInsert.push({
+        tenant_id: cls.tenant_id,
+        class_id,
+        student_id,
+        slot_order: ++slot,
+        status: 'active',
+        joined_at: new Date().toISOString().slice(0, 10),
+      })
+    } else if (ex.status === 'dropped') {
+      toReactivate.push(ex.id)
+    }
+    // already active — skip
+  }
+
+  if (toReactivate.length > 0) {
+    const { error } = await supabase
+      .from('class_enrollments')
+      .update({ status: 'active', left_at: null })
+      .in('id', toReactivate)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  if (toInsert.length > 0) {
+    const { error } = await supabase.from('class_enrollments').insert(toInsert)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ enrolled: toInsert.length + toReactivate.length })
 }
 
-// DELETE /api/enrollments — remove a student from a class (soft: status=dropped).
+// DELETE /api/enrollments — soft-remove a student from a class (status=dropped).
 export async function DELETE(request: NextRequest) {
   const body = await request.json() as { class_id?: string; student_id?: string }
   if (!body.class_id || !body.student_id) {
@@ -47,10 +88,11 @@ export async function DELETE(request: NextRequest) {
 
   const supabase = await createServiceClient()
   const { error } = await supabase
-    .from('class_students')
-    .update({ status: 'dropped' })
+    .from('class_enrollments')
+    .update({ status: 'dropped', left_at: new Date().toISOString().slice(0, 10) })
     .eq('class_id', body.class_id)
     .eq('student_id', body.student_id)
+    .eq('status', 'active')
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json({ ok: true })

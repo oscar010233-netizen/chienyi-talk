@@ -8,7 +8,11 @@ export function ThemeToggle({ collapsed }: { collapsed?: boolean }) {
   const [dark, setDark] = useState(false);
 
   useEffect(() => {
-    setDark(document.documentElement.classList.contains("dark"));
+    const timer = window.setTimeout(() => {
+      setDark(document.documentElement.classList.contains("dark"));
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   function toggle() {
@@ -21,10 +25,10 @@ export function ThemeToggle({ collapsed }: { collapsed?: boolean }) {
   return (
     <button
       onClick={toggle}
-      title={dark ? "切換淺色" : "切換深色"}
-      aria-label={dark ? "切換淺色" : "切換深色"}
+      title={dark ? "切換淺色模式" : "切換深色模式"}
+      aria-label={dark ? "切換淺色模式" : "切換深色模式"}
       className={cn(
-        "flex items-center rounded-[8px] text-[13px] font-medium text-foreground/70 transition-all active:scale-[0.98] hover:bg-black/[0.05] hover:text-foreground dark:hover:bg-white/[0.06]",
+        "flex items-center rounded-[8px] text-[13px] font-medium text-foreground/70 transition-all hover:bg-black/[0.05] hover:text-foreground active:scale-[0.98] dark:hover:bg-white/[0.06]",
         collapsed ? "justify-center py-2.5" : "gap-2.5 px-2.5 py-2"
       )}
     >

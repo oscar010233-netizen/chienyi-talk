@@ -1,17 +1,32 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
+const WRITABLE_COLUMNS = [
+  'status',
+  'lamp',
+  'latest_result',
+  'result_history',
+  'teacher_note',
+  'comment_text',
+  'comment_status',
+] as const
+
 export async function PATCH(request: NextRequest) {
   const body = await request.json() as Record<string, unknown>
-  const { id, ...rest } = body
+  const id = typeof body.id === 'string' ? body.id.trim() : ''
 
   if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
 
+  const patch: Record<string, unknown> = {}
+  for (const column of WRITABLE_COLUMNS) {
+    if (column in body) patch[column] = body[column]
+  }
+
   const supabase = await createServiceClient()
   const { data, error } = await supabase
-    .from('task_records')
-    .update({ ...rest, last_updated: new Date().toISOString() })
-    .eq('id', id as string)
+    .from('student_task_records')
+    .update(patch)
+    .eq('id', id)
     .select()
     .single()
 
@@ -21,28 +36,35 @@ export async function PATCH(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const body = await request.json() as Record<string, unknown>
-  const { student_id, task_id, class_id } = body
+  const studentId = typeof body.student_id === 'string' ? body.student_id.trim() : ''
+  const classTaskId = typeof body.class_task_id === 'string' ? body.class_task_id.trim() : ''
 
-  if (!student_id || !task_id || !class_id) {
-    return NextResponse.json({ error: 'student_id, task_id, class_id required' }, { status: 400 })
+  if (!studentId || !classTaskId) {
+    return NextResponse.json({ error: 'student_id and class_task_id required' }, { status: 400 })
   }
 
   const supabase = await createServiceClient()
-
-  const { data: cls } = await supabase
-    .from('classes')
+  const { data: task } = await supabase
+    .from('class_tasks')
     .select('tenant_id')
-    .eq('id', class_id as string)
+    .eq('id', classTaskId)
     .single()
 
-  if (!cls) return NextResponse.json({ error: 'class not found' }, { status: 404 })
+  if (!task) return NextResponse.json({ error: 'task not found' }, { status: 404 })
+
+  const payload: Record<string, unknown> = {
+    tenant_id: task.tenant_id,
+    student_id: studentId,
+    class_task_id: classTaskId,
+  }
+
+  for (const column of WRITABLE_COLUMNS) {
+    if (column in body) payload[column] = body[column]
+  }
 
   const { data, error } = await supabase
-    .from('task_records')
-    .upsert(
-      { ...body, tenant_id: cls.tenant_id, last_updated: new Date().toISOString() },
-      { onConflict: 'student_id,task_id' }
-    )
+    .from('student_task_records')
+    .upsert(payload, { onConflict: 'class_task_id,student_id' })
     .select()
     .single()
 

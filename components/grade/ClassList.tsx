@@ -5,7 +5,6 @@ import { ChevronRight, GraduationCap, Users } from 'lucide-react'
 import type { ClassWithCount } from '@/lib/grade/types'
 
 const WEEKDAY = ['', '一', '二', '三', '四', '五', '六', '日']
-const SOURCE_LABEL: Record<string, string> = { ENG: '英文', XIAO: '小學堂' }
 const TYPE_LABEL: Record<string, string> = { double: '雙課', intensive: '強化', single: '單課' }
 
 function weekStr(w1: number | null, w2: number | null): string {
@@ -20,7 +19,7 @@ export function ClassList({ classes }: { classes: ClassWithCount[] }) {
         <div>
           <GraduationCap className="mx-auto mb-3" size={40} />
           <p className="font-semibold text-foreground">尚無班級</p>
-          <p className="mt-1 text-sm">請先在 Supabase 建立班級資料</p>
+          <p className="mt-1 text-sm">點選右上角「新增班級」開始建立</p>
         </div>
       </div>
     )
@@ -31,7 +30,7 @@ export function ClassList({ classes }: { classes: ClassWithCount[] }) {
       {classes.map(c => (
         <Link
           key={c.id}
-          href={`/classes/${encodeURIComponent(c.legacy_class_id ?? c.id)}`}
+          href={`/classes/${encodeURIComponent(c.id)}`}
           className="mac-soft flex items-center gap-4 rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_36px_-12px_rgba(0,0,0,0.20)] active:scale-[0.99]"
         >
           <div className="grid size-12 shrink-0 place-items-center rounded-xl bg-gold/10 text-gold dark:bg-[#ff4d4f]/15 dark:text-[#ff7a7a]">
@@ -40,8 +39,6 @@ export function ClassList({ classes }: { classes: ClassWithCount[] }) {
           <div className="min-w-0 flex-1">
             <p className="truncate font-semibold text-foreground">{c.class_name}</p>
             <p className="text-xs text-muted-foreground">
-              {SOURCE_LABEL[c.source] ?? c.source}
-              {' · '}
               {TYPE_LABEL[c.class_type] ?? c.class_type}
               {' · '}
               {weekStr(c.weekday1, c.weekday2)}

@@ -64,6 +64,15 @@ class SupabaseReader {
     return response.json();
   }
 
+  async optionalRows(table, select = '*') {
+    try {
+      return await this.rows(table, select);
+    } catch (error) {
+      if (String(error.message).includes('PGRST205')) return [];
+      throw error;
+    }
+  }
+
   async count(table) {
     const response = await fetch(`${this.url}/rest/v1/${encodeURIComponent(table)}?select=*`, {
       method: 'HEAD',
@@ -112,39 +121,32 @@ async function buildSnapshot(db) {
 
   const [
     classes,
-    classStudents,
     classEnrollments,
-    tasks,
     classTasks,
-    taskRecords,
-    taskBufferEntries,
+    studentTaskRecords,
   ] = await Promise.all([
-    db.rows('classes', 'id,legacy_class_id,class_code,sheet_name,class_name'),
-    db.rows('class_students', 'class_id,student_id,status'),
-    db.rows('class_enrollments', 'class_id,student_id,status'),
-    db.rows('tasks', 'class_id,task_code'),
-    db.rows('class_tasks', 'class_id,legacy_task_id,status'),
-    db.rows('task_records', 'class_id'),
-    db.rows('task_buffer_entries', 'class_ref'),
+    db.rows('classes', 'id,class_code,class_name'),
+    db.optionalRows('class_enrollments', 'class_id,student_id,status'),
+    db.optionalRows('class_tasks', 'id,class_id,status'),
+    db.optionalRows('student_task_records', 'class_task_id,status'),
   ]);
 
-  const classStudentsByClass = countBy(classStudents.filter((row) => row.status === 'active'), 'class_id');
   const classEnrollmentsByClass = countBy(classEnrollments.filter((row) => row.status === 'active'), 'class_id');
-  const tasksByClass = countBy(tasks, 'class_id');
   const classTasksByClass = countBy(classTasks.filter((row) => row.status === 'active'), 'class_id');
-  const taskRecordsByClass = countBy(taskRecords, 'class_id');
-  const buffersByClass = countBy(taskBufferEntries, 'class_ref');
+  const taskToClass = new Map(classTasks.map((row) => [row.id, row.class_id]));
+  const taskRecordsByClass = new Map();
+  for (const row of studentTaskRecords) {
+    const classId = taskToClass.get(row.class_task_id);
+    if (classId) taskRecordsByClass.set(classId, (taskRecordsByClass.get(classId) ?? 0) + 1);
+  }
 
   const classSummary = classes
     .map((row) => ({
-      key: row.legacy_class_id || row.class_code || row.sheet_name || row.id,
+      key: row.class_code || row.id,
       name: row.class_name,
-      appEnrollments: classStudentsByClass.get(row.id) ?? 0,
-      legacyEnrollments: classEnrollmentsByClass.get(row.id) ?? 0,
-      appTasks: tasksByClass.get(row.id) ?? 0,
-      legacyTasks: classTasksByClass.get(row.id) ?? 0,
+      enrollments: classEnrollmentsByClass.get(row.id) ?? 0,
+      classTasks: classTasksByClass.get(row.id) ?? 0,
       taskRecords: taskRecordsByClass.get(row.id) ?? 0,
-      buffers: buffersByClass.get(row.id) ?? 0,
     }))
     .sort((a, b) => String(a.key).localeCompare(String(b.key)));
 
@@ -157,12 +159,9 @@ function renderMarkdown(snapshot) {
   const classRows = snapshot.classSummary.map((row) => [
     row.key,
     row.name,
-    row.appEnrollments,
-    row.legacyEnrollments,
-    row.appTasks,
-    row.legacyTasks,
+    row.enrollments,
+    row.classTasks,
     row.taskRecords,
-    row.buffers,
   ]);
   const schemaRows = snapshot.definitions.map((definition) => [
     definition.table,
@@ -188,12 +187,9 @@ function renderMarkdown(snapshot) {
       [
         'Class Key',
         'Class Name',
-        'App Enrollments',
-        'Legacy Enrollments',
-        'App Tasks',
-        'Legacy Tasks',
+        'Active Enrollments',
+        'Active Class Tasks',
         'Task Records',
-        'Buffer Entries',
       ],
       classRows,
     ),

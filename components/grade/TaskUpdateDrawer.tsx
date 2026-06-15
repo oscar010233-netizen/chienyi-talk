@@ -1,71 +1,114 @@
 'use client'
 
-import { useState } from 'react'
-import { Loader2, X } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { useMemo, useState } from 'react'
+import { Check, Loader2, X } from 'lucide-react'
 import { LampBadge } from './LampBadge'
-import { lampFor, commentLamp, statusOptionsFor, takesScore } from '@/lib/grade/status'
+import {
+  appendHistory,
+  lampFor,
+  resolveTaskSubmission,
+  statusName,
+  takesScore,
+  type GradeStatus,
+} from '@/lib/grade/status'
 import type { Task, TaskRecord } from '@/lib/grade/types'
 
 interface Props {
   task: Task
   student: { id: string; chinese_name: string; english_name: string }
   record: TaskRecord | null
-  classId: string
+  classDepartment: string | null
   onClose: (refresh?: boolean) => void
 }
 
-export function TaskUpdateDrawer({ task, student, record, classId, onClose }: Props) {
-  const [status, setStatus] = useState(record?.status ?? 'pending')
-  const [score, setScore] = useState('')
-  const [note, setNote] = useState(record?.private_note ?? '')
+const STATUS_BUTTONS = [
+  { label: '完成', value: '✓' },
+  { label: '訂正', value: '△' },
+  { label: '缺交', value: '缺' },
+  { label: '重做', value: 'RE' },
+  { label: '免做', value: '免' },
+]
+
+function thresholdText(task: Task) {
+  if (task.threshold_value != null && task.max_score != null && task.max_score !== 100) {
+    return `${task.threshold_value}/${task.max_score}`
+  }
+  if (task.threshold_value != null) return String(task.threshold_value)
+  return task.threshold_text ?? ''
+}
+
+export function TaskUpdateDrawer({ task, student, record, classDepartment, onClose }: Props) {
+  const [scoreInput, setScoreInput] = useState('')
+  const [statusInput, setStatusInput] = useState('')
+  const [note, setNote] = useState(record?.teacher_note ?? '')
   const [loading, setLoading] = useState(false)
-  const [err, setErr] = useState('')
+  const [error, setError] = useState('')
 
-  const options = statusOptionsFor(task.task_type)
-  // Lamp is always derived from (status, task_type) — never stored on its own.
-  const currentLamp = lampFor(status, task.task_type).color
+  const currentStatus = (record?.status ?? 'pending') as GradeStatus
+  const currentDisplay = lampFor(currentStatus, task.task_type)
+  const threshold = thresholdText(task)
+  const isScoreTask = takesScore(task.task_type)
 
-  // Current cell display (comment cells are driven by comment_status).
-  const currentDisplay = task.task_type === 'comment'
-    ? commentLamp(record?.comment_status)
-    : lampFor(record?.status, task.task_type)
+  const preview = useMemo(() => {
+    if (!scoreInput.trim() && !statusInput.trim()) return null
+    return resolveTaskSubmission({
+      taskType: task.task_type,
+      taskName: task.task_name,
+      currentStatus,
+      thresholdValue: task.threshold_value,
+      maxScore: task.max_score,
+      thresholdText: task.threshold_text,
+      department: classDepartment,
+    }, {
+      scoreInput,
+      statusInput,
+    })
+  }, [classDepartment, currentStatus, scoreInput, statusInput, task])
+
+  async function ensureRecordId() {
+    if (record?.id) return record.id
+
+    const response = await fetch('/api/task-records', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        student_id: student.id,
+        class_task_id: task.id,
+        status: 'pending',
+        lamp: 'red',
+      }),
+    })
+    const json = await response.json()
+    if (!response.ok) throw new Error(json.error ?? '建立任務紀錄失敗')
+    return String(json.id)
+  }
 
   async function handleSubmit() {
+    if (!record && !scoreInput.trim() && !statusInput.trim() && !note.trim()) {
+      setError('請先輸入要更新的內容')
+      return
+    }
+
     setLoading(true)
-    setErr('')
+    setError('')
+
     try {
-      const body: Record<string, unknown> = {
-        student_id: student.id,
-        task_id: task.id,
-        class_id: classId,
-        status,
-        lamp: currentLamp, // kept populated for legacy Sheet/AppSheet readers
-        private_note: note.trim() || null,
-      }
-
-      if (score.trim()) {
-        const n = parseFloat(score)
-        if (!isNaN(n)) {
-          body.latest_result = n
-          const prev = record?.result_history
-            ? record.result_history.split(',')
-            : (record?.latest_result != null ? [String(record.latest_result)] : [])
-          body.result_history = [...prev, String(n)].join(',')
-        }
-      }
-
-      if (record?.id) body.id = record.id
-
-      const res = await fetch('/api/task-records', {
-        method: record?.id ? 'PATCH' : 'POST',
+      const id = await ensureRecordId()
+      const response = await fetch('/api/reinforcement/tasks', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          id,
+          score_input: scoreInput,
+          status_input: statusInput,
+          teacher_note: note,
+        }),
       })
-      if (!res.ok) throw new Error('儲存失敗')
+      const json = await response.json()
+      if (!response.ok) throw new Error(json.error ?? '送出失敗')
       onClose(true)
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : '儲存失敗')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '送出失敗')
     } finally {
       setLoading(false)
     }
@@ -73,102 +116,113 @@ export function TaskUpdateDrawer({ task, student, record, classId, onClose }: Pr
 
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center md:justify-center">
-      <div className="absolute inset-0 bg-black/40" onClick={() => onClose()} />
-      <div className="relative z-10 w-full max-h-[90vh] overflow-y-auto rounded-t-2xl bg-white shadow-xl md:max-w-sm md:rounded-2xl dark:bg-[#2c2c2e]">
-        {/* Header */}
+      <button aria-label="關閉" className="absolute inset-0 bg-black/40" onClick={() => onClose()} />
+      <div className="relative z-10 max-h-[90vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-xl md:max-w-md md:rounded-2xl dark:bg-[#2c2c2e]">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <div>
-            <p className="font-semibold text-foreground">
+          <div className="min-w-0">
+            <p className="truncate font-semibold text-foreground">
               {student.chinese_name}
               <span className="ml-1.5 text-sm font-normal text-muted-foreground">{student.english_name}</span>
             </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {task.task_name ?? task.task_code}
-              {task.threshold != null && ` · 門檻 ${task.threshold}`}
+            <p className="mt-0.5 truncate text-xs text-muted-foreground">
+              {[task.week_label, task.lesson_label, task.task_name].filter(Boolean).join(' · ') || '未命名任務'}
             </p>
           </div>
-          <button onClick={() => onClose()} className="rounded-lg p-1.5 hover:bg-muted">
+          <button type="button" onClick={() => onClose()} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
             <X size={18} />
           </button>
         </div>
 
         <div className="grid gap-4 p-4">
-          {/* Current info */}
-          {record && (
-            <div className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
-              <span>現況：</span>
-              <LampBadge
-                color={currentDisplay.color}
-                label={currentDisplay.label}
-                detail={takesScore(task.task_type) ? record.latest_result : null}
-              />
-              {record.result_history && (
-                <span className="ml-auto">歷史：{record.result_history}</span>
-              )}
-            </div>
-          )}
+          <div className="flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2 text-xs text-muted-foreground">
+            <span>目前</span>
+            <LampBadge
+              color={currentDisplay.color}
+              label={currentDisplay.label}
+              detail={task.task_type === 'quiz' ? (record?.result_history || record?.latest_result) : null}
+            />
+            <span>{statusName(currentStatus, task.task_type)}</span>
+            {threshold && <span className="ml-auto">門檻 {threshold}</span>}
+          </div>
 
-          {/* Status selector */}
           <div>
-            <p className="mb-2 text-xs font-medium text-muted-foreground">更新狀態</p>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">狀態</p>
             <div className="flex flex-wrap gap-2">
-              {options.map(opt => (
+              {STATUS_BUTTONS.map((option) => (
                 <button
-                  key={opt.value}
-                  onClick={() => setStatus(opt.value)}
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors',
-                    status === opt.value
+                  key={option.value}
+                  type="button"
+                  onClick={() => setStatusInput(option.value)}
+                  className={[
+                    'h-8 rounded-md border px-3 text-xs font-medium transition-colors',
+                    statusInput === option.value
                       ? 'border-foreground bg-foreground text-background'
-                      : 'border-border text-muted-foreground hover:bg-muted'
-                  )}
+                      : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
+                  ].join(' ')}
                 >
-                  <LampBadge color={opt.color} label={opt.label} />
-                  {opt.name}
+                  {option.label}
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Score (quiz only) */}
-          {takesScore(task.task_type) && (
-            <div>
-              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-                新成績{task.threshold != null && `（門檻 ${task.threshold}）`}
-              </label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={score}
-                onChange={e => setScore(e.target.value)}
-                placeholder="留空表示不更新..."
-                className="h-9 w-full rounded-lg border border-border px-3 text-sm outline-none focus:border-gold focus:ring-1 focus:ring-gold/30"
-              />
+          <label className="grid gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">{isScoreTask ? '分數' : '左欄備註'}</span>
+            <input
+              type={isScoreTask ? 'number' : 'text'}
+              min={0}
+              max={task.max_score ?? 100}
+              value={scoreInput}
+              onChange={(event) => setScoreInput(event.target.value)}
+              placeholder={isScoreTask ? '輸入分數' : '輸入文字備註'}
+              className="h-9 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15"
+            />
+          </label>
+
+          <label className="grid gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">老師備註</span>
+            <textarea
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+              rows={3}
+              className="resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15"
+            />
+          </label>
+
+          {preview && (
+            <div className={[
+              'rounded-md border px-3 py-2 text-xs',
+              preview.blocked
+                ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-200'
+                : 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/25 dark:bg-emerald-500/10 dark:text-emerald-200',
+            ].join(' ')}
+            >
+              {preview.blocked ? preview.message : (
+                <>
+                  {preview.message}
+                  {preview.shouldAppendHistory && (
+                    <span> · 歷史 {appendHistory(record?.result_history, preview.historyValue)}</span>
+                  )}
+                  {preview.warning && <span> · {preview.warning}</span>}
+                </>
+              )}
             </div>
           )}
 
-          {/* Private note */}
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">私人備註</label>
-            <textarea
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="對老師的備註（家長不可見）..."
-              rows={2}
-              className="w-full resize-none rounded-lg border border-border px-3 py-2 text-sm outline-none focus:border-gold focus:ring-1 focus:ring-gold/30"
-            />
-          </div>
-
-          {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{err}</p>}
+          {error && (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-500/25 dark:bg-red-500/10 dark:text-red-200">
+              {error}
+            </p>
+          )}
 
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={loading}
-            className="flex h-10 w-full items-center justify-center gap-2 rounded-lg bg-foreground text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+            className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-foreground text-sm font-medium text-background transition-opacity hover:opacity-90 disabled:opacity-50"
           >
-            {loading && <Loader2 size={15} className="animate-spin" />}
-            儲存
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+            送出
           </button>
         </div>
       </div>

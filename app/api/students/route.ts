@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { getTenantId, nextStudentCode } from '@/lib/grade/codes'
+import { getTenantId } from '@/lib/grade/codes'
 
 // GET /api/students?q=...  — search the school-wide roster.
 export async function GET(request: NextRequest) {
@@ -9,12 +9,12 @@ export async function GET(request: NextRequest) {
 
   let query = supabase
     .from('students')
-    .select('id, legacy_student_id, chinese_name, english_name, school, grade, status, parent_name, parent_phone')
-    .order('legacy_student_id')
+    .select('id, chinese_name, english_name, school, grade, status, parent_name, parent_phone')
+    .order('chinese_name')
 
   if (q) {
     query = query.or(
-      `chinese_name.ilike.%${q}%,english_name.ilike.%${q}%,legacy_student_id.ilike.%${q}%`
+      `chinese_name.ilike.%${q}%,english_name.ilike.%${q}%,parent_phone.eq.${q}`
     )
   }
 
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data ?? [])
 }
 
-// POST /api/students — create a roster student with an auto-generated code.
+// POST /api/students — create a student on the school-wide roster.
 export async function POST(request: NextRequest) {
   const body = await request.json() as Record<string, unknown>
   const chinese_name = String(body.chinese_name ?? '').trim()
@@ -35,13 +35,11 @@ export async function POST(request: NextRequest) {
 
   const supabase = await createServiceClient()
   const tenant_id = await getTenantId(supabase)
-  const legacy_student_id = await nextStudentCode(supabase)
 
   const { data, error } = await supabase
     .from('students')
     .insert({
       tenant_id,
-      legacy_student_id,
       chinese_name: chinese_name || null,
       english_name: english_name || null,
       school: (body.school as string)?.trim() || null,

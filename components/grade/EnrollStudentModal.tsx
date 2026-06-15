@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 
 interface RosterStudent {
   id: string
-  legacy_student_id: string
   chinese_name: string | null
   english_name: string | null
   school: string | null
@@ -49,7 +48,7 @@ export function EnrollStudentModal({ classId, enrolledIds, onClose }: Props) {
   const needle = q.trim().toLowerCase()
   const visible = needle
     ? available.filter(s =>
-        [s.chinese_name, s.english_name, s.legacy_student_id]
+        [s.chinese_name, s.english_name]
           .some(v => v?.toLowerCase().includes(needle))
       )
     : available
@@ -167,8 +166,7 @@ export function EnrollStudentModal({ classId, enrolledIds, onClose }: Props) {
                     <span className="ml-1.5 text-xs text-muted-foreground">{s.english_name}</span>
                   </span>
                   <span className="shrink-0 text-[10px] text-muted-foreground">
-                    {s.legacy_student_id}
-                    {s.school && ` · ${s.school}`}
+                    {s.school ?? ''}
                   </span>
                 </button>
               )

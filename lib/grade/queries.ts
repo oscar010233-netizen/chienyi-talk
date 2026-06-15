@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import type { ClassWithCount, ClassDetail, ClassStudent, Task, TaskRecord, ClassRow, RosterStudent } from './types'
+import type { ClassWithCount, ClassDetail, ClassEnrollment, Task, TaskRecord, ClassRow, RosterStudent } from './types'
 
 // School-wide student roster, each with the classes they're actively enrolled in.
 export async function getAllStudents(): Promise<RosterStudent[]> {
@@ -7,14 +7,14 @@ export async function getAllStudents(): Promise<RosterStudent[]> {
 
   const { data: students, error } = await supabase
     .from('students')
-    .select('id, legacy_student_id, chinese_name, english_name, status, school, grade, parent_name, parent_phone')
-    .order('legacy_student_id')
+    .select('id, chinese_name, english_name, status, school, grade, parent_name, parent_phone')
+    .order('chinese_name')
 
   if (error || !students) return []
 
   const { data: enrollments } = await supabase
-    .from('class_students')
-    .select('student_id, class:classes(class_name, legacy_class_id)')
+    .from('class_enrollments')
+    .select('student_id, class:classes(class_name)')
     .eq('status', 'active')
 
   const classMap: Record<string, string[]> = {}
@@ -35,17 +35,17 @@ export async function getAllClasses(): Promise<ClassWithCount[]> {
 
   const { data: classes, error } = await supabase
     .from('classes')
-    .select('id, tenant_id, legacy_class_id, sheet_name, class_name, source, level, class_type, weekday1, weekday2')
-    .not('legacy_class_id', 'is', null)
-    .order('legacy_class_id')
+    .select('id, tenant_id, class_name, class_code, department, level, class_type, weekday1, weekday2, system_sessions, status')
+    .eq('status', 'active')
+    .order('class_name')
 
   if (error || !classes) return []
 
   const ids = classes.map(c => c.id)
-  if (ids.length === 0) return classes.map(c => ({ ...c, status: 'active', system_sessions: 24, student_count: 0 }))
+  if (ids.length === 0) return classes.map(c => ({ ...c, student_count: 0 }))
 
   const { data: enrollments } = await supabase
-    .from('class_students')
+    .from('class_enrollments')
     .select('class_id')
     .in('class_id', ids)
     .eq('status', 'active')
@@ -55,43 +55,48 @@ export async function getAllClasses(): Promise<ClassWithCount[]> {
     countMap[row.class_id] = (countMap[row.class_id] ?? 0) + 1
   }
 
-  return classes.map(c => ({ ...c, status: 'active', system_sessions: 24, student_count: countMap[c.id] ?? 0 }))
+  return classes.map(c => ({ ...c, student_count: countMap[c.id] ?? 0 }))
 }
 
 export async function getClassDetail(classId: string): Promise<ClassDetail | null> {
   const supabase = await createServiceClient()
 
-  // classId is the legacy_class_id (URL segment)
+  // classId is the uuid from the URL param
   const { data: classRow } = await supabase
     .from('classes')
     .select('*')
-    .eq('legacy_class_id', classId)
+    .eq('id', classId)
     .single()
 
   if (!classRow) return null
 
-  const [studentsResult, tasksResult, recordsResult] = await Promise.all([
+  const [studentsResult, tasksResult] = await Promise.all([
     supabase
-      .from('class_students')
-      .select('id, class_id, student_id, slot_order, status, student:students(id, legacy_student_id, chinese_name, english_name, status, school, grade)')
+      .from('class_enrollments')
+      .select('id, class_id, student_id, slot_order, status, student:students(id, chinese_name, english_name, status, school, grade)')
       .eq('class_id', classRow.id)
       .eq('status', 'active')
       .order('slot_order'),
     supabase
-      .from('tasks')
-      .select('*')
+      .from('class_tasks')
+      .select('id, tenant_id, class_id, week_label, lesson_label, task_type, task_name, threshold_value, max_score, threshold_text, display_order')
       .eq('class_id', classRow.id)
       .order('display_order'),
-    supabase
-      .from('task_records')
-      .select('*')
-      .eq('class_id', classRow.id),
   ])
+
+  const taskIds = (tasksResult.data ?? []).map(t => t.id)
+
+  const { data: recordsData } = taskIds.length > 0
+    ? await supabase
+        .from('student_task_records')
+        .select('id, tenant_id, student_id, class_task_id, status, lamp, latest_result, result_history, comment_text, comment_status, teacher_note, updated_at')
+        .in('class_task_id', taskIds)
+    : { data: [] }
 
   return {
     class: classRow as ClassRow,
-    students: (studentsResult.data ?? []) as unknown as ClassStudent[],
+    students: (studentsResult.data ?? []) as unknown as ClassEnrollment[],
     tasks: (tasksResult.data ?? []) as Task[],
-    records: (recordsResult.data ?? []) as TaskRecord[],
+    records: (recordsData ?? []) as TaskRecord[],
   }
 }

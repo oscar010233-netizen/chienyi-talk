@@ -7,9 +7,12 @@ import {
   BookOpen,
   CalendarDays,
   ClipboardCheck,
+  Database,
   GraduationCap,
   Home,
+  ReceiptText,
   Users,
+  Zap,
   PanelLeftClose,
   PanelLeftOpen,
 } from "lucide-react";
@@ -19,7 +22,10 @@ import { ThemeToggle } from "./ThemeToggle";
 const navItems = [
   { href: "/", icon: Home, label: "總覽" },
   { href: "/workspace", icon: CalendarDays, label: "配課表" },
+  { href: "/reinforcement", icon: Zap, label: "強化" },
+  { href: "/buffer", icon: Database, label: "Buffer" },
   { href: "/classes", icon: GraduationCap, label: "班級" },
+  { href: "/billing", icon: ReceiptText, label: "開袋" },
   { href: "/students", icon: Users, label: "學生" },
   { href: "/speaking", icon: BookOpen, label: "口說練習" },
   { href: "/exam-grading", icon: ClipboardCheck, label: "試卷批改" },
@@ -30,7 +36,11 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
-    if (localStorage.getItem("sidebar-collapsed") === "1") setCollapsed(true);
+    const timer = window.setTimeout(() => {
+      if (localStorage.getItem("sidebar-collapsed") === "1") setCollapsed(true);
+    }, 0);
+
+    return () => window.clearTimeout(timer);
   }, []);
 
   function toggle() {

@@ -38,7 +38,7 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
   const needle = q.trim().toLowerCase()
   const visible = needle
     ? students.filter(s =>
-        [s.chinese_name, s.english_name, s.legacy_student_id, s.school]
+        [s.chinese_name, s.english_name, s.school, s.parent_phone]
           .some(v => v?.toLowerCase().includes(needle))
       )
     : students
@@ -84,7 +84,6 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
             <thead>
               <tr className="text-xs text-muted-foreground [&>th]:border-b [&>th]:border-black/[0.08] [&>th]:px-4 [&>th]:py-3 [&>th]:text-left [&>th]:font-medium dark:[&>th]:border-white/10">
                 <th>學生</th>
-                <th>編號</th>
                 <th>學校</th>
                 <th>年級</th>
                 <th>所屬班級</th>
@@ -119,7 +118,6 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
                         </span>
                       </span>
                     </td>
-                    <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06] font-mono text-xs text-muted-foreground">{s.legacy_student_id}</td>
                     <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06] text-muted-foreground">{s.school ?? '—'}</td>
                     <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06] text-muted-foreground">{s.grade ?? '—'}</td>
                     <td className="border-b border-gray-100 px-4 py-2.5 dark:border-white/[0.06]">
@@ -202,7 +200,7 @@ function StudentFormModal({ student, onClose }: { student: RosterStudent | null;
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
             <p className="font-semibold text-foreground">{isEdit ? '編輯學生' : '新增學生'}</p>
-            {isEdit && <p className="mt-0.5 text-xs text-muted-foreground">{student!.legacy_student_id}</p>}
+            {isEdit && <p className="mt-0.5 text-xs text-muted-foreground font-mono">{student!.id.slice(0, 8)}</p>}
           </div>
           <button onClick={() => onClose()} className="rounded-lg p-1.5 hover:bg-muted">
             <X size={18} />

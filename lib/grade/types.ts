@@ -3,7 +3,6 @@ export type TaskType = 'attendance' | 'homework' | 'practice' | 'quiz' | 'commen
 
 export interface Student {
   id: string
-  legacy_student_id: string | null
   chinese_name: string
   english_name: string
   status: string
@@ -14,23 +13,22 @@ export interface Student {
 export interface ClassRow {
   id: string
   tenant_id: string
-  legacy_class_id: string | null
-  sheet_name: string | null
   class_name: string
-  source: 'ENG' | 'XIAO' | string
+  class_code: string | null
+  department: string | null
   level: string | null
   class_type: 'double' | 'intensive' | 'single' | string
   weekday1: number | null
   weekday2: number | null
-  system_sessions: number
+  system_sessions: number | null
   status: string
 }
 
-export interface ClassStudent {
+export interface ClassEnrollment {
   id: string
   class_id: string
   student_id: string
-  slot_order: number
+  slot_order: number | null
   status: string
   student: Student
 }
@@ -39,34 +37,34 @@ export interface Task {
   id: string
   tenant_id: string
   class_id: string
-  task_code: string
-  week: string
-  lesson_number: string
+  week_label: string | null
+  lesson_label: string | null
   task_type: TaskType
   task_name: string | null
-  threshold: number | null
-  display_order: number
+  threshold_value: number | null
+  max_score: number | null
+  threshold_text: string | null
+  display_order: number | null
 }
 
 export interface TaskRecord {
   id: string
   tenant_id: string
   student_id: string
-  task_id: string
-  class_id: string
+  class_task_id: string
   status: string
   lamp: Lamp
-  latest_result: number | null
+  latest_result: string | null
   result_history: string | null
   comment_text: string | null
-  comment_status: 'draft' | 'published' | null
-  private_note: string | null
-  last_updated: string
+  comment_status: 'draft' | 'pending_publish' | 'published' | 'needs_republish' | null
+  teacher_note: string | null
+  updated_at: string
 }
 
 export interface ClassDetail {
   class: ClassRow
-  students: ClassStudent[]
+  students: ClassEnrollment[]
   tasks: Task[]
   records: TaskRecord[]
 }
@@ -77,7 +75,6 @@ export interface ClassWithCount extends ClassRow {
 
 export interface RosterStudent {
   id: string
-  legacy_student_id: string
   chinese_name: string | null
   english_name: string | null
   status: string
