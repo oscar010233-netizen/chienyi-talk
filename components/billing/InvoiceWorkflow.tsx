@@ -558,7 +558,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     : 0
 
   return (
-    <div className="flex min-h-full flex-col bg-[#f6f7f9] text-foreground dark:bg-[#18181a]">
+    <div className="flex h-full flex-col overflow-y-auto bg-[#f6f7f9] text-foreground dark:bg-[#18181a]">
       <div className="mac-hairline sticky top-0 z-40 border-b bg-background/95 px-4 py-3 backdrop-blur md:px-6">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold tracking-tight">Invoice</h1>
