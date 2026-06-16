@@ -202,6 +202,22 @@ type FeeTemplateDraft = {
   discountRows: FeeRowDraft[]
 }
 
+interface BagListItem {
+  id: string
+  class_id: string
+  season_id: string
+  bag_code: string
+  issue_date: string
+  due_date: string | null
+  status: string
+  class_name: string
+  class_code: string | null
+  season_code: string
+  year: number
+  quarter: string
+  line_count: number
+}
+
 export function InvoiceWorkflow({ initialState }: { initialState: BillingState }) {
   const router = useRouter()
   const defaultDraft = defaultSeasonDraft()
@@ -230,6 +246,11 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [holidayDraftLoading, setHolidayDraftLoading] = useState(false)
   const [showNewSeasonForm, setShowNewSeasonForm] = useState(false)
   const [holidayCountBySeason, setHolidayCountBySeason] = useState<Record<string, number>>({})
+  const [openMode, setOpenMode] = useState<'list' | 'workflow'>(
+    initialState.selectedClass && initialState.selectedSeason ? 'workflow' : 'list'
+  )
+  const [bagList, setBagList] = useState<BagListItem[]>([])
+  const [bagListLoading, setBagListLoading] = useState(false)
   const [openStep, setOpenStep] = useState(1)
   const [teamDates, setTeamDates] = useState<Set<string>>(new Set())
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set(state.students.map((student) => student.student_id)))
@@ -314,15 +335,47 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     setOpenStep(1)
   }, [selectedClass, selectedSeason, globalHolidayDates, state.students])
 
-  function changeClass(nextClassId: string) {
+  function changeClassFilter(nextClassId: string) {
     setClassId(nextClassId)
-    void load(nextClassId, seasonId)
+    if (openMode === 'workflow') setOpenMode('list')
   }
 
-  function changeSeason(nextSeasonId: string) {
+  function changeSeasonFilter(nextSeasonId: string) {
     setSeasonId(nextSeasonId)
-    void load(classId, nextSeasonId)
+    if (openMode === 'workflow') setOpenMode('list')
   }
+
+  function handleEnterWorkflow(cid = classId, sid = seasonId) {
+    if (!cid || !sid || pending) return
+    setClassId(cid)
+    setSeasonId(sid)
+    setMessage({ tone: 'idle', text: '' })
+    startTransition(async () => {
+      try {
+        await load(cid, sid)
+        setOpenMode('workflow')
+      } catch (error) {
+        setMessage({ tone: 'error', text: error instanceof Error ? error.message : '載入失敗' })
+      }
+    })
+  }
+
+  function handleSelectBag(bag: BagListItem) {
+    handleEnterWorkflow(bag.class_id, bag.season_id)
+  }
+
+  useEffect(() => {
+    if (tab !== 'open' || openMode !== 'list') return
+    const params = new URLSearchParams()
+    if (classId) params.set('classId', classId)
+    if (seasonId) params.set('seasonId', seasonId)
+    setBagListLoading(true)
+    fetch(`/api/billing/bags?${params.toString()}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setBagList(data.bags ?? []))
+      .catch(() => setBagList([]))
+      .finally(() => setBagListLoading(false))
+  }, [tab, openMode, classId, seasonId])
 
   function changeQuarter(quarter: BillingQuarter) {
     const dates = quarterDates(Number(seasonForm.year), quarter)
@@ -507,23 +560,8 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   return (
     <div className="flex min-h-full flex-col bg-[#f6f7f9] text-foreground dark:bg-[#18181a]">
       <div className="mac-hairline sticky top-0 z-40 border-b bg-background/95 px-4 py-3 backdrop-blur md:px-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-semibold tracking-tight">Invoice</h1>
-            <div className="mt-1 text-xs text-muted-foreground">
-              {selectedClass ? `${selectedClass.class_name} · ${selectedSeason?.season_code ?? ''}` : '尚未選班'}
-            </div>
-          </div>
-          <select value={classId} onChange={(event) => changeClass(event.target.value)} className={`${inputClass} min-w-44`}>
-            {state.classes.map((cls) => <option key={cls.id} value={cls.id}>{cls.class_name}</option>)}
-          </select>
-          <select value={seasonId} onChange={(event) => changeSeason(event.target.value)} className={`${inputClass} min-w-36`}>
-            {state.seasons.map((season) => <option key={season.id} value={season.id}>{season.season_code}</option>)}
-          </select>
-          <button type="button" onClick={() => void load()} disabled={pending} className={buttonBase} title="重新整理">
-            <RefreshCw size={14} />
-            重新整理
-          </button>
+        <div className="flex items-center justify-between">
+          <h1 className="text-xl font-semibold tracking-tight">Invoice</h1>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           <TabButton active={tab === 'holidays'} onClick={() => setTab('holidays')} icon={<CalendarDays size={14} />}>季度放假</TabButton>
@@ -671,11 +709,113 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
         </main>
       )}
 
-      {tab === 'open' && selectedClass && selectedSeason && (
+      {tab === 'open' && (
         <main className="grid gap-4 p-4 md:p-6">
+          {/* Filter bar */}
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={classId}
+              onChange={(event) => changeClassFilter(event.target.value)}
+              className={`${inputClass} min-w-44`}
+            >
+              <option value="">全部班級</option>
+              {state.classes.map((cls) => <option key={cls.id} value={cls.id}>{cls.class_name}</option>)}
+            </select>
+            <select
+              value={seasonId}
+              onChange={(event) => changeSeasonFilter(event.target.value)}
+              className={`${inputClass} min-w-36`}
+            >
+              <option value="">全部季度</option>
+              {state.seasons.map((season) => <option key={season.id} value={season.id}>{season.season_code}</option>)}
+            </select>
+            {openMode === 'workflow' && (
+              <>
+                <button type="button" onClick={() => setOpenMode('list')} className={buttonBase}>
+                  <ChevronLeft size={14} />
+                  返回列表
+                </button>
+                <button type="button" onClick={() => void load()} disabled={pending} className={buttonBase}>
+                  <RefreshCw size={14} />
+                  重新整理
+                </button>
+              </>
+            )}
+          </div>
+
+          {/* List mode */}
+          {openMode === 'list' && (
+            <section className="rounded-md border border-border bg-background">
+              {bagListLoading ? (
+                <div className="grid min-h-48 place-items-center">
+                  <Loader2 size={20} className="animate-spin text-muted-foreground" />
+                </div>
+              ) : bagList.length === 0 ? (
+                <div className="grid min-h-48 place-items-center gap-3 text-center">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      {classId && seasonId ? '這個班這個季度尚未開袋' : '尚無繳費袋'}
+                    </p>
+                    {classId && seasonId && (
+                      <button
+                        type="button"
+                        onClick={() => handleEnterWorkflow()}
+                        disabled={pending}
+                        className={`${primaryButton} mt-3`}
+                      >
+                        {pending ? <Loader2 size={14} className="animate-spin" /> : <ReceiptText size={14} />}
+                        開袋
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <table className="w-full border-separate border-spacing-0 text-sm">
+                  <thead>
+                    <tr className="text-xs text-muted-foreground">
+                      {!classId && <th className="border-b border-border px-4 py-2.5 text-left font-medium">班級</th>}
+                      {!seasonId && <th className="border-b border-border px-4 py-2.5 text-left font-medium">季度</th>}
+                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">袋號</th>
+                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">開袋日</th>
+                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">人數</th>
+                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">狀態</th>
+                      <th className="border-b border-border" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bagList.map((bag) => (
+                      <tr
+                        key={bag.id}
+                        onClick={() => handleSelectBag(bag)}
+                        className="cursor-pointer hover:bg-muted/40"
+                      >
+                        {!classId && <td className="border-b border-border px-4 py-2.5 font-medium">{bag.class_name}</td>}
+                        {!seasonId && <td className="border-b border-border px-4 py-2.5 text-muted-foreground">{bag.season_code}</td>}
+                        <td className="border-b border-border px-4 py-2.5 font-mono text-xs">{bag.bag_code}</td>
+                        <td className="border-b border-border px-4 py-2.5 text-muted-foreground">{bag.issue_date}</td>
+                        <td className="border-b border-border px-4 py-2.5 text-right text-muted-foreground">{bag.line_count} 人</td>
+                        <td className="border-b border-border px-4 py-2.5">
+                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${bag.status === 'draft' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                            {bag.status === 'draft' ? '草稿' : bag.status}
+                          </span>
+                        </td>
+                        <td className="border-b border-border px-4 py-2.5 text-right">
+                          <span className="text-xs text-muted-foreground hover:text-foreground">查看 →</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+          )}
+
+          {/* Workflow mode */}
+          {openMode === 'workflow' && selectedClass && selectedSeason && (
+          <>
           <section className="rounded-md border border-border bg-background p-4">
             <div className="mb-4 flex flex-wrap items-center gap-3">
-              <StepPill active={openStep === 1} done={openStep > 1}>1 班級 & 日期</StepPill>
+              <StepPill active={openStep === 1} done={openStep > 1}>1 日期 & 學生</StepPill>
               <StepPill active={openStep === 2} done={openStep > 2}>2 費用</StepPill>
               <StepPill active={openStep === 3}>3 個別調整</StepPill>
               <div className="ml-auto text-xs text-muted-foreground">
@@ -887,6 +1027,8 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
           </section>
 
           <BagPreview state={state} />
+          </>
+          )}
         </main>
       )}
     </div>
