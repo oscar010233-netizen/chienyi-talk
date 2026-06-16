@@ -3,9 +3,21 @@ import { createServiceClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
   const seasonId = request.nextUrl.searchParams.get('seasonId')
-  if (!seasonId) return NextResponse.json({ error: 'seasonId required' }, { status: 400 })
-
   const supabase = await createServiceClient()
+
+  // No seasonId → return holiday counts grouped by season
+  if (!seasonId) {
+    const { data, error } = await supabase
+      .from('billing_season_holidays')
+      .select('season_id')
+      .is('class_id', null)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const counts: Record<string, number> = {}
+    for (const row of data ?? []) counts[row.season_id] = (counts[row.season_id] ?? 0) + 1
+    return NextResponse.json({ counts })
+  }
+
+  // With seasonId → return holiday dates for that season
   const { data, error } = await supabase
     .from('billing_season_holidays')
     .select('holiday_date')

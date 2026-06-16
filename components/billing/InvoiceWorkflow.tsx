@@ -98,6 +98,12 @@ function numberInput(value: unknown, fallback = 0) {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+function seasonCalendarDays(startDate: string, endDate: string) {
+  const s = dateFromDateOnly(startDate)
+  const e = dateFromDateOnly(endDate)
+  return Math.round((e.getTime() - s.getTime()) / 86400000) + 1
+}
+
 function dateOnly(year: number, month: number, day: number) {
   return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
@@ -223,6 +229,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [holidaySeasonId, setHolidaySeasonId] = useState(initialState.selectedSeason?.id ?? '')
   const [holidayDraftLoading, setHolidayDraftLoading] = useState(false)
   const [showNewSeasonForm, setShowNewSeasonForm] = useState(false)
+  const [holidayCountBySeason, setHolidayCountBySeason] = useState<Record<string, number>>({})
   const [openStep, setOpenStep] = useState(1)
   const [teamDates, setTeamDates] = useState<Set<string>>(new Set())
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set(state.students.map((student) => student.student_id)))
@@ -285,6 +292,14 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       .catch(() => setHolidayDraft(new Set()))
       .finally(() => setHolidayDraftLoading(false))
   }, [holidaySeasonId])
+
+  useEffect(() => {
+    if (tab !== 'holidays') return
+    fetch('/api/billing/holidays', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setHolidayCountBySeason(data.counts ?? {}))
+      .catch(() => {})
+  }, [tab])
 
   useEffect(() => {
     if (!selectedClass || !selectedSeason) return
@@ -350,6 +365,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
           holiday_dates: Array.from(holidayDraft).sort(compareDate),
         })
         if (holidaySeasonId === seasonId) await load()
+        setHolidayCountBySeason((prev) => ({ ...prev, [holidaySeasonId]: holidayDraft.size }))
         setMessage({ tone: 'ok', text: `假日已儲存（${holidayDraft.size} 天）` })
       } catch (error) {
         setMessage({ tone: 'error', text: error instanceof Error ? error.message : '操作失敗' })
@@ -540,6 +556,8 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
               )}
               {state.seasons.map((season) => {
                 const active = season.id === holidaySeasonId
+                const totalDays = seasonCalendarDays(season.start_date, season.end_date)
+                const holidayCount = holidayCountBySeason[season.id] ?? 0
                 return (
                   <button
                     key={season.id}
@@ -548,8 +566,9 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     className={`flex w-full items-center justify-between border-b border-border px-4 py-3 text-left text-sm transition-colors ${active ? 'bg-foreground text-background' : 'hover:bg-muted/60'}`}
                   >
                     <span className="font-medium">{season.year} {season.quarter}</span>
-                    <span className={`text-xs ${active ? 'text-background/70' : 'text-muted-foreground'}`}>
-                      {season.season_code}
+                    <span className={`text-right text-xs leading-snug ${active ? 'text-background/70' : 'text-muted-foreground'}`}>
+                      <span className="block">共 {totalDays} 天</span>
+                      <span className="block">放假 {holidayCount} 天</span>
                     </span>
                   </button>
                 )
