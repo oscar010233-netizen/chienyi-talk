@@ -214,12 +214,15 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   )
 
   const [seasonForm, setSeasonForm] = useState({
-    year: selectedSeason?.year ?? defaultDraft.year,
-    quarter: (selectedSeason?.quarter as BillingQuarter | undefined) ?? defaultDraft.quarter,
-    start_date: selectedSeason?.start_date ?? defaultDraft.start_date,
-    end_date: selectedSeason?.end_date ?? defaultDraft.end_date,
+    year: defaultDraft.year,
+    quarter: defaultDraft.quarter,
+    start_date: defaultDraft.start_date,
+    end_date: defaultDraft.end_date,
   })
-  const [holidayDraft, setHolidayDraft] = useState<Set<string>>(globalHolidayDates)
+  const [holidayDraft, setHolidayDraft] = useState<Set<string>>(new Set())
+  const [holidaySeasonId, setHolidaySeasonId] = useState(initialState.selectedSeason?.id ?? '')
+  const [holidayDraftLoading, setHolidayDraftLoading] = useState(false)
+  const [showNewSeasonForm, setShowNewSeasonForm] = useState(false)
   const [openStep, setOpenStep] = useState(1)
   const [teamDates, setTeamDates] = useState<Set<string>>(new Set())
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set(state.students.map((student) => student.student_id)))
@@ -274,18 +277,14 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   }
 
   useEffect(() => {
-    if (!selectedSeason) return
-    setSeasonForm({
-      year: selectedSeason.year,
-      quarter: selectedSeason.quarter as BillingQuarter,
-      start_date: selectedSeason.start_date,
-      end_date: selectedSeason.end_date,
-    })
-  }, [selectedSeason])
-
-  useEffect(() => {
-    setHolidayDraft(new Set(globalHolidayDates))
-  }, [globalHolidayDates])
+    if (!holidaySeasonId) return
+    setHolidayDraftLoading(true)
+    fetch(`/api/billing/holidays?seasonId=${holidaySeasonId}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data) => setHolidayDraft(new Set(data.dates ?? [])))
+      .catch(() => setHolidayDraft(new Set()))
+      .finally(() => setHolidayDraftLoading(false))
+  }, [holidaySeasonId])
 
   useEffect(() => {
     if (!selectedClass || !selectedSeason) return
@@ -316,29 +315,46 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   }
 
   function createSeason() {
-    run(async () => {
-      const data = await post({
-        action: 'create-season',
-        year: seasonForm.year,
-        quarter: seasonForm.quarter,
-        start_date: seasonForm.start_date,
-        end_date: seasonForm.end_date,
-        label: buildSeasonCode(seasonForm.year, seasonForm.quarter),
-      })
-      setSeasonId(data.season.id)
-    }, '季度已儲存')
+    setMessage({ tone: 'idle', text: '' })
+    startTransition(async () => {
+      try {
+        const data = await post({
+          action: 'create-season',
+          year: seasonForm.year,
+          quarter: seasonForm.quarter,
+          start_date: seasonForm.start_date,
+          end_date: seasonForm.end_date,
+          label: buildSeasonCode(seasonForm.year, seasonForm.quarter),
+        })
+        const newId: string = data.season.id
+        setSeasonId(newId)
+        setHolidaySeasonId(newId)
+        setShowNewSeasonForm(false)
+        await load()
+        setMessage({ tone: 'ok', text: '季度已建立' })
+      } catch (error) {
+        setMessage({ tone: 'error', text: error instanceof Error ? error.message : '操作失敗' })
+      }
+    })
   }
 
   function saveHolidays() {
-    if (!seasonId) return
-    run(async () => {
-      await post({
-        action: 'replace-holidays',
-        season_id: seasonId,
-        class_id: null,
-        holiday_dates: Array.from(holidayDraft).sort(compareDate),
-      })
-    }, '假日已儲存')
+    if (!holidaySeasonId || pending) return
+    setMessage({ tone: 'idle', text: '' })
+    startTransition(async () => {
+      try {
+        await post({
+          action: 'replace-holidays',
+          season_id: holidaySeasonId,
+          class_id: null,
+          holiday_dates: Array.from(holidayDraft).sort(compareDate),
+        })
+        if (holidaySeasonId === seasonId) await load()
+        setMessage({ tone: 'ok', text: `假日已儲存（${holidayDraft.size} 天）` })
+      } catch (error) {
+        setMessage({ tone: 'error', text: error instanceof Error ? error.message : '操作失敗' })
+      }
+    })
   }
 
   function toggleHoliday(date: string) {
@@ -504,64 +520,135 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
         )}
       </div>
 
-      {tab === 'holidays' && selectedSeason && (
-        <main className="grid gap-4 p-4 md:grid-cols-[320px_1fr] md:p-6">
-          <section className="rounded-md border border-border bg-background p-4">
-            <h2 className="mb-4 text-sm font-semibold">季度</h2>
-            <div className="grid grid-cols-2 gap-2">
-              <label>
-                <span className={labelClass}>年份</span>
-                <input
-                  type="number"
-                  value={seasonForm.year}
-                  onChange={(event) => {
-                    const year = Number(event.target.value) || defaultDraft.year
-                    const dates = quarterDates(year, seasonForm.quarter)
-                    setSeasonForm((prev) => ({ ...prev, year, ...dates }))
-                  }}
-                  className={`${inputClass} w-full`}
-                />
-              </label>
-              <label>
-                <span className={labelClass}>季度</span>
-                <select value={seasonForm.quarter} onChange={(event) => changeQuarter(event.target.value as BillingQuarter)} className={`${inputClass} w-full`}>
-                  {quarters.map((quarter) => <option key={quarter.value} value={quarter.value}>{quarter.label}</option>)}
-                </select>
-              </label>
-              <label>
-                <span className={labelClass}>開始</span>
-                <input type="date" value={seasonForm.start_date} onChange={(event) => setSeasonForm((prev) => ({ ...prev, start_date: event.target.value }))} className={`${inputClass} w-full`} />
-              </label>
-              <label>
-                <span className={labelClass}>結束</span>
-                <input type="date" value={seasonForm.end_date} onChange={(event) => setSeasonForm((prev) => ({ ...prev, end_date: event.target.value }))} className={`${inputClass} w-full`} />
-              </label>
-            </div>
-            <button type="button" onClick={createSeason} disabled={pending} className={`${primaryButton} mt-3 w-full`}>
-              <Save size={14} />
-              儲存季度
-            </button>
-            <div className="mt-5 border-t border-border pt-4">
-              <div className="mb-2 text-xs font-medium text-muted-foreground">已選 {holidayDraft.size} 天</div>
-              <div className="max-h-32 overflow-auto rounded-md border border-border bg-muted/30 p-2 text-xs leading-6">
-                {holidayDraft.size ? formatDateList(Array.from(holidayDraft).sort(compareDate)) : '尚未選擇'}
-              </div>
-              <button type="button" onClick={saveHolidays} disabled={!seasonId || pending} className={`${primaryButton} mt-3 w-full`}>
-                <Save size={14} />
-                儲存假日
+      {tab === 'holidays' && (
+        <main className="grid gap-4 p-4 md:grid-cols-[260px_1fr] md:p-6">
+          {/* Left: season list + new season form */}
+          <section className="rounded-md border border-border bg-background">
+            <div className="flex items-center justify-between border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold">季度列表</h2>
+              <button
+                type="button"
+                onClick={() => setShowNewSeasonForm((v) => !v)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                {showNewSeasonForm ? '取消' : '＋ 新增'}
               </button>
             </div>
+            <div className="max-h-[calc(100vh-240px)] overflow-auto">
+              {state.seasons.length === 0 && (
+                <div className="px-4 py-6 text-center text-xs text-muted-foreground">尚無季度，請新增</div>
+              )}
+              {state.seasons.map((season) => {
+                const active = season.id === holidaySeasonId
+                return (
+                  <button
+                    key={season.id}
+                    type="button"
+                    onClick={() => setHolidaySeasonId(season.id)}
+                    className={`flex w-full items-center justify-between border-b border-border px-4 py-3 text-left text-sm transition-colors ${active ? 'bg-foreground text-background' : 'hover:bg-muted/60'}`}
+                  >
+                    <span className="font-medium">{season.year} {season.quarter}</span>
+                    <span className={`text-xs ${active ? 'text-background/70' : 'text-muted-foreground'}`}>
+                      {season.season_code}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            {showNewSeasonForm && (
+              <div className="border-t border-border p-4">
+                <p className="mb-3 text-xs font-medium text-muted-foreground">新增季度</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <label>
+                    <span className={labelClass}>年份</span>
+                    <input
+                      type="number"
+                      value={seasonForm.year}
+                      onChange={(event) => {
+                        const year = Number(event.target.value) || defaultDraft.year
+                        const dates = quarterDates(year, seasonForm.quarter)
+                        setSeasonForm((prev) => ({ ...prev, year, ...dates }))
+                      }}
+                      className={`${inputClass} w-full`}
+                    />
+                  </label>
+                  <label>
+                    <span className={labelClass}>季度</span>
+                    <select value={seasonForm.quarter} onChange={(event) => changeQuarter(event.target.value as BillingQuarter)} className={`${inputClass} w-full`}>
+                      {quarters.map((q) => <option key={q.value} value={q.value}>{q.label}</option>)}
+                    </select>
+                  </label>
+                  <label>
+                    <span className={labelClass}>開始</span>
+                    <input type="date" value={seasonForm.start_date} onChange={(event) => setSeasonForm((prev) => ({ ...prev, start_date: event.target.value }))} className={`${inputClass} w-full`} />
+                  </label>
+                  <label>
+                    <span className={labelClass}>結束</span>
+                    <input type="date" value={seasonForm.end_date} onChange={(event) => setSeasonForm((prev) => ({ ...prev, end_date: event.target.value }))} className={`${inputClass} w-full`} />
+                  </label>
+                </div>
+                <button type="button" onClick={createSeason} disabled={pending} className={`${primaryButton} mt-3 w-full`}>
+                  <Save size={14} />
+                  建立季度
+                </button>
+              </div>
+            )}
           </section>
-          <section className="rounded-md border border-border bg-background p-4">
-            <QuarterCalendar
-              year={seasonForm.year}
-              quarter={seasonForm.quarter}
-              selected={holidayDraft}
-              holidays={holidayDraft}
-              onToggle={toggleHoliday}
-              mode="holiday"
-            />
-          </section>
+
+          {/* Right: calendar for selected season */}
+          {(() => {
+            const editSeason = state.seasons.find((s) => s.id === holidaySeasonId)
+            if (!editSeason) {
+              return (
+                <section className="grid min-h-48 place-items-center rounded-md border border-dashed border-border bg-background text-sm text-muted-foreground">
+                  請從左側選擇季度
+                </section>
+              )
+            }
+            return (
+              <section className="rounded-md border border-border bg-background p-4">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-semibold">{editSeason.year} 年 {editSeason.quarter} 假日</h3>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{editSeason.start_date} ～ {editSeason.end_date}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground">已選 {holidayDraft.size} 天</span>
+                    <button
+                      type="button"
+                      onClick={saveHolidays}
+                      disabled={pending || holidayDraftLoading}
+                      className={primaryButton}
+                    >
+                      {pending ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                      儲存假日
+                    </button>
+                  </div>
+                </div>
+                {holidayDraftLoading ? (
+                  <div className="grid min-h-48 place-items-center text-sm text-muted-foreground">
+                    <Loader2 size={20} className="animate-spin" />
+                  </div>
+                ) : (
+                  <>
+                    <QuarterCalendar
+                      year={editSeason.year}
+                      quarter={editSeason.quarter}
+                      selected={holidayDraft}
+                      holidays={holidayDraft}
+                      onToggle={toggleHoliday}
+                      mode="holiday"
+                    />
+                    {holidayDraft.size > 0 && (
+                      <div className="mt-3 rounded-md border border-border bg-muted/30 p-3 text-xs leading-6 text-muted-foreground">
+                        {formatDateList(Array.from(holidayDraft).sort(compareDate))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </section>
+            )
+          })()}
         </main>
       )}
 
