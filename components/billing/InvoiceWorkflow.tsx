@@ -824,7 +824,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
             </div>
 
             {openStep === 1 && (
-              <div className="grid gap-4 xl:grid-cols-[1fr_320px]">
+              <div className="grid gap-4 md:grid-cols-[1fr_280px]">
                 <div>
                   <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span>{classTypeLabel(selectedClass.class_type)}</span>
@@ -878,7 +878,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     {state.students.length === 0 && <div className="p-4 text-sm text-muted-foreground">沒有學生</div>}
                   </div>
                 </aside>
-                <div className="xl:col-span-2 flex justify-end">
+                <div className="md:col-span-2 flex justify-end">
                   <button type="button" onClick={goFees} disabled={!selectedStudents.size} className={primaryButton}>
                     下一步
                     <ChevronRight size={14} />
