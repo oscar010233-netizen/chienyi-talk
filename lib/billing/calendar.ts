@@ -76,9 +76,9 @@ export function generateClassDates(params: {
 }): string[] {
   const limit = params.limit ?? MAX_BILLING_SESSIONS
   const first = datesForWeekday(params.startDate, params.endDate, params.weekday1)
-  const second = params.classType === 'single'
-    ? []
-    : datesForWeekday(params.startDate, params.endDate, params.weekday2)
+  const second = params.classType === 'double'
+    ? datesForWeekday(params.startDate, params.endDate, params.weekday2)
+    : []
   return mergeAndSortDates(first, second).slice(0, limit)
 }
 

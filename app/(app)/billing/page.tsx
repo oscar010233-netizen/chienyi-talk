@@ -1,4 +1,4 @@
-import { BillingWorkspace } from '@/components/billing/BillingWorkspace'
+import { InvoiceWorkflow } from '@/components/billing/InvoiceWorkflow'
 import { getBillingState } from '@/lib/billing/service'
 
 export const dynamic = 'force-dynamic'
@@ -17,5 +17,5 @@ export default async function BillingPage({ searchParams }: Props) {
     seasonId: params.seasonId ? decodeURIComponent(params.seasonId) : null,
   })
 
-  return <BillingWorkspace initialState={state} />
+  return <InvoiceWorkflow initialState={state} />
 }

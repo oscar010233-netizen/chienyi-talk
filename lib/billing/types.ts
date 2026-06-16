@@ -114,6 +114,33 @@ export interface PaymentBagLine {
   payment_status: string
   note: string | null
   student?: BillingStudent
+  sessions?: PaymentBagLineSession[]
+  items?: PaymentBagLineItem[]
+}
+
+export interface PaymentBagLineSession {
+  id?: string
+  tenant_id?: string
+  line_id?: string
+  student_id?: string
+  slot_index: number
+  session_kind: 'team' | 'intensive' | string
+  session_order: number
+  session_date: string | null
+  legacy_mmdd: string | null
+  is_unscheduled: boolean
+  week_key: string | null
+}
+
+export interface PaymentBagLineItem {
+  id?: string
+  tenant_id?: string
+  line_id?: string
+  item_type: 'tuition' | 'book' | 'misc' | 'discount' | 'carryover' | 'adjustment' | string
+  label: string | null
+  amount: number
+  sort_order: number
+  preset_key: string | null
 }
 
 export interface PaymentBagWithLines extends PaymentBag {
@@ -147,4 +174,30 @@ export interface OpenBagInput {
   discountLabel?: string | null
   discountAmount?: number
   note?: string | null
+  selectedStudents?: OpenBagStudentInput[]
+}
+
+export interface OpenBagFeeRowInput {
+  preset?: string | null
+  note?: string | null
+  amount?: number | null
+}
+
+export interface OpenBagAdjustmentInput {
+  name?: string | null
+  amount?: number | null
+}
+
+export interface OpenBagStudentInput {
+  studentId: string
+  teamDates?: string[]
+  intensiveDates?: string[]
+  intensiveUnscheduled?: number
+  tuitionAmount?: number | null
+  bookRows?: OpenBagFeeRowInput[]
+  miscRows?: OpenBagFeeRowInput[]
+  discountRows?: OpenBagFeeRowInput[]
+  carryoverAmount?: number | null
+  carryoverNote?: string | null
+  adjustments?: OpenBagAdjustmentInput[]
 }

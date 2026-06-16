@@ -8,13 +8,15 @@ import {
   recordActualAttendance,
   recordExtraAttendance,
   recordPaymentBagPrint,
+  replaceSeasonHolidays,
   removeSeasonHoliday,
+  saveBillingClassConfig,
   saveSeasonHoliday,
   syncActualAttendanceFromClassSheet,
   updatePaymentBagLine,
 } from '@/lib/billing/service'
 import { toNumber } from '@/lib/billing/calendar'
-import type { ActualAttendanceStatus } from '@/lib/billing/types'
+import type { ActualAttendanceStatus, OpenBagStudentInput } from '@/lib/billing/types'
 
 function jsonError(error: unknown, status = 500) {
   const message = error instanceof Error ? error.message : String(error)
@@ -54,6 +56,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ season })
     }
 
+    if (action === 'save-class') {
+      const className = String(body.class_name ?? '').trim()
+      if (!className) return jsonError('class_name required', 400)
+      const cls = await saveBillingClassConfig({
+        id: typeof body.id === 'string' && body.id ? body.id : null,
+        classCode: typeof body.class_code === 'string' ? body.class_code : null,
+        className,
+        department: typeof body.department === 'string' ? body.department : null,
+        level: typeof body.level === 'string' ? body.level : null,
+        classType: String(body.class_type ?? 'intensive'),
+        weekday1: body.weekday1 == null || body.weekday1 === '' ? null : toNumber(body.weekday1),
+        weekday2: body.weekday2 == null || body.weekday2 === '' ? null : toNumber(body.weekday2),
+        systemSessions: body.system_sessions == null || body.system_sessions === '' ? null : toNumber(body.system_sessions),
+        status: typeof body.status === 'string' ? body.status : 'active',
+      })
+      return NextResponse.json({ class: cls })
+    }
+
     if (action === 'save-holiday') {
       const seasonId = String(body.season_id ?? '')
       const holidayDate = String(body.holiday_date ?? '')
@@ -65,6 +85,21 @@ export async function POST(request: NextRequest) {
         label: String(body.label ?? '').trim() || null,
       })
       return NextResponse.json({ holiday })
+    }
+
+    if (action === 'replace-holidays') {
+      const seasonId = String(body.season_id ?? '')
+      if (!seasonId) return jsonError('season_id required', 400)
+      const holidayDates = Array.isArray(body.holiday_dates)
+        ? body.holiday_dates.map(String).filter(Boolean)
+        : []
+      const result = await replaceSeasonHolidays({
+        seasonId,
+        classId: typeof body.class_id === 'string' && body.class_id ? body.class_id : null,
+        holidayDates,
+        label: typeof body.label === 'string' ? body.label : null,
+      })
+      return NextResponse.json(result)
     }
 
     if (action === 'remove-holiday') {
@@ -149,6 +184,9 @@ export async function POST(request: NextRequest) {
         discountLabel: typeof body.discount_label === 'string' ? body.discount_label : null,
         discountAmount: toNumber(body.discount_amount),
         note: typeof body.note === 'string' ? body.note : null,
+        selectedStudents: Array.isArray(body.selected_students)
+          ? body.selected_students as OpenBagStudentInput[]
+          : undefined,
       })
       return NextResponse.json({ bag })
     }
