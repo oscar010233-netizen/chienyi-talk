@@ -825,8 +825,8 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
             </div>
 
             {openStep === 1 && (
-              <div className="grid gap-6 md:grid-cols-[380px_1fr]">
-                <div>
+              <div className="grid gap-6 md:grid-cols-[minmax(0,380px)_1fr]">
+                <div className="min-w-0">
                   <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span>{classTypeLabel(selectedClass.class_type)}</span>
                     <span>{[weekdayLabel(selectedClass.weekday1), selectedClass.class_type === 'double' ? weekdayLabel(selectedClass.weekday2) : ''].filter(Boolean).join(' + ')}</span>
