@@ -50,9 +50,9 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
   }
 
   return (
-    <>
+    <div className="flex h-full flex-col">
       {/* Frosted toolbar */}
-      <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-3 md:px-6">
+      <div className="mac-glass mac-hairline shrink-0 border-b px-4 py-3 md:px-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">學生總覽</h1>
@@ -78,7 +78,7 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
       </div>
 
       {/* Table card */}
-      <div className="p-4 md:p-6">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 pb-nav-safe md:p-6 md:pb-6">
         <div className="mac-card overflow-x-auto rounded-[18px]">
           <table className="w-full min-w-[680px] border-separate border-spacing-0 text-sm">
             <thead>
@@ -150,7 +150,7 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
       {(adding || editing) && (
         <StudentFormModal student={editing} onClose={handleClose} />
       )}
-    </>
+    </div>
   )
 }
 

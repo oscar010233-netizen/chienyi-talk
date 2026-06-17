@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic'
 export default async function StudentsPage() {
   const students = await getAllStudents()
   return (
-    <div className="flex h-full flex-col overflow-y-auto pb-nav-safe md:pb-0">
+    <div className="flex h-full flex-col overflow-hidden">
       <StudentRoster students={students} />
     </div>
   )

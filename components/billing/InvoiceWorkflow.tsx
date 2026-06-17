@@ -577,7 +577,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       {tab === 'holidays' && (
         <main className="grid gap-4 p-4 md:grid-cols-[260px_1fr] md:p-6">
           {/* Left: season list + new season form */}
-          <section className="rounded-xl border border-border bg-background">
+          <section className="rounded-lg border border-border bg-background">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <h2 className="text-sm font-semibold">季度列表</h2>
               <button
@@ -657,13 +657,13 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
             const editSeason = state.seasons.find((s) => s.id === holidaySeasonId)
             if (!editSeason) {
               return (
-                <section className="grid min-h-48 place-items-center rounded-xl border border-dashed border-border bg-background text-sm text-muted-foreground">
+                <section className="grid min-h-48 place-items-center rounded-lg border border-dashed border-border bg-background text-sm text-muted-foreground">
                   請從左側選擇季度
                 </section>
               )
             }
             return (
-              <section className="rounded-xl border border-border bg-background p-4">
+              <section className="rounded-lg border border-border bg-background p-4">
                 <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <h3 className="text-sm font-semibold">{editSeason.year} 年 {editSeason.quarter} 假日</h3>
@@ -745,7 +745,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
           {/* List mode */}
           {openMode === 'list' && (
-            <section className="rounded-xl border border-border bg-background">
+            <section className="rounded-lg border border-border bg-background">
               {bagListLoading ? (
                 <div className="grid min-h-48 place-items-center">
                   <Loader2 size={20} className="animate-spin text-muted-foreground" />
@@ -813,7 +813,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
           {/* Workflow mode */}
           {openMode === 'workflow' && selectedClass && selectedSeason && (
           <>
-          <section className="rounded-xl border border-border bg-background p-4">
+          <section className="rounded-lg border border-border bg-background p-4">
             <div className="mb-6">
               <WizardSteps
                 current={openStep}
@@ -854,7 +854,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     showIntensiveCol={selectedClass.class_type === 'intensive'}
                   />
                 </div>
-                <aside className="rounded-xl border border-border">
+                <aside className="rounded-lg border border-border">
                   <div className="flex items-center justify-between border-b border-border px-3 py-2 text-sm font-medium">
                     <span>學生</span>
                     <button
@@ -891,7 +891,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
             {openStep === 2 && (
               <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
-                <section className="rounded-xl border border-border bg-muted/20 p-4">
+                <section className="rounded-lg border border-border bg-muted/20 p-4">
                   <div className="grid gap-2 text-sm">
                     <SummaryLine label="團課" value={`${teamDates.size} 堂`} />
                     {selectedClass.class_type === 'intensive' && <SummaryLine label="精修" value={`${numberInput(intensiveSessions)} 堂`} />}
@@ -932,7 +932,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
             {openStep === 3 && currentDraft && (
               <div className="grid gap-4 xl:grid-cols-[220px_1fr_340px]">
-                <aside className="rounded-xl border border-border">
+                <aside className="rounded-lg border border-border">
                   <div className="border-b border-border px-3 py-2 text-sm font-medium">學生</div>
                   <div className="max-h-[560px] overflow-auto">
                     {selectedStudentList.map((student, index) => (
@@ -1149,7 +1149,7 @@ function QuarterCalendar({
   const groups = buildQuarterWeeksGrouped(year, quarter)
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-background">
+    <div className="overflow-hidden rounded-lg border border-border bg-background">
       <table className="w-full border-separate border-spacing-0">
         <thead>
           <tr>
@@ -1290,14 +1290,14 @@ function BagPreview({ state }: { state: BillingState }) {
   const bag = state.activeBag
   if (!bag) {
     return (
-      <section className="grid min-h-48 place-items-center rounded-xl border border-dashed border-border bg-background text-sm text-muted-foreground">
+      <section className="grid min-h-48 place-items-center rounded-lg border border-dashed border-border bg-background text-sm text-muted-foreground">
         尚未開袋
       </section>
     )
   }
   const total = bag.lines.reduce((sum, line) => sum + Number(line.total_amount ?? 0), 0)
   return (
-    <section className="rounded-xl border border-border bg-background">
+    <section className="rounded-lg border border-border bg-background">
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
         <ReceiptText size={16} />
         <h2 className="text-sm font-semibold">{bag.bag_code}</h2>

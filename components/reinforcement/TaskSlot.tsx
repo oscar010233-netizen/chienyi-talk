@@ -302,7 +302,7 @@ export function TaskSlot({ index }: { index: number }) {
 
   return (
     <div className={[
-      'flex h-[180px] flex-col overflow-hidden rounded-xl mac-soft transition-all duration-200',
+      'flex h-[180px] flex-col overflow-hidden rounded-lg mac-soft transition-all duration-200',
       hasRecords ? 'ring-1 ring-red-200 dark:ring-red-900/50' : '',
       isAllDone ? 'ring-1 ring-emerald-200 dark:ring-emerald-900/50' : '',
     ].join(' ')}

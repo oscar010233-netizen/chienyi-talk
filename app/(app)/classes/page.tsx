@@ -7,8 +7,8 @@ export const dynamic = 'force-dynamic'
 export default async function ClassesPage() {
   const classes = await getAllClasses()
   return (
-    <div className="flex h-full flex-col overflow-y-auto pb-nav-safe md:pb-0">
-      <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-3 md:px-6">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="mac-glass mac-hairline shrink-0 border-b px-4 py-3 md:px-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">班級</h1>
@@ -17,7 +17,9 @@ export default async function ClassesPage() {
           <CreateClassButton />
         </div>
       </div>
-      <ClassList classes={classes} />
+      <div className="min-h-0 flex-1 overflow-y-auto pb-nav-safe md:pb-0">
+        <ClassList classes={classes} />
+      </div>
     </div>
   )
 }

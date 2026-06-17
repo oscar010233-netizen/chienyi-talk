@@ -154,8 +154,8 @@ export default function ExamGradingPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-[#f2f3f5] pb-nav-safe md:pb-0">
-      <div className="border-b border-border bg-white px-4 py-4 md:px-6">
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="mac-glass mac-hairline shrink-0 border-b px-4 py-3 md:px-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <div className="flex flex-wrap items-center gap-2">
@@ -185,8 +185,9 @@ export default function ExamGradingPage() {
         </div>
       </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto pb-nav-safe md:pb-0">
       <div className="grid gap-4 p-4 md:p-6 xl:grid-cols-[minmax(320px,0.9fr)_minmax(0,1.1fr)]">
-        <Card className="rounded-xl">
+        <Card className="rounded-lg">
           <CardHeader>
             <CardTitle>{text.uploadTitle}</CardTitle>
             <CardDescription>{text.uploadDescription}</CardDescription>
@@ -198,7 +199,7 @@ export default function ExamGradingPage() {
             <form className="grid gap-4" onSubmit={handleSubmit}>
               <label
                 className={cn(
-                  "relative grid min-h-[320px] cursor-pointer place-items-center overflow-hidden rounded-xl border border-dashed border-border bg-muted/40 md:min-h-[420px]",
+                  "relative grid min-h-[320px] cursor-pointer place-items-center overflow-hidden rounded-lg border border-dashed border-border bg-muted/40 md:min-h-[420px]",
                   previewUrl && "border-transparent bg-neutral-950"
                 )}
               >
@@ -259,7 +260,7 @@ export default function ExamGradingPage() {
 
               {error ? (
                 <div
-                  className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                  className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700"
                   role="alert"
                 >
                   <AlertTriangle className="mt-0.5 shrink-0" size={16} />
@@ -270,7 +271,7 @@ export default function ExamGradingPage() {
           </CardContent>
         </Card>
 
-        <Card className="rounded-xl">
+        <Card className="rounded-lg">
           <CardHeader>
             <CardTitle>{text.resultTitle}</CardTitle>
             <CardDescription>
@@ -302,7 +303,7 @@ export default function ExamGradingPage() {
                 </div>
 
                 {result.notes ? (
-                  <p className="rounded-xl border border-border bg-muted/40 p-3 text-sm leading-6 text-muted-foreground">
+                  <p className="rounded-lg border border-border bg-muted/40 p-3 text-sm leading-6 text-muted-foreground">
                     {result.notes}
                   </p>
                 ) : null}
@@ -311,7 +312,7 @@ export default function ExamGradingPage() {
                   {result.rows.map((row) => (
                     <article
                       key={row.question}
-                      className="grid min-h-16 grid-cols-[42px_1fr_34px] items-center gap-3 rounded-xl border border-border bg-white p-3"
+                      className="grid min-h-16 grid-cols-[42px_1fr_34px] items-center gap-3 rounded-lg border border-border bg-white p-3"
                     >
                       <div className="grid size-10 place-items-center rounded-lg bg-muted font-semibold">
                         {row.question}
@@ -354,7 +355,7 @@ export default function ExamGradingPage() {
                   ))}
                 </div>
 
-                <details className="rounded-xl border border-border bg-muted/30 p-3 text-sm">
+                <details className="rounded-lg border border-border bg-muted/30 p-3 text-sm">
                   <summary className="cursor-pointer font-medium text-foreground">
                     {text.raw}
                   </summary>
@@ -368,7 +369,7 @@ export default function ExamGradingPage() {
                 </details>
               </div>
             ) : (
-              <div className="grid min-h-[360px] place-items-center rounded-xl border border-dashed border-border bg-muted/30 text-center text-muted-foreground">
+              <div className="grid min-h-[360px] place-items-center rounded-lg border border-dashed border-border bg-muted/30 text-center text-muted-foreground">
                 <div>
                   <ClipboardCheck className="mx-auto mb-3" size={40} />
                   <p className="font-semibold text-foreground">
@@ -380,6 +381,7 @@ export default function ExamGradingPage() {
             )}
           </CardContent>
         </Card>
+      </div>
       </div>
     </div>
   );
@@ -395,7 +397,7 @@ function ScoreTile({
   tone?: "default" | "success" | "danger";
 }) {
   return (
-    <div className="rounded-xl border border-border bg-muted/30 p-3">
+    <div className="rounded-lg border border-border bg-muted/30 p-3">
       <p className="text-xs text-muted-foreground">{label}</p>
       <p
         className={cn(
