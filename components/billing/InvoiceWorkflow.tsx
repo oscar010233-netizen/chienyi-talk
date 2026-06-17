@@ -825,7 +825,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
             </div>
 
             {openStep === 1 && (
-              <div className="grid gap-4 md:grid-cols-[1fr_280px]">
+              <div className="grid gap-6 md:grid-cols-[380px_1fr]">
                 <div>
                   <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                     <span>{classTypeLabel(selectedClass.class_type)}</span>
