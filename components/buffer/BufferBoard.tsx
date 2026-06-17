@@ -199,7 +199,7 @@ export function BufferBoard() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-4 md:px-6">
+      <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-3 md:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <h1 className="truncate text-xl font-semibold tracking-tight text-foreground">Buffer 暫存</h1>

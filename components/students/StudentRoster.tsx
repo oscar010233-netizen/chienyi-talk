@@ -52,7 +52,7 @@ export function StudentRoster({ students }: { students: RosterStudent[] }) {
   return (
     <>
       {/* Frosted toolbar */}
-      <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-4 md:px-6">
+      <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-3 md:px-6">
         <div className="flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">學生總覽</h1>

@@ -157,7 +157,7 @@ export default function DbMonitorPage() {
       </div>
 
       {/* Body */}
-      <div className="flex min-h-0 flex-1 gap-4 p-4 md:gap-5 md:p-5">
+      <div className="flex min-h-0 flex-1 gap-4 p-4 md:gap-6 md:p-6">
 
         {/* Left: table list */}
         <div className="w-52 shrink-0 overflow-y-auto rounded-xl border border-border bg-background/50">
