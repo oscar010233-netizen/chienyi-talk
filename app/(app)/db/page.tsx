@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { RefreshCw, Play, Pause, Loader2, AlertTriangle } from 'lucide-react'
+import { RefreshCw, Play, Pause, Loader2, AlertTriangle, Trash2 } from 'lucide-react'
 
 interface TableInfo {
   name: string
@@ -65,6 +65,7 @@ export default function DbMonitorPage() {
   const [selected, setSelected] = useState<string | null>(null)
   const [rows, setRows] = useState<{ columns: string[]; rows: Record<string, unknown>[] } | null>(null)
   const [rowsLoading, setRowsLoading] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [audit, setAudit] = useState<AuditEntry[]>([])
   const [newIds, setNewIds] = useState<Set<number>>(new Set())
   const [auto, setAuto] = useState(true)
@@ -120,6 +121,19 @@ export default function DbMonitorPage() {
     }, 4000)
     return () => window.clearInterval(timer)
   }, [auto, pollAudit, loadSnapshot])
+
+  const NON_DELETABLE = new Set(['profiles', 'tenants'])
+
+  async function handleDelete(id: string) {
+    if (!selected || !window.confirm(`確定刪除這筆資料？\nid: ${id}`)) return
+    setDeletingId(id)
+    try {
+      await fetch(`/api/db/rows?table=${selected}&id=${id}`, { method: 'DELETE' })
+      await loadRows(selected)
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   const groups = Array.from(new Set(tables.map((t) => t.group)))
   const selectedMeta = tables.find((t) => t.name === selected)
@@ -212,17 +226,33 @@ export default function DbMonitorPage() {
                         {(rows?.columns ?? []).map((c) => (
                           <th key={c} className="whitespace-nowrap border-b border-border bg-muted/80 px-2.5 py-1.5 text-left font-medium text-muted-foreground backdrop-blur">{c}</th>
                         ))}
+                        {selected && !NON_DELETABLE.has(selected) && (
+                          <th className="border-b border-border bg-muted/80 px-2 py-1.5" />
+                        )}
                       </tr>
                     </thead>
                     <tbody>
                       {(rows?.rows ?? []).length === 0 ? (
-                        <tr><td colSpan={rows?.columns.length || 1} className="px-3 py-10 text-center text-muted-foreground">（無資料）</td></tr>
+                        <tr><td colSpan={(rows?.columns.length || 1) + 1} className="px-3 py-10 text-center text-muted-foreground">（無資料）</td></tr>
                       ) : (
                         rows!.rows.map((r, i) => (
-                          <tr key={i} className="hover:bg-muted/40">
+                          <tr key={i} className="group hover:bg-muted/40">
                             {rows!.columns.map((c) => (
                               <td key={c} className="max-w-[220px] truncate whitespace-nowrap border-b border-border/50 px-2.5 py-1 font-mono text-foreground/80" title={cell(r[c])}>{cell(r[c])}</td>
                             ))}
+                            {selected && !NON_DELETABLE.has(selected) && (
+                              <td className="border-b border-border/50 px-1.5 py-1">
+                                <button
+                                  onClick={() => void handleDelete(String(r['id']))}
+                                  disabled={deletingId === String(r['id'])}
+                                  className="flex size-6 items-center justify-center rounded opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50 dark:hover:bg-red-500/15 dark:hover:text-red-400"
+                                >
+                                  {deletingId === String(r['id'])
+                                    ? <Loader2 size={13} className="animate-spin" />
+                                    : <Trash2 size={13} />}
+                                </button>
+                              </td>
+                            )}
                           </tr>
                         ))
                       )}
