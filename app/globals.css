@@ -173,6 +173,17 @@
   }
 }
 
+@layer utilities {
+  /* Padding that clears the bottom nav (56px) + iOS home indicator */
+  .pb-nav-safe {
+    padding-bottom: calc(3.5rem + env(safe-area-inset-bottom, 0px));
+  }
+  /* Standalone safe-area bottom padding */
+  .pb-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

@@ -19,7 +19,7 @@ export function MobileNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="mac-glass mac-hairline fixed right-0 bottom-0 left-0 z-50 grid grid-cols-7 border-t md:hidden">
+    <nav className="mac-glass mac-hairline fixed right-0 bottom-0 left-0 z-50 grid grid-cols-7 border-t pb-safe-bottom md:hidden">
       {navItems.map(({ href, icon: Icon, label }) => {
         const isActive =
           pathname === href || (href !== "/" && pathname.startsWith(href));
