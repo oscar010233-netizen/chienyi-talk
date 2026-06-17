@@ -15,6 +15,21 @@ export async function GET(request: NextRequest) {
   const meta = DB_TABLES.find((t) => t.name === table)!
   const supabase = await createServiceClient()
 
+  // student_task_records: join class_tasks to show task_name alongside class_task_id
+  if (table === 'student_task_records') {
+    const { data, error } = await supabase
+      .from('student_task_records')
+      .select('*, class_tasks(task_name)')
+      .order('created_at', { ascending: false })
+      .limit(100)
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    const rows = (data ?? []).map((r) => {
+      const { class_tasks, ...rest } = r as Record<string, unknown> & { class_tasks?: { task_name?: string } | null }
+      return { task_name: class_tasks?.task_name ?? null, ...rest }
+    })
+    return NextResponse.json({ table, columns: ['task_name', ...meta.columns], rows })
+  }
+
   // All tracked tables have created_at; order newest first.
   const { data, error } = await supabase
     .from(table)
