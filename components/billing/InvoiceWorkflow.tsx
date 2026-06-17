@@ -1080,11 +1080,45 @@ function WizardSteps({ current, steps }: { current: number; steps: string[] }) {
   )
 }
 
-const MONTH_BG: Record<number, string> = {
-  1: 'bg-slate-100 text-slate-600', 2: 'bg-slate-100 text-slate-600', 3: 'bg-slate-100 text-slate-600',
-  4: 'bg-rose-50 text-rose-600', 5: 'bg-sky-50 text-sky-600', 6: 'bg-emerald-50 text-emerald-600',
-  7: 'bg-amber-50 text-amber-600', 8: 'bg-amber-50 text-amber-600', 9: 'bg-amber-50 text-amber-600',
-  10: 'bg-violet-50 text-violet-600', 11: 'bg-violet-50 text-violet-600', 12: 'bg-violet-50 text-violet-600',
+// Position within quarter: 0=first month, 1=second, 2=third
+const QM = [
+  { label: 'bg-rose-50 text-rose-600',    cell: 'bg-rose-50/70' },
+  { label: 'bg-sky-50 text-sky-600',      cell: 'bg-sky-50/70' },
+  { label: 'bg-emerald-50 text-emerald-700', cell: 'bg-emerald-50/70' },
+] as const
+
+function buildQuarterWeeksGrouped(year: number, quarter: string) {
+  const months = monthsForQuarter(quarter)
+  const lastDay = new Date(Date.UTC(year, months[2], 0)).getUTCDate()
+  const quarterEnd = dateOnly(year, months[2], lastDay)
+
+  return months.map((month, idx) => {
+    const allDays = datesInMonth(year, month)
+    const firstDow = dateFromDateOnly(allDays[0]).getUTCDay() // 0=Sun
+    const sundays = allDays.filter(d => dateFromDateOnly(d).getUTCDay() === 0)
+    const weeks: Array<Array<{ date: string; month: number } | null>> = []
+
+    // Partial first week — only for the first month of the quarter
+    if (idx === 0 && firstDow !== 0) {
+      const partial: Array<{ date: string; month: number } | null> = Array(firstDow).fill(null)
+      for (const d of allDays.slice(0, 7 - firstDow)) partial.push({ date: d, month })
+      weeks.push(partial)
+    }
+
+    // Full weeks whose Sunday falls in this month
+    for (const sunday of sundays) {
+      const t0 = dateFromDateOnly(sunday).getTime()
+      const week: Array<{ date: string; month: number } | null> = []
+      for (let d = 0; d < 7; d++) {
+        const dt = new Date(t0 + d * 86400000)
+        const ds = dateOnly(dt.getUTCFullYear(), dt.getUTCMonth() + 1, dt.getUTCDate())
+        week.push(ds <= quarterEnd ? { date: ds, month: dt.getUTCMonth() + 1 } : null)
+      }
+      weeks.push(week)
+    }
+
+    return { month, monthIdx: idx, weeks }
+  })
 }
 
 function QuarterCalendar({
@@ -1104,7 +1138,9 @@ function QuarterCalendar({
   onToggle: (date: string) => void
   mode: 'holiday' | 'team' | 'intensive'
 }) {
-  const months = monthsForQuarter(quarter)
+  const qMonths = monthsForQuarter(quarter)
+  const groups = buildQuarterWeeksGrouped(year, quarter)
+
   return (
     <div className="overflow-hidden rounded-md border border-border bg-background">
       <table className="w-full border-separate border-spacing-0">
@@ -1117,38 +1153,42 @@ function QuarterCalendar({
           </tr>
         </thead>
         <tbody>
-          {months.map((month, monthIdx) => {
-            const weeks = buildMonthWeeks(year, month)
-            return weeks.map((week, weekIdx) => (
+          {groups.map(({ month, monthIdx, weeks }) =>
+            weeks.map((week, weekIdx) => (
               <tr key={`${month}-${weekIdx}`}>
                 {weekIdx === 0 && (
                   <td
                     rowSpan={weeks.length}
-                    className={`border-r border-border text-center text-xs font-semibold align-middle w-9 ${monthIdx > 0 ? 'border-t' : ''} ${MONTH_BG[month] ?? ''}`}
+                    className={`w-9 border-r border-border text-center text-[11px] font-semibold align-middle ${monthIdx > 0 ? 'border-t border-border' : ''} ${QM[monthIdx].label}`}
                   >
                     {month}
                   </td>
                 )}
-                {week.map((date, cellIdx) => {
-                  if (!date) return <td key={cellIdx} className={`p-0.5 ${weekIdx === 0 && monthIdx > 0 ? 'border-t border-border' : ''}`} />
-                  const isSelected = selected.has(date)
-                  const isSecondary = secondary?.has(date) ?? false
-                  const isHoliday = holidays.has(date)
+                {week.map((cell, cellIdx) => {
+                  const isMonthBoundary = weekIdx === 0 && monthIdx > 0
+                  if (!cell) {
+                    return <td key={cellIdx} className={`p-0.5 ${isMonthBoundary ? 'border-t border-border' : ''}`} />
+                  }
+                  const pos = qMonths.indexOf(cell.month)
+                  const cellBg = pos >= 0 ? QM[pos].cell : ''
+                  const isSelected = selected.has(cell.date)
+                  const isSecondary = secondary?.has(cell.date) ?? false
+                  const isHoliday = holidays.has(cell.date)
                   const btnTone = mode === 'holiday'
                     ? isSelected ? 'bg-red-500 text-white' : 'hover:bg-red-50'
                     : isSelected ? 'bg-blue-600 text-white'
                       : isSecondary ? 'bg-emerald-600 text-white'
-                        : isHoliday ? 'text-muted-foreground/60'
-                          : 'hover:bg-muted'
+                        : isHoliday ? 'text-muted-foreground/50'
+                          : 'hover:bg-black/5'
                   return (
-                    <td key={date} className={`p-0.5 ${weekIdx === 0 && monthIdx > 0 ? 'border-t border-border' : ''}`}>
+                    <td key={cell.date} className={`p-0.5 ${cellBg} ${isMonthBoundary ? 'border-t border-border' : ''}`}>
                       <button
                         type="button"
-                        onClick={() => onToggle(date)}
+                        onClick={() => onToggle(cell.date)}
                         className={`relative flex h-8 w-full items-center justify-center rounded-full text-xs font-medium transition-colors ${btnTone}`}
-                        title={formatDateMd(date)}
+                        title={formatDateMd(cell.date)}
                       >
-                        {Number(date.slice(8, 10))}
+                        {Number(cell.date.slice(8, 10))}
                         {isHoliday && mode !== 'holiday' && (
                           <span className="absolute right-0.5 top-0.5 h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-red-500" />
                         )}
@@ -1158,7 +1198,7 @@ function QuarterCalendar({
                 })}
               </tr>
             ))
-          })}
+          )}
         </tbody>
       </table>
     </div>
