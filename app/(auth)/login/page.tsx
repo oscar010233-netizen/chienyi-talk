@@ -31,7 +31,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full max-w-sm p-8 bg-white rounded-3xl shadow-sm">
+    <div className="w-full max-w-sm p-8 bg-card text-card-foreground rounded-3xl shadow-sm">
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-bold text-foreground">簡誼OS</h1>
         <p className="mt-1 text-sm text-muted-foreground">補習班管理系統</p>
@@ -49,7 +49,7 @@ export default function LoginPage() {
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="rounded-xl border border-border bg-[#fff9f9] px-4 py-3 text-sm outline-none focus:border-gold focus:ring-1 focus:ring-gold"
+            className="rounded-xl border border-border bg-muted px-4 py-3 text-sm outline-none focus:border-gold focus:ring-1 focus:ring-gold"
             placeholder="your@email.com"
           />
         </div>
@@ -65,7 +65,7 @@ export default function LoginPage() {
             required
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="rounded-xl border border-border bg-[#fff9f9] px-4 py-3 text-sm outline-none focus:border-gold focus:ring-1 focus:ring-gold"
+            className="rounded-xl border border-border bg-muted px-4 py-3 text-sm outline-none focus:border-gold focus:ring-1 focus:ring-gold"
             placeholder="••••••••"
           />
         </div>

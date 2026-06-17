@@ -6,7 +6,8 @@ export default function Home() {
   const featuredBooks = books.slice(0, 3);
 
   return (
-    <div className="flex h-full flex-col gap-6 overflow-y-auto p-6 pb-nav-safe md:pb-6">
+    <div className="h-full overflow-y-auto">
+      <div className="flex flex-col gap-6 p-6 pb-nav-safe md:pb-6">
       <section className="rounded-2xl bg-[#fff9f9] p-6">
         <div className="inline-flex items-center gap-2 rounded-full bg-gold/10 px-3 py-1 text-sm font-medium text-gold">
           <Mic size={16} />
@@ -58,6 +59,7 @@ export default function Home() {
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }
