@@ -267,6 +267,8 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [sessionMode, setSessionMode] = useState<'team' | 'intensive'>('team')
   const [bagForm, setBagForm] = useState({ issue_date: todayDate(), due_date: '', note: '' })
   const [genAttMsg, setGenAttMsg] = useState('')
+  const [prevRefundMap, setPrevRefundMap] = useState<Map<string, { sessions: number; rate: number; amount: number; note: string }>>(new Map())
+  const [prevRefundLoading, setPrevRefundLoading] = useState(false)
 
   async function load(nextClassId = classId, nextSeasonId = seasonId) {
     const search = new URLSearchParams()
@@ -472,8 +474,20 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   }
 
   function goFees() {
-    if (!selectedStudents.size) return
+    if (!selectedStudents.size || !selectedClass || !selectedSeason) return
     setOpenStep(2)
+    setPrevRefundLoading(true)
+    fetch(`/api/billing/attendance-refund?class_id=${selectedClass.id}&season_id=${selectedSeason.id}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data: { refunds?: Array<{ student_id: string; refund_sessions: number; rate_per_session: number; refund_amount: number; carryover_note: string }> }) => {
+        const map = new Map<string, { sessions: number; rate: number; amount: number; note: string }>()
+        for (const r of data.refunds ?? []) {
+          map.set(r.student_id, { sessions: r.refund_sessions, rate: r.rate_per_session, amount: r.refund_amount, note: r.carryover_note })
+        }
+        setPrevRefundMap(map)
+      })
+      .catch(() => setPrevRefundMap(new Map()))
+      .finally(() => setPrevRefundLoading(false))
   }
 
   function applyTuitionPreset(key: string) {
@@ -494,7 +508,15 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     setStudentDrafts((prev) => {
       const next = { ...prev }
       for (const studentId of selectedStudents) {
-        if (!next[studentId]) next[studentId] = studentDraftFromTemplate(baseTeamDates, intensiveCount, feeTemplate)
+        if (!next[studentId]) {
+          const draft = studentDraftFromTemplate(baseTeamDates, intensiveCount, feeTemplate)
+          const refund = prevRefundMap.get(studentId)
+          if (refund) {
+            draft.carryoverAmount = String(-refund.amount)
+            draft.carryoverNote = refund.note
+          }
+          next[studentId] = draft
+        }
       }
       return next
     })
@@ -929,6 +951,27 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     <SummaryLine label="學生" value={`${selectedStudents.size} 人`} />
                     <SummaryLine label="小計" value={formatMoney(numberInput(feeTemplate.tuitionAmount) + rowsTotal(feeTemplate.bookRows) + rowsTotal(feeTemplate.miscRows) - rowsTotal(feeTemplate.discountRows))} />
                   </div>
+                  {prevRefundLoading && (
+                    <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Loader2 size={11} className="animate-spin" />
+                      讀取前季退費…
+                    </p>
+                  )}
+                  {!prevRefundLoading && prevRefundMap.size > 0 && (
+                    <div className="mt-3 border-t border-border pt-3">
+                      <p className="mb-1.5 text-xs font-medium text-muted-foreground">前季退費（將自動帶入結轉）</p>
+                      {Array.from(prevRefundMap.entries()).map(([sid, r]) => {
+                        const student = state.students.find((s) => s.student_id === sid)
+                        const name = student ? studentName(student) : sid.slice(0, 8)
+                        return (
+                          <div key={sid} className="flex justify-between text-xs text-muted-foreground">
+                            <span>{name}</span>
+                            <span className="text-red-600">−{formatMoney(r.amount)} ({r.sessions} 堂)</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
                 </section>
                 <section className="grid gap-4">
                   <div className="grid gap-2 md:grid-cols-[1fr_160px]">
@@ -1328,7 +1371,6 @@ interface RefundLine {
 function BagPreview({ state, onRefresh }: { state: BillingState; onRefresh?: () => Promise<void> }) {
   const [refundPreview, setRefundPreview] = useState<RefundLine[] | null>(null)
   const [computing, setComputing] = useState(false)
-  const [applying, setApplying] = useState(false)
   const [refundError, setRefundError] = useState('')
 
   const bag = state.activeBag
@@ -1355,26 +1397,6 @@ function BagPreview({ state, onRefresh }: { state: BillingState; onRefresh?: () 
     }
   }
 
-  async function applyRefund() {
-    setApplying(true)
-    setRefundError('')
-    try {
-      const res = await fetch('/api/billing/attendance-refund', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ bag_id: bag!.id }),
-      })
-      const data = await res.json() as { updated?: number; error?: string }
-      if (!res.ok) throw new Error(data.error ?? '套用失敗')
-      setRefundPreview(null)
-      await onRefresh?.()
-    } catch (err) {
-      setRefundError(err instanceof Error ? err.message : '套用失敗')
-    } finally {
-      setApplying(false)
-    }
-  }
-
   const total = bag.lines.reduce((sum, line) => sum + Number(line.total_amount ?? 0), 0)
   const refundTotal = refundPreview?.reduce((s, r) => s + r.refund_amount, 0) ?? 0
 
@@ -1392,7 +1414,7 @@ function BagPreview({ state, onRefresh }: { state: BillingState; onRefresh?: () 
           className="ml-auto inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
         >
           {computing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-          缺席退費
+          下季退費預覽
         </button>
       </div>
       <div className="overflow-auto">
@@ -1432,8 +1454,8 @@ function BagPreview({ state, onRefresh }: { state: BillingState; onRefresh?: () 
         <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setRefundPreview(null)} />
         <div className="relative flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-background shadow-2xl">
           <div className="border-b border-border px-4 py-3">
-            <h2 className="font-semibold">缺席退費計算</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">依本期「缺席(退)」紀錄計算退費金額，套用後將覆蓋現有調整欄位</p>
+            <h2 className="font-semibold">下季退費預覽</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">本期「缺席(退)」紀錄，將在下一季開袋時自動帶入結轉折抵</p>
           </div>
           <div className="min-h-0 flex-1 overflow-y-auto">
             {refundPreview.length === 0 ? (
@@ -1468,25 +1490,14 @@ function BagPreview({ state, onRefresh }: { state: BillingState; onRefresh?: () 
             )}
           </div>
           {refundError && <p className="border-t border-border px-4 py-2 text-xs text-red-500">{refundError}</p>}
-          <div className="flex justify-end gap-2 border-t border-border px-4 py-3">
+          <div className="flex justify-end border-t border-border px-4 py-3">
             <button
               type="button"
               onClick={() => setRefundPreview(null)}
               className="h-9 rounded-md border border-border px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
             >
-              取消
+              關閉
             </button>
-            {refundPreview.length > 0 && (
-              <button
-                type="button"
-                onClick={applyRefund}
-                disabled={applying}
-                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-gold px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-[#ff4d4f]"
-              >
-                {applying && <Loader2 size={14} className="animate-spin" />}
-                套用退費
-              </button>
-            )}
           </div>
         </div>
       </div>

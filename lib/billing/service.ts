@@ -816,30 +816,36 @@ async function computeCarryovers(
   if (error) throw new Error(error.message)
 
   const lessonByTask = new Map(tasks.map((task) => [task.id, task.lesson_label ?? '']))
-  const counts = new Map<string, { missed: number; makeup: number; extra: number }>()
+  const counts = new Map<string, { directRefund: number; missed: number; makeup: number; extra: number }>()
   for (const row of rows ?? []) {
     const lesson = lessonByTask.get(row.class_task_id) ?? ''
-    const item = counts.get(row.student_id) ?? { missed: 0, makeup: 0, extra: 0 }
+    const item = counts.get(row.student_id) ?? { directRefund: 0, missed: 0, makeup: 0, extra: 0 }
     if (lesson.startsWith(EXTRA_PREFIX)) {
-      if (row.status === 'completed') item.extra += 1
+      if (row.status === 'completed' || row.status === 'present') item.extra += 1
     } else if (lesson.startsWith(MAKEUP_PREFIX)) {
-      if (row.status === 'completed') item.makeup += 1
+      if (row.status === 'completed' || row.status === 'present') item.makeup += 1
+    } else if (row.status === 'absent_refund') {
+      item.directRefund += 1                    // new model: explicit refund decision
     } else if (row.status === 'missing') {
-      item.missed += 1
+      item.missed += 1                          // legacy: check against makeup
     }
     counts.set(row.student_id, item)
   }
 
-  // Business rule: 欠課未補 = 補習班退費 → 下期折抵（負數）；多上 = 加收（正數）。
-  // 補課抵銷欠課，所以實際折抵的是「欠課 − 補課」。
+  // Business rule:
+  //   absent_refund (new) → direct per-session refund, no makeup subtraction
+  //   missing (legacy)    → refund only the sessions not covered by makeup
+  //   extra               → extra charge
   const result = new Map<string, { amount: number; note: string }>()
   for (const [studentId, item] of counts) {
     const unpaidMissed = Math.max(0, item.missed - item.makeup)
-    if (!unpaidMissed && !item.extra) continue
-    const amount = Math.round((item.extra - unpaidMissed) * params.rate)
+    const totalRefund = item.directRefund + unpaidMissed
+    if (!totalRefund && !item.extra) continue
+    const amount = Math.round((item.extra - totalRefund) * params.rate)
     const parts: string[] = []
-    if (unpaidMissed) parts.push(`欠課 ${unpaidMissed} 堂折抵`)
-    if (item.extra) parts.push(`多上 ${item.extra} 堂加收`)
+    if (item.directRefund) parts.push(`缺席退費 ${item.directRefund} 堂`)
+    if (unpaidMissed) parts.push(`欠課折抵 ${unpaidMissed} 堂`)
+    if (item.extra) parts.push(`多上 ${item.extra} 堂`)
     if (item.makeup) parts.push(`補課 ${item.makeup} 堂`)
     result.set(studentId, { amount, note: `前期 ${parts.join('、')}` })
   }
@@ -1204,6 +1210,88 @@ export function defaultSeasonDraft(today = new Date()) {
 // Attendance refund calculation
 // ---------------------------------------------------------------------------
 
+// Per-student refund from a PREVIOUS season's absent_refund records.
+// Used when opening the next season's bag: these amounts go into carryover_amount.
+export interface PrevSeasonRefund {
+  student_id: string
+  prev_season_code: string
+  refund_sessions: number
+  rate_per_session: number
+  refund_amount: number
+  carryover_note: string
+}
+
+export async function getPreviousSeasonRefunds(input: {
+  classId: string
+  currentSeasonId: string
+}): Promise<PrevSeasonRefund[]> {
+  const supabase = await createServiceClient()
+  const currentSeason = await getSeasonOrThrow(supabase, input.currentSeasonId)
+
+  const { data: prevSeasons, error: prevSeasonError } = await supabase
+    .from('billing_seasons')
+    .select('id, season_code, tenant_id')
+    .eq('tenant_id', currentSeason.tenant_id)
+    .lt('start_date', currentSeason.start_date)
+    .order('start_date', { ascending: false })
+    .limit(1)
+  if (prevSeasonError) throw new Error(prevSeasonError.message)
+  const prev = (prevSeasons ?? [])[0] as { id: string; season_code: string; tenant_id: string } | undefined
+  if (!prev) return []
+
+  // Get previous season's rate_per_session per student from their payment_bag_lines
+  const { data: prevBag } = await supabase
+    .from('payment_bags')
+    .select('id')
+    .eq('season_id', prev.id)
+    .eq('class_id', input.classId)
+    .limit(1)
+    .maybeSingle()
+
+  const rateMap = new Map<string, number>()
+  if (prevBag) {
+    const { data: prevLines } = await supabase
+      .from('payment_bag_lines')
+      .select('student_id, rate_per_session')
+      .eq('bag_id', prevBag.id as string)
+    for (const line of prevLines ?? []) {
+      rateMap.set(line.student_id as string, Number(line.rate_per_session ?? 0))
+    }
+  }
+
+  const tasks = await getAttendanceTasks(supabase, input.classId, prev.season_code)
+  if (tasks.length === 0) return []
+
+  const { data: records, error: recordsError } = await supabase
+    .from('student_task_records')
+    .select('student_id')
+    .in('class_task_id', tasks.map((t) => t.id))
+    .eq('status', 'absent_refund')
+  if (recordsError) throw new Error(recordsError.message)
+
+  const refundCounts = new Map<string, number>()
+  for (const rec of records ?? []) {
+    const sid = rec.student_id as string
+    refundCounts.set(sid, (refundCounts.get(sid) ?? 0) + 1)
+  }
+
+  const result: PrevSeasonRefund[] = []
+  for (const [studentId, sessions] of refundCounts) {
+    const rate = rateMap.get(studentId) ?? 0
+    const refund_amount = sessions * rate
+    if (refund_amount <= 0) continue          // skip if no rate or nothing to refund
+    result.push({
+      student_id: studentId,
+      prev_season_code: prev.season_code,
+      refund_sessions: sessions,
+      rate_per_session: rate,
+      refund_amount,
+      carryover_note: `${prev.season_code} 缺席退費 ${sessions} 堂`,
+    })
+  }
+  return result
+}
+
 export interface AttendanceRefundLine {
   line_id: string
   student_id: string
@@ -1277,39 +1365,6 @@ export async function computeAttendanceRefunds(bagId: string): Promise<Attendanc
     .filter(p => p.refund_sessions > 0)
 }
 
-export async function applyAttendanceRefunds(bagId: string): Promise<number> {
-  const supabase = await createServiceClient()
-  const previews = await computeAttendanceRefunds(bagId)
-  if (previews.length === 0) return 0
-
-  const { data: fullLines, error } = await supabase
-    .from('payment_bag_lines')
-    .select('id, tuition_amount, book_fee, misc_fee, discount_amount, carryover_amount')
-    .eq('bag_id', bagId)
-    .in('id', previews.map(p => p.line_id))
-  if (error) throw new Error(error.message)
-
-  const lineMap = new Map((fullLines ?? []).map(l => [l.id as string, l]))
-
-  await Promise.all(previews.map(p => {
-    const line = lineMap.get(p.line_id)
-    const adj = -p.refund_amount
-    const total = line
-      ? Number(line.tuition_amount) + Number(line.book_fee) + Number(line.misc_fee)
-        - Number(line.discount_amount) + Number(line.carryover_amount) + adj
-      : adj
-    return supabase
-      .from('payment_bag_lines')
-      .update({
-        adjustment_amount: adj,
-        adjustment_label: `缺席退費 ${p.refund_sessions} 堂`,
-        total_amount: total,
-      })
-      .eq('id', p.line_id)
-  }))
-
-  return previews.length
-}
 
 export function normalizeSeasonDraft(raw: { year?: unknown; quarter?: unknown; startDate?: unknown; endDate?: unknown }) {
   const fallback = defaultSeasonDraft()
