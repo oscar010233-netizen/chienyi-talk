@@ -2,10 +2,11 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Kanban, Plus, ReceiptText, Send, Trash2, UserPlus } from 'lucide-react'
+import { ArrowLeft, ClipboardCheck, Kanban, Plus, ReceiptText, Send, Trash2, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { AddTaskModal } from './AddTaskModal'
+import { AttendanceModal } from './AttendanceModal'
 import { EnrollStudentModal } from './EnrollStudentModal'
 import { LampBadge } from './LampBadge'
 import { TaskUpdateDrawer } from './TaskUpdateDrawer'
@@ -79,6 +80,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   const [showAddTask, setShowAddTask] = useState(false)
   const [showEnroll, setShowEnroll] = useState(false)
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
+  const [attendanceTask, setAttendanceTask] = useState<Task | null>(null)
   const router = useRouter()
 
   const classSlug = encodeURIComponent(cls.id)
@@ -263,6 +265,16 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                               {threshold && <span> · 門檻 {threshold}</span>}
                             </p>
                           </div>
+                          {task.task_type === 'attendance' && (
+                            <button
+                              type="button"
+                              onClick={() => setAttendanceTask(task)}
+                              title="點名"
+                              className="mt-0.5 shrink-0 rounded p-1 text-sky-500/0 transition-colors group-hover:text-sky-500/70 hover:!text-sky-600"
+                            >
+                              <ClipboardCheck size={13} />
+                            </button>
+                          )}
                           <button
                             type="button"
                             onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
@@ -311,6 +323,15 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             </table>
           </div>
         </div>
+      )}
+
+      {attendanceTask && (
+        <AttendanceModal
+          task={attendanceTask}
+          students={students}
+          recordMap={recordMap}
+          onClose={(refresh) => { setAttendanceTask(null); if (refresh) router.refresh() }}
+        />
       )}
 
       {selected && (
