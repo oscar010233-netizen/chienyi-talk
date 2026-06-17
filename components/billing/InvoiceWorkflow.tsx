@@ -231,7 +231,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const selectedClass = state.selectedClass
   const selectedSeason = state.selectedSeason
   const globalHolidayDates = useMemo(
-    () => new Set(state.holidays.filter((holiday) => !holiday.class_id).map((holiday) => holiday.holiday_date)),
+    () => new Set(state.holidays),
     [state.holidays],
   )
 

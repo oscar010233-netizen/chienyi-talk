@@ -26,9 +26,8 @@ export const DB_TABLES: TableMeta[] = [
   { name: 'schedule_event_teachers', group: '配課表', note: '多老師預留；被 events 查詢 join，但無寫入 UI', columns: ['id', 'tenant_id', 'schedule_event_id', 'teacher_id', 'start_time', 'end_time', 'color', 'created_at', 'updated_at'] },
   { name: 'day_entries', group: '配課表', note: 'notes / sort_order 欄從不寫入', columns: ['id', 'tenant_id', 'schedule_day_id', 'type', 'person', 'content', 'done', 'notes', 'sort_order', 'created_at'] },
 
-  { name: 'billing_seasons', group: '帳務', columns: ['id', 'tenant_id', 'season_code', 'year', 'quarter', 'start_date', 'end_date', 'label', 'status', 'created_at', 'updated_at'] },
-  { name: 'billing_season_holidays', group: '帳務', columns: ['id', 'tenant_id', 'season_id', 'class_id', 'holiday_date', 'label', 'created_at'] },
-  { name: 'default_attendance', group: '帳務', columns: ['id', 'tenant_id', 'season_id', 'class_id', 'session_index', 'default_date', 'original_date', 'period_key', 'source', 'status', 'holiday_id', 'note', 'created_at', 'updated_at'] },
+  { name: 'billing_seasons', group: '帳務', note: 'holiday_dates 已內嵌（原 billing_season_holidays 表已移除）', columns: ['id', 'tenant_id', 'season_code', 'year', 'quarter', 'start_date', 'end_date', 'label', 'status', 'holiday_dates', 'created_at', 'updated_at'] },
+  { name: 'default_attendance', group: '帳務', note: 'holiday_id 已移除（FK 參照的 billing_season_holidays 已刪）', columns: ['id', 'tenant_id', 'season_id', 'class_id', 'session_index', 'default_date', 'original_date', 'period_key', 'source', 'status', 'note', 'created_at', 'updated_at'] },
   { name: 'payment_bags', group: '帳務', columns: ['id', 'tenant_id', 'season_id', 'class_id', 'bag_code', 'issue_date', 'due_date', 'status', 'tuition_note', 'note', 'print_count', 'last_printed_at', 'created_at', 'updated_at'] },
   { name: 'payment_bag_lines', group: '帳務', note: 'issue_status/paid_amount/handler/payment_status/intro_card_received 有 API（update-line）但無 UI 觸發', columns: ['id', 'tenant_id', 'bag_id', 'student_id', 'student_order', 'session_count', 'rate_per_session', 'tuition_amount', 'book_name', 'book_fee', 'misc_label', 'misc_fee', 'discount_label', 'discount_amount', 'carryover_amount', 'carryover_note', 'adjustment_label', 'adjustment_amount', 'total_amount', 'issue_status', 'paid_amount', 'intro_card_received', 'handler', 'payment_status', 'note', 'created_at', 'updated_at'] },
 

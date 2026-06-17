@@ -14,15 +14,7 @@ export interface BillingSeason {
   end_date: string
   label: string | null
   status: string
-}
-
-export interface BillingHoliday {
-  id: string
-  tenant_id: string
-  season_id: string
-  class_id: string | null
-  holiday_date: string
-  label: string | null
+  holiday_dates: string[]
 }
 
 export interface BillingStudent {
@@ -153,7 +145,7 @@ export interface BillingState {
   selectedClass: BillingClass | null
   selectedSeason: BillingSeason | null
   students: BillingStudent[]
-  holidays: BillingHoliday[]
+  holidays: string[]
   defaultAttendance: DefaultAttendance[]
   actualAttendance: ActualAttendance[]
   bags: PaymentBag[]

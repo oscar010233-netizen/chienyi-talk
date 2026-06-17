@@ -18,7 +18,6 @@ import type {
   ActualAttendance,
   ActualAttendanceStatus,
   BillingClass,
-  BillingHoliday,
   BillingSeason,
   BillingState,
   BillingStudent,
@@ -244,13 +243,13 @@ export async function getBillingState(params: {
 
   const defaults = await getDefaultAttendanceRows(supabase, selectedSeason.id, selectedClass.id)
 
-  const [students, holidays, actuals, bags, activeBag] = await Promise.all([
+  const [students, actuals, bags, activeBag] = await Promise.all([
     getStudentsForClass(supabase, selectedClass.id),
-    getHolidays(supabase, selectedSeason.id, selectedClass.id),
     buildAttendanceView(supabase, selectedSeason, selectedClass.id, defaults),
     getPaymentBags(supabase, selectedSeason.id, selectedClass.id),
     getActiveBag(supabase, selectedSeason.id, selectedClass.id),
   ])
+  const holidays: string[] = selectedSeason.holiday_dates ?? []
 
   const studentsById = new Map(students.map((student) => [student.student_id, student]))
   if (activeBag) {
@@ -275,16 +274,6 @@ export async function getBillingState(params: {
   }
 }
 
-async function getHolidays(supabase: Supabase, seasonId: string, classId: string): Promise<BillingHoliday[]> {
-  const { data, error } = await supabase
-    .from('billing_season_holidays')
-    .select('*')
-    .eq('season_id', seasonId)
-    .or(`class_id.is.null,class_id.eq.${classId}`)
-    .order('holiday_date')
-  if (error) throw new Error(error.message)
-  return (data ?? []) as BillingHoliday[]
-}
 
 async function getDefaultAttendanceRows(supabase: Supabase, seasonId: string, classId: string): Promise<DefaultAttendance[]> {
   const { data, error } = await supabase
@@ -497,83 +486,19 @@ export async function createBillingSeason(input: {
   return data as BillingSeason
 }
 
-export async function saveSeasonHoliday(input: {
-  seasonId: string
-  holidayDate: string
-  label?: string | null
-  classId?: string | null
-}): Promise<BillingHoliday> {
-  const supabase = await createServiceClient()
-  const tenantId = await getTenantId(supabase)
-  const season = await getSeasonOrThrow(supabase, input.seasonId)
-  const classId = input.classId || null
-
-  let deleteQuery = supabase
-    .from('billing_season_holidays')
-    .delete()
-    .eq('tenant_id', tenantId)
-    .eq('season_id', season.id)
-    .eq('holiday_date', dateOnly(input.holidayDate))
-
-  deleteQuery = classId ? deleteQuery.eq('class_id', classId) : deleteQuery.is('class_id', null)
-  const { error: deleteError } = await deleteQuery
-  if (deleteError) throw new Error(deleteError.message)
-
-  const { data, error } = await supabase
-    .from('billing_season_holidays')
-    .insert({
-      tenant_id: tenantId,
-      season_id: season.id,
-      class_id: classId,
-      holiday_date: dateOnly(input.holidayDate),
-      label: input.label?.trim() || null,
-    })
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
-  return data as BillingHoliday
-}
-
 export async function replaceSeasonHolidays(input: {
   seasonId: string
-  classId?: string | null
   holidayDates: string[]
-  label?: string | null
 }): Promise<{ saved: number }> {
   const supabase = await createServiceClient()
-  const tenantId = await getTenantId(supabase)
   const season = await getSeasonOrThrow(supabase, input.seasonId)
-  const classId = input.classId || null
-
-  let deleteQuery = supabase
-    .from('billing_season_holidays')
-    .delete()
-    .eq('tenant_id', tenantId)
-    .eq('season_id', season.id)
-  deleteQuery = classId ? deleteQuery.eq('class_id', classId) : deleteQuery.is('class_id', null)
-
-  const { error: deleteError } = await deleteQuery
-  if (deleteError) throw new Error(deleteError.message)
-
   const uniqueDates = Array.from(new Set(input.holidayDates.map(dateOnly))).sort(compareDate)
-  if (uniqueDates.length === 0) return { saved: 0 }
-
-  const rows = uniqueDates.map((holidayDate) => ({
-    tenant_id: tenantId,
-    season_id: season.id,
-    class_id: classId,
-    holiday_date: holidayDate,
-    label: input.label?.trim() || null,
-  }))
-  const { error } = await supabase.from('billing_season_holidays').insert(rows)
+  const { error } = await supabase
+    .from('billing_seasons')
+    .update({ holiday_dates: uniqueDates })
+    .eq('id', season.id)
   if (error) throw new Error(error.message)
-  return { saved: rows.length }
-}
-
-export async function removeSeasonHoliday(id: string): Promise<void> {
-  const supabase = await createServiceClient()
-  const { error } = await supabase.from('billing_season_holidays').delete().eq('id', id)
-  if (error) throw new Error(error.message)
+  return { saved: uniqueDates.length }
 }
 
 export async function generateDefaultAttendance(input: {
@@ -585,9 +510,8 @@ export async function generateDefaultAttendance(input: {
   const season = await getSeasonOrThrow(supabase, input.seasonId)
   const cls = await getClassOrThrow(supabase, input.classId)
   const students = await getStudentsForClass(supabase, cls.id)
-  const holidays = await getHolidays(supabase, season.id, cls.id)
-  const holidaySet = new Set(holidays.map((holiday) => holiday.holiday_date))
-  const holidayByDate = new Map(holidays.map((holiday) => [holiday.holiday_date, holiday]))
+  const { data: seasonData } = await supabase.from('billing_seasons').select('holiday_dates').eq('id', season.id).single()
+  const holidaySet = new Set<string>((seasonData?.holiday_dates ?? []) as string[])
   const baseDates = generateClassDates({
     startDate: season.start_date,
     endDate: season.end_date,
@@ -614,7 +538,7 @@ export async function generateDefaultAttendance(input: {
     period_key: periodKey(season.season_code, season.start_date, entry.date),
     source: 'generated',
     status: entry.shifted ? 'holiday_shifted' : 'scheduled',
-    holiday_id: entry.shifted ? holidayByDate.get(entry.originalDate)?.id ?? null : null,
+    holiday_id: null,
     note: entry.shifted ? `${formatDateMd(entry.originalDate)} 假日順延` : null,
   }))
 

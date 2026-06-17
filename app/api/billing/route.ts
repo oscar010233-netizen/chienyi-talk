@@ -9,9 +9,7 @@ import {
   recordExtraAttendance,
   recordPaymentBagPrint,
   replaceSeasonHolidays,
-  removeSeasonHoliday,
   saveBillingClassConfig,
-  saveSeasonHoliday,
   syncActualAttendanceFromClassSheet,
   updatePaymentBagLine,
 } from '@/lib/billing/service'
@@ -74,39 +72,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ class: cls })
     }
 
-    if (action === 'save-holiday') {
-      const seasonId = String(body.season_id ?? '')
-      const holidayDate = String(body.holiday_date ?? '')
-      if (!seasonId || !holidayDate) return jsonError('season_id and holiday_date required', 400)
-      const holiday = await saveSeasonHoliday({
-        seasonId,
-        holidayDate,
-        classId: typeof body.class_id === 'string' && body.class_id ? body.class_id : null,
-        label: String(body.label ?? '').trim() || null,
-      })
-      return NextResponse.json({ holiday })
-    }
-
     if (action === 'replace-holidays') {
       const seasonId = String(body.season_id ?? '')
       if (!seasonId) return jsonError('season_id required', 400)
       const holidayDates = Array.isArray(body.holiday_dates)
         ? body.holiday_dates.map(String).filter(Boolean)
         : []
-      const result = await replaceSeasonHolidays({
-        seasonId,
-        classId: typeof body.class_id === 'string' && body.class_id ? body.class_id : null,
-        holidayDates,
-        label: typeof body.label === 'string' ? body.label : null,
-      })
+      const result = await replaceSeasonHolidays({ seasonId, holidayDates })
       return NextResponse.json(result)
-    }
-
-    if (action === 'remove-holiday') {
-      const id = String(body.id ?? '')
-      if (!id) return jsonError('id required', 400)
-      await removeSeasonHoliday(id)
-      return NextResponse.json({ ok: true })
     }
 
     if (action === 'generate-attendance') {
