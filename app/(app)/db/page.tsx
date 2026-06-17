@@ -207,7 +207,7 @@ export default function DbMonitorPage() {
       <div className="flex min-h-0 flex-1 gap-4 p-4 md:gap-6 md:p-6">
 
         {/* Left: table list */}
-        <div className="w-52 shrink-0 overflow-y-auto rounded-lg border border-border bg-background/50">
+        <div className="w-52 shrink-0 overflow-y-auto rounded-lg border border-border bg-background/50 self-stretch">
           {groups.map((g) => (
             <div key={g} className="border-b border-border/60 last:border-0">
               <div className="px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground/70">{g}</div>
@@ -234,8 +234,11 @@ export default function DbMonitorPage() {
           ))}
         </div>
 
-        {/* Middle: rows */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background/50">
+        {/* Right column: rows (2/3) + audit log (1/3) */}
+        <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-6">
+
+        {/* Rows panel */}
+        <div className="flex min-h-0 flex-[2] flex-col overflow-hidden rounded-lg border border-border bg-background/50">
           {!selected ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">← 點左側表格檢視內容</div>
           ) : (
@@ -330,8 +333,8 @@ export default function DbMonitorPage() {
           )}
         </div>
 
-        {/* Right: change feed */}
-        <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-background/50">
+        {/* Audit log panel */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background/50">
           <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
             <span className="text-sm font-semibold text-foreground">即時變更</span>
             <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
@@ -376,6 +379,8 @@ export default function DbMonitorPage() {
             )}
           </div>
         </div>
+
+        </div>{/* end right column */}
       </div>
     </div>
   )
