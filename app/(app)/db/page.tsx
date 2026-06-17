@@ -202,7 +202,7 @@ export default function DbMonitorPage() {
         </div>
 
         {/* Middle: rows */}
-        <div className="flex min-w-0 flex-1 flex-col rounded-lg border border-border bg-background/50">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background/50">
           {!selected ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">← 點左側表格檢視內容</div>
           ) : (
@@ -265,7 +265,7 @@ export default function DbMonitorPage() {
         </div>
 
         {/* Right: change feed */}
-        <div className="flex w-80 shrink-0 flex-col rounded-lg border border-border bg-background/50">
+        <div className="flex w-80 shrink-0 flex-col overflow-hidden rounded-lg border border-border bg-background/50">
           <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
             <span className="text-sm font-semibold text-foreground">即時變更</span>
             <span className="flex items-center gap-1 text-[11px] text-muted-foreground">

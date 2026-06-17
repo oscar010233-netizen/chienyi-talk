@@ -577,7 +577,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       {tab === 'holidays' && (
         <main className="grid gap-4 p-4 md:grid-cols-[260px_1fr] md:p-6">
           {/* Left: season list + new season form */}
-          <section className="rounded-lg border border-border bg-background">
+          <section className="overflow-hidden rounded-lg border border-border bg-background">
             <div className="flex items-center justify-between border-b border-border px-4 py-3">
               <h2 className="text-sm font-semibold">季度列表</h2>
               <button
@@ -745,7 +745,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
           {/* List mode */}
           {openMode === 'list' && (
-            <section className="rounded-lg border border-border bg-background">
+            <section className="overflow-hidden rounded-lg border border-border bg-background">
               {bagListLoading ? (
                 <div className="grid min-h-48 place-items-center">
                   <Loader2 size={20} className="animate-spin text-muted-foreground" />
@@ -854,7 +854,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     showIntensiveCol={selectedClass.class_type === 'intensive'}
                   />
                 </div>
-                <aside className="rounded-lg border border-border">
+                <aside className="overflow-hidden rounded-lg border border-border">
                   <div className="flex items-center justify-between border-b border-border px-3 py-2 text-sm font-medium">
                     <span>學生</span>
                     <button
@@ -932,7 +932,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
             {openStep === 3 && currentDraft && (
               <div className="grid gap-4 xl:grid-cols-[220px_1fr_340px]">
-                <aside className="rounded-lg border border-border">
+                <aside className="overflow-hidden rounded-lg border border-border">
                   <div className="border-b border-border px-3 py-2 text-sm font-medium">學生</div>
                   <div className="max-h-[560px] overflow-auto">
                     {selectedStudentList.map((student, index) => (
@@ -1297,7 +1297,7 @@ function BagPreview({ state }: { state: BillingState }) {
   }
   const total = bag.lines.reduce((sum, line) => sum + Number(line.total_amount ?? 0), 0)
   return (
-    <section className="rounded-lg border border-border bg-background">
+    <section className="overflow-hidden rounded-lg border border-border bg-background">
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
         <ReceiptText size={16} />
         <h2 className="text-sm font-semibold">{bag.bag_code}</h2>
