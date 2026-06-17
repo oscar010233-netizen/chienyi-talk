@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
+import { LogoutButton } from "./LogoutButton";
 
 const navItems = [
   { href: "/", icon: Home, label: "總覽" },
@@ -105,8 +106,9 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mac-hairline border-t p-2.5">
+      <div className="mac-hairline flex flex-col gap-0.5 border-t p-2.5">
         <ThemeToggle collapsed={collapsed} />
+        <LogoutButton collapsed={collapsed} />
       </div>
     </aside>
   );

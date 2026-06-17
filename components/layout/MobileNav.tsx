@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { BookOpen, CalendarDays, ClipboardCheck, GraduationCap, Home, ReceiptText, Users } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
+import { BookOpen, CalendarDays, ClipboardCheck, GraduationCap, Home, LogOut, ReceiptText, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { href: "/", icon: Home, label: "總覽" },
@@ -17,9 +18,17 @@ const navItems = [
 
 export function MobileNav() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleLogout() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   return (
-    <nav className="mac-glass mac-hairline fixed right-0 bottom-0 left-0 z-50 grid grid-cols-7 border-t pb-safe-bottom md:hidden">
+    <nav className="mac-glass mac-hairline fixed right-0 bottom-0 left-0 z-50 grid grid-cols-8 border-t pb-safe-bottom md:hidden">
       {navItems.map(({ href, icon: Icon, label }) => {
         const isActive =
           pathname === href || (href !== "/" && pathname.startsWith(href));
@@ -32,11 +41,18 @@ export function MobileNav() {
               isActive ? "text-gold" : "text-muted-foreground"
             )}
           >
-            <Icon size={20} />
+            <Icon size={19} />
             {label}
           </Link>
         );
       })}
+      <button
+        onClick={handleLogout}
+        className="flex min-h-14 flex-col items-center justify-center gap-1 py-2 text-xs font-medium text-muted-foreground transition-colors"
+      >
+        <LogOut size={19} />
+        登出
+      </button>
     </nav>
   );
 }
