@@ -814,11 +814,12 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
           {openMode === 'workflow' && selectedClass && selectedSeason && (
           <>
           <section className="rounded-md border border-border bg-background p-4">
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <StepPill active={openStep === 1} done={openStep > 1}>1 日期 & 學生</StepPill>
-              <StepPill active={openStep === 2} done={openStep > 2}>2 費用</StepPill>
-              <StepPill active={openStep === 3}>3 個別調整</StepPill>
-              <div className="ml-auto text-xs text-muted-foreground">
+            <div className="mb-6">
+              <WizardSteps
+                current={openStep}
+                steps={['日期 & 學生', '費用', '個別調整']}
+              />
+              <div className="mt-2 text-right text-xs text-muted-foreground">
                 {selectedClass.class_name} · {selectedSeason.season_code}
               </div>
             </div>
@@ -1048,13 +1049,42 @@ function TabButton({ active, children, icon, onClick }: { active: boolean; child
   )
 }
 
-function StepPill({ active, done, children }: { active?: boolean; done?: boolean; children: ReactNode }) {
+function WizardSteps({ current, steps }: { current: number; steps: string[] }) {
   return (
-    <span className={`inline-flex h-8 items-center gap-2 rounded-md border px-3 text-xs font-medium ${active ? 'border-foreground bg-foreground text-background' : done ? 'border-emerald-200 bg-emerald-50 text-emerald-900' : 'border-border text-muted-foreground'}`}>
-      {done ? <Check size={13} /> : null}
-      {children}
-    </span>
+    <div className="flex items-start">
+      {steps.map((label, index) => {
+        const stepNum = index + 1
+        const isDone = current > stepNum
+        const isActive = current === stepNum
+        return (
+          <div key={stepNum} className="flex flex-1 items-start">
+            <div className="flex flex-col items-center">
+              <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
+                isActive ? 'bg-foreground text-background'
+                : isDone ? 'bg-emerald-100 text-emerald-700'
+                : 'border-2 border-border text-muted-foreground'
+              }`}>
+                {isDone ? <Check size={14} /> : stepNum}
+              </div>
+              <span className={`mt-1.5 text-center text-xs leading-tight ${isActive ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                {label}
+              </span>
+            </div>
+            {index < steps.length - 1 && (
+              <div className={`mt-4 h-px flex-1 ${isDone ? 'bg-emerald-300' : 'bg-border'}`} />
+            )}
+          </div>
+        )
+      })}
+    </div>
   )
+}
+
+const MONTH_BG: Record<number, string> = {
+  1: 'bg-slate-100 text-slate-600', 2: 'bg-slate-100 text-slate-600', 3: 'bg-slate-100 text-slate-600',
+  4: 'bg-rose-50 text-rose-600', 5: 'bg-sky-50 text-sky-600', 6: 'bg-emerald-50 text-emerald-600',
+  7: 'bg-amber-50 text-amber-600', 8: 'bg-amber-50 text-amber-600', 9: 'bg-amber-50 text-amber-600',
+  10: 'bg-violet-50 text-violet-600', 11: 'bg-violet-50 text-violet-600', 12: 'bg-violet-50 text-violet-600',
 }
 
 function QuarterCalendar({
@@ -1074,44 +1104,63 @@ function QuarterCalendar({
   onToggle: (date: string) => void
   mode: 'holiday' | 'team' | 'intensive'
 }) {
+  const months = monthsForQuarter(quarter)
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      {monthsForQuarter(quarter).map((month) => (
-        <div key={month} className="rounded-md border border-border bg-background p-3">
-          <div className="mb-2 text-center text-sm font-medium">{year} 年 {month} 月</div>
-          <div className="grid grid-cols-7 text-center text-[11px] text-muted-foreground">
-            {['日', '一', '二', '三', '四', '五', '六'].map((day) => <span key={day} className="py-1">{day}</span>)}
-          </div>
-          {buildMonthWeeks(year, month).map((week, index) => (
-            <div key={index} className="grid grid-cols-7 gap-1">
-              {week.map((date, cellIndex) => {
-                if (!date) return <span key={cellIndex} className="aspect-square" />
-                const isSelected = selected.has(date)
-                const isSecondary = secondary?.has(date) ?? false
-                const isHoliday = holidays.has(date)
-                const tone = mode === 'holiday'
-                  ? isSelected ? 'bg-red-500 text-white' : 'hover:bg-red-50'
-                  : isSelected ? 'bg-blue-600 text-white'
-                    : isSecondary ? 'bg-emerald-600 text-white'
-                      : isHoliday ? 'text-muted-foreground'
-                        : 'hover:bg-muted'
-                return (
-                  <button
-                    key={date}
-                    type="button"
-                    onClick={() => onToggle(date)}
-                    className={`relative aspect-square rounded-full text-xs font-medium transition-colors ${tone}`}
-                    title={formatDateMd(date)}
+    <div className="overflow-hidden rounded-md border border-border bg-background">
+      <table className="w-full border-separate border-spacing-0">
+        <thead>
+          <tr>
+            <th className="w-9 border-b border-r border-border" />
+            {['日', '一', '二', '三', '四', '五', '六'].map((d) => (
+              <th key={d} className="border-b border-border py-2 text-center text-xs font-normal text-muted-foreground">{d}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {months.map((month, monthIdx) => {
+            const weeks = buildMonthWeeks(year, month)
+            return weeks.map((week, weekIdx) => (
+              <tr key={`${month}-${weekIdx}`}>
+                {weekIdx === 0 && (
+                  <td
+                    rowSpan={weeks.length}
+                    className={`border-r border-border text-center text-xs font-semibold align-middle w-9 ${monthIdx > 0 ? 'border-t' : ''} ${MONTH_BG[month] ?? ''}`}
                   >
-                    {Number(date.slice(8, 10))}
-                    {isHoliday && mode !== 'holiday' && <span className="absolute right-0 top-0 h-0 w-0 border-l-[7px] border-t-[7px] border-l-transparent border-t-red-500" />}
-                  </button>
-                )
-              })}
-            </div>
-          ))}
-        </div>
-      ))}
+                    {month}
+                  </td>
+                )}
+                {week.map((date, cellIdx) => {
+                  if (!date) return <td key={cellIdx} className={`p-0.5 ${weekIdx === 0 && monthIdx > 0 ? 'border-t border-border' : ''}`} />
+                  const isSelected = selected.has(date)
+                  const isSecondary = secondary?.has(date) ?? false
+                  const isHoliday = holidays.has(date)
+                  const btnTone = mode === 'holiday'
+                    ? isSelected ? 'bg-red-500 text-white' : 'hover:bg-red-50'
+                    : isSelected ? 'bg-blue-600 text-white'
+                      : isSecondary ? 'bg-emerald-600 text-white'
+                        : isHoliday ? 'text-muted-foreground/60'
+                          : 'hover:bg-muted'
+                  return (
+                    <td key={date} className={`p-0.5 ${weekIdx === 0 && monthIdx > 0 ? 'border-t border-border' : ''}`}>
+                      <button
+                        type="button"
+                        onClick={() => onToggle(date)}
+                        className={`relative flex h-8 w-full items-center justify-center rounded-full text-xs font-medium transition-colors ${btnTone}`}
+                        title={formatDateMd(date)}
+                      >
+                        {Number(date.slice(8, 10))}
+                        {isHoliday && mode !== 'holiday' && (
+                          <span className="absolute right-0.5 top-0.5 h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-red-500" />
+                        )}
+                      </button>
+                    </td>
+                  )
+                })}
+              </tr>
+            ))
+          })}
+        </tbody>
+      </table>
     </div>
   )
 }
