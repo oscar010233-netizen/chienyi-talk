@@ -205,9 +205,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         </div>
       )}
 
-      {tasks.length === 0 || students.length === 0 ? (
+      {students.length === 0 ? (
         <div className="grid flex-1 place-items-center text-sm text-muted-foreground">
-          <p>{tasks.length === 0 ? '還沒有任務' : '還沒有學生'}</p>
+          <p>還沒有學生</p>
         </div>
       ) : (
         <div className="min-h-0 flex-1 overflow-hidden p-4 md:p-6">
@@ -234,6 +234,13 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 </tr>
               </thead>
               <tbody>
+                {tasks.length === 0 && (
+                  <tr>
+                    <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                      還沒有任務，點「加任務」開始新增
+                    </td>
+                  </tr>
+                )}
                 {tasks.map((task, rowIndex) => {
                   const zebra = cn(
                     rowIndex % 2 === 1 ? 'bg-[#f3f4f6] dark:bg-[#353537]' : 'bg-white dark:bg-[#2c2c2e]',
