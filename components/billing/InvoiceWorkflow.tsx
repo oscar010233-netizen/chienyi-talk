@@ -851,6 +851,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     holidays={globalHolidayDates}
                     onToggle={toggleTeamDate}
                     mode="team"
+                    showIntensiveCol={selectedClass.class_type === 'intensive'}
                   />
                 </div>
                 <aside className="rounded-md border border-border">
@@ -1129,6 +1130,7 @@ function QuarterCalendar({
   holidays,
   onToggle,
   mode,
+  showIntensiveCol,
 }: {
   year: number
   quarter: string
@@ -1137,6 +1139,7 @@ function QuarterCalendar({
   holidays: Set<string>
   onToggle: (date: string) => void
   mode: 'holiday' | 'team' | 'intensive'
+  showIntensiveCol?: boolean
 }) {
   const qMonths = monthsForQuarter(quarter)
   const groups = buildQuarterWeeksGrouped(year, quarter)
@@ -1150,54 +1153,70 @@ function QuarterCalendar({
             {['日', '一', '二', '三', '四', '五', '六'].map((d) => (
               <th key={d} className="border-b border-border py-2 text-center text-xs font-normal text-muted-foreground">{d}</th>
             ))}
+            {showIntensiveCol && (
+              <th className="border-b border-l border-border py-2 text-center text-xs font-semibold text-emerald-600">強</th>
+            )}
           </tr>
         </thead>
         <tbody>
           {groups.map(({ month, monthIdx, weeks }) =>
-            weeks.map((week, weekIdx) => (
-              <tr key={`${month}-${weekIdx}`}>
-                {weekIdx === 0 && (
-                  <td
-                    rowSpan={weeks.length}
-                    className={`w-9 border-r border-border text-center text-[11px] font-semibold align-middle ${monthIdx > 0 ? 'border-t border-border' : ''} ${QM[monthIdx].label}`}
-                  >
-                    {month}
-                  </td>
-                )}
-                {week.map((cell, cellIdx) => {
-                  const isMonthBoundary = weekIdx === 0 && monthIdx > 0
-                  if (!cell) {
-                    return <td key={cellIdx} className={`p-0.5 ${isMonthBoundary ? 'border-t border-border' : ''}`} />
-                  }
-                  const pos = qMonths.indexOf(cell.month)
-                  const cellBg = pos >= 0 ? QM[pos].cell : ''
-                  const isSelected = selected.has(cell.date)
-                  const isSecondary = secondary?.has(cell.date) ?? false
-                  const isHoliday = holidays.has(cell.date)
-                  const btnTone = mode === 'holiday'
-                    ? isSelected ? 'bg-red-500 text-white' : 'hover:bg-red-50'
-                    : isSelected ? 'bg-blue-600 text-white'
-                      : isSecondary ? 'bg-emerald-600 text-white'
-                        : isHoliday ? 'text-muted-foreground/50'
-                          : 'hover:bg-black/5'
-                  return (
-                    <td key={cell.date} className={`p-0.5 ${cellBg} ${isMonthBoundary ? 'border-t border-border' : ''}`}>
-                      <button
-                        type="button"
-                        onClick={() => onToggle(cell.date)}
-                        className={`relative flex h-8 w-full items-center justify-center rounded-full text-xs font-medium transition-colors ${btnTone}`}
-                        title={formatDateMd(cell.date)}
-                      >
-                        {Number(cell.date.slice(8, 10))}
-                        {isHoliday && mode !== 'holiday' && (
-                          <span className="absolute right-0.5 top-0.5 h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-red-500" />
-                        )}
-                      </button>
+            weeks.map((week, weekIdx) => {
+              const isMonthBoundary = weekIdx === 0 && monthIdx > 0
+              return (
+                <tr key={`${month}-${weekIdx}`}>
+                  {weekIdx === 0 && (
+                    <td
+                      rowSpan={weeks.length}
+                      className={`w-9 border-r border-border text-center text-[11px] font-semibold align-middle ${isMonthBoundary ? 'border-t border-border' : ''} ${QM[monthIdx].label}`}
+                    >
+                      {month}
                     </td>
-                  )
-                })}
-              </tr>
-            ))
+                  )}
+                  {week.map((cell, cellIdx) => {
+                    if (!cell) {
+                      return <td key={cellIdx} className={`p-0.5 ${isMonthBoundary ? 'border-t border-border' : ''}`} />
+                    }
+                    // Overflow = day belongs to adjacent month shown in this section
+                    const isOverflow = cell.month !== month
+                    const pos = qMonths.indexOf(cell.month)
+                    // Overflow days: no tint; same-month days: tint
+                    const cellBg = !isOverflow && pos >= 0 ? QM[pos].cell : ''
+                    const isSelected = selected.has(cell.date)
+                    const isSecondary = secondary?.has(cell.date) ?? false
+                    const isHoliday = holidays.has(cell.date)
+                    const btnTone = mode === 'holiday'
+                      ? isSelected ? 'bg-red-500 text-white' : 'hover:bg-red-50'
+                      : isSelected ? 'bg-blue-600 text-white'
+                        : isSecondary ? 'bg-emerald-600 text-white'
+                          : isHoliday ? 'text-muted-foreground/40'
+                            : isOverflow ? 'text-muted-foreground/30'
+                              : 'hover:bg-black/5'
+                    return (
+                      <td key={cell.date} className={`p-0.5 ${cellBg} ${isMonthBoundary ? 'border-t border-border' : ''}`}>
+                        <button
+                          type="button"
+                          onClick={() => onToggle(cell.date)}
+                          className={`relative flex h-8 w-full items-center justify-center rounded-full text-xs font-medium transition-colors ${btnTone}`}
+                          title={formatDateMd(cell.date)}
+                        >
+                          {Number(cell.date.slice(8, 10))}
+                          {isHoliday && mode !== 'holiday' && (
+                            <span className="absolute right-0.5 top-0.5 h-0 w-0 border-l-[6px] border-t-[6px] border-l-transparent border-t-red-500" />
+                          )}
+                        </button>
+                      </td>
+                    )
+                  })}
+                  {showIntensiveCol && (
+                    <td className={`border-l border-border p-1 text-center ${isMonthBoundary ? 'border-t border-border' : ''}`}>
+                      <div className="flex h-8 items-center justify-center">
+                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-[11px] font-bold text-white">強</span>
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              )
+            })
           )}
         </tbody>
       </table>
