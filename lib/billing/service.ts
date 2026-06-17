@@ -65,13 +65,18 @@ function statusToReconciliation(status: ActualAttendanceStatus): ReconciliationS
 
 function statusToTask(status: ActualAttendanceStatus): { status: string } {
   if (status === 'attended' || status === 'makeup' || status === 'extra') {
-    return { status: 'completed' }
+    return { status: 'present' }
   }
-  if (status === 'absent') return { status: 'missing' }
-  return { status: 'wont_do' }
+  if (status === 'absent') return { status: 'absent_makeup' }
+  return { status: 'absent_refund' }
 }
 
 function taskToActual(status: string | null | undefined): ActualAttendanceStatus | null {
+  // new status values
+  if (status === 'present' || status === 'late') return 'attended'
+  if (status === 'absent_makeup') return 'absent'
+  if (status === 'absent_refund') return 'cancelled'
+  // legacy values kept for backward-compat
   if (status === 'completed') return 'attended'
   if (status === 'missing') return 'absent'
   if (status === 'wont_do') return 'cancelled'
@@ -1193,6 +1198,117 @@ export function defaultSeasonDraft(today = new Date()) {
     seasonCode: buildSeasonCode(year, quarter),
     ...dates,
   }
+}
+
+// ---------------------------------------------------------------------------
+// Attendance refund calculation
+// ---------------------------------------------------------------------------
+
+export interface AttendanceRefundLine {
+  line_id: string
+  student_id: string
+  student_name: string
+  refund_sessions: number
+  rate_per_session: number
+  refund_amount: number
+}
+
+export async function computeAttendanceRefunds(bagId: string): Promise<AttendanceRefundLine[]> {
+  const supabase = await createServiceClient()
+
+  const { data: bag } = await supabase
+    .from('payment_bags')
+    .select('class_id, season_id')
+    .eq('id', bagId)
+    .single()
+  if (!bag) throw new Error('bag not found')
+
+  const { data: season } = await supabase
+    .from('billing_seasons')
+    .select('season_code')
+    .eq('id', bag.season_id)
+    .single()
+  if (!season) throw new Error('season not found')
+
+  const { data: lines, error: linesError } = await supabase
+    .from('payment_bag_lines')
+    .select('id, student_id, rate_per_session, student:students(chinese_name, english_name)')
+    .eq('bag_id', bagId)
+    .order('student_order')
+  if (linesError) throw new Error(linesError.message)
+
+  const weekPrefix = seasonWeekPrefix(season.season_code)
+  const { data: tasks, error: tasksError } = await supabase
+    .from('class_tasks')
+    .select('id')
+    .eq('class_id', bag.class_id)
+    .eq('task_type', 'attendance')
+    .like('week_label', `${weekPrefix}%`)
+  if (tasksError) throw new Error(tasksError.message)
+  if (!tasks || tasks.length === 0) return []
+
+  const { data: records, error: recordsError } = await supabase
+    .from('student_task_records')
+    .select('student_id')
+    .in('class_task_id', tasks.map(t => t.id))
+    .eq('status', 'absent_refund')
+  if (recordsError) throw new Error(recordsError.message)
+
+  const refundCounts = new Map<string, number>()
+  for (const rec of records ?? []) {
+    refundCounts.set(rec.student_id, (refundCounts.get(rec.student_id) ?? 0) + 1)
+  }
+
+  return (lines ?? [])
+    .map(line => {
+      const s = line.student as unknown as { chinese_name: string | null; english_name: string | null } | null
+      const name = s?.chinese_name ?? s?.english_name ?? '—'
+      const refund_sessions = refundCounts.get(line.student_id) ?? 0
+      const rate = line.rate_per_session ?? 0
+      return {
+        line_id: line.id as string,
+        student_id: line.student_id as string,
+        student_name: name,
+        refund_sessions,
+        rate_per_session: rate,
+        refund_amount: refund_sessions * rate,
+      }
+    })
+    .filter(p => p.refund_sessions > 0)
+}
+
+export async function applyAttendanceRefunds(bagId: string): Promise<number> {
+  const supabase = await createServiceClient()
+  const previews = await computeAttendanceRefunds(bagId)
+  if (previews.length === 0) return 0
+
+  const { data: fullLines, error } = await supabase
+    .from('payment_bag_lines')
+    .select('id, tuition_amount, book_fee, misc_fee, discount_amount, carryover_amount')
+    .eq('bag_id', bagId)
+    .in('id', previews.map(p => p.line_id))
+  if (error) throw new Error(error.message)
+
+  const lineMap = new Map((fullLines ?? []).map(l => [l.id as string, l]))
+
+  await Promise.all(previews.map(p => {
+    const line = lineMap.get(p.line_id)
+    const adj = -p.refund_amount
+    const total = line
+      ? Number(line.tuition_amount) + Number(line.book_fee) + Number(line.misc_fee)
+        - Number(line.discount_amount) + Number(line.carryover_amount) + adj
+      : adj
+    return supabase
+      .from('payment_bag_lines')
+      .update({
+        adjustment_amount: adj,
+        adjustment_label: `缺席退費 ${p.refund_sessions} 堂`,
+        total_amount: total,
+      })
+      .eq('id', p.line_id)
+  }))
+
+  return previews.length
 }
 
 export function normalizeSeasonDraft(raw: { year?: unknown; quarter?: unknown; startDate?: unknown; endDate?: unknown }) {

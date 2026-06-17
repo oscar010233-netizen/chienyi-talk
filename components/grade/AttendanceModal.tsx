@@ -12,25 +12,35 @@ interface Props {
   onClose: (refresh?: boolean) => void
 }
 
-type AttStatus = 'completed' | 'missing' | 'wont_do' | 'pending'
+type AttStatus = 'pending' | 'present' | 'late' | 'absent_makeup' | 'absent_refund'
 
-const STATUS_OPTIONS: { value: AttStatus; label: string; active: string; inactive: string }[] = [
+const STATUS_OPTIONS: { value: AttStatus; label: string; full: string; active: string; inactive: string }[] = [
   {
-    value: 'completed',
-    label: '到',
+    value: 'present',
+    label: '出席',
+    full: '出席',
     active: 'bg-emerald-500 text-white',
     inactive: 'border border-border text-muted-foreground hover:bg-muted',
   },
   {
-    value: 'missing',
-    label: '缺',
-    active: 'bg-gray-700 text-white dark:bg-gray-500',
+    value: 'late',
+    label: '晚到',
+    full: '晚到',
+    active: 'bg-amber-400 text-white',
     inactive: 'border border-border text-muted-foreground hover:bg-muted',
   },
   {
-    value: 'wont_do',
-    label: '免',
-    active: 'bg-muted text-foreground ring-1 ring-border',
+    value: 'absent_makeup',
+    label: '缺(補)',
+    full: '缺席(補)',
+    active: 'bg-orange-500 text-white',
+    inactive: 'border border-border text-muted-foreground hover:bg-muted',
+  },
+  {
+    value: 'absent_refund',
+    label: '缺(退)',
+    full: '缺席(退)',
+    active: 'bg-slate-700 text-white dark:bg-slate-500',
     inactive: 'border border-border text-muted-foreground hover:bg-muted',
   },
 ]
@@ -149,7 +159,7 @@ export function AttendanceModal({ task, students, recordMap, onClose }: Props) {
         <div className="flex items-center gap-2 border-b border-border px-4 py-2">
           <button
             type="button"
-            onClick={() => setAll('completed')}
+            onClick={() => setAll('present')}
             className="h-7 rounded-md bg-emerald-500 px-3 text-xs font-medium text-white hover:bg-emerald-600"
           >
             全部到
@@ -162,14 +172,17 @@ export function AttendanceModal({ task, students, recordMap, onClose }: Props) {
             清除
           </button>
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
-            {(counts['completed'] ?? 0) > 0 && (
-              <span className="text-emerald-600 dark:text-emerald-400">{counts['completed']} 到</span>
+            {(counts['present'] ?? 0) > 0 && (
+              <span className="text-emerald-600 dark:text-emerald-400">{counts['present']} 出席</span>
             )}
-            {(counts['missing'] ?? 0) > 0 && (
-              <span className="text-foreground">{counts['missing']} 缺</span>
+            {(counts['late'] ?? 0) > 0 && (
+              <span className="text-amber-600 dark:text-amber-400">{counts['late']} 晚到</span>
             )}
-            {(counts['wont_do'] ?? 0) > 0 && (
-              <span>{counts['wont_do']} 免</span>
+            {(counts['absent_makeup'] ?? 0) > 0 && (
+              <span className="text-orange-600 dark:text-orange-400">{counts['absent_makeup']} 缺(補)</span>
+            )}
+            {(counts['absent_refund'] ?? 0) > 0 && (
+              <span className="text-foreground">{counts['absent_refund']} 缺(退)</span>
             )}
             {(counts['pending'] ?? 0) > 0 && (
               <span>{counts['pending']} 未標</span>

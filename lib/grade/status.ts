@@ -83,6 +83,18 @@ const ATTENDANCE_LAMP: Record<GradeStatus, LampDisplay> = {
   completed: { color: 'green', label: '到' },
 }
 
+const ATTENDANCE_STATUS_LAMP: Record<string, LampDisplay> = {
+  pending:       { color: 'white',  label: '' },
+  present:       { color: 'green',  label: '到' },
+  late:          { color: 'yellow', label: '晚' },
+  absent_makeup: { color: 'orange', label: '補' },
+  absent_refund: { color: 'black',  label: '退' },
+  // backward-compat: old status values stored before the redesign
+  completed:     { color: 'green',  label: '到' },
+  missing:       { color: 'black',  label: '缺' },
+  wont_do:       { color: 'white',  label: '免' },
+}
+
 const STATUS_ALIASES: Record<string, GradeStatus> = {
   complete: 'completed',
   done: 'completed',
@@ -120,9 +132,14 @@ export function inferTaskKind(taskType: TaskType | string | null | undefined, ta
 }
 
 export function lampFor(status: string | null | undefined, taskType: TaskType | string | null | undefined): LampDisplay {
-  const normalized = normalizeStatus(status)
   const kind = inferTaskKind(taskType)
 
+  if (kind === 'attendance') {
+    const raw = String(status ?? '').trim()
+    if (raw in ATTENDANCE_STATUS_LAMP) return ATTENDANCE_STATUS_LAMP[raw]
+  }
+
+  const normalized = normalizeStatus(status)
   if (kind === 'quiz') return QUIZ_LAMP[normalized]
   if (kind === 'attendance') return ATTENDANCE_LAMP[normalized]
   return WORK_LAMP[normalized]

@@ -266,6 +266,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [currentStudentId, setCurrentStudentId] = useState(state.students[0]?.student_id ?? '')
   const [sessionMode, setSessionMode] = useState<'team' | 'intensive'>('team')
   const [bagForm, setBagForm] = useState({ issue_date: todayDate(), due_date: '', note: '' })
+  const [genAttMsg, setGenAttMsg] = useState('')
 
   async function load(nextClassId = classId, nextSeasonId = seasonId) {
     const search = new URLSearchParams()
@@ -300,6 +301,23 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
         setMessage({ tone: 'ok', text: okText })
       } catch (error) {
         setMessage({ tone: 'error', text: error instanceof Error ? error.message : '操作失敗' })
+      }
+    })
+  }
+
+  async function handleGenAttendance() {
+    if (!selectedClass || !selectedSeason) return
+    setGenAttMsg('')
+    startTransition(async () => {
+      try {
+        const result = await post({
+          action: 'generate-attendance',
+          class_id: selectedClass.id,
+          season_id: selectedSeason.id,
+        }) as { generated: number; tasks: number; records: number }
+        setGenAttMsg(`已建立 ${result.tasks} 筆出席任務、${result.records} 筆點名記錄`)
+      } catch (err) {
+        setGenAttMsg(err instanceof Error ? err.message : '建立失敗')
       }
     })
   }
@@ -831,8 +849,9 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     <span>{classTypeLabel(selectedClass.class_type)}</span>
                     <span>{[weekdayLabel(selectedClass.weekday1), selectedClass.class_type === 'double' ? weekdayLabel(selectedClass.weekday2) : ''].filter(Boolean).join(' + ')}</span>
                     <span>{teamDates.size} 堂團課</span>
+                    <span className="flex-1" />
                     {selectedClass.class_type === 'intensive' && (
-                      <label className="ml-auto inline-flex items-center gap-2">
+                      <label className="inline-flex items-center gap-2">
                         <span>精修</span>
                         <input
                           type="number"
@@ -843,7 +862,19 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                         />
                       </label>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => void handleGenAttendance()}
+                      disabled={pending}
+                      className="inline-flex h-6 items-center gap-1 rounded border border-border bg-background px-2 text-[11px] font-medium text-foreground/70 hover:bg-muted disabled:opacity-50"
+                    >
+                      {pending ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
+                      建立出席任務
+                    </button>
                   </div>
+                  {genAttMsg && (
+                    <p className="mb-2 rounded-md bg-muted px-3 py-1.5 text-xs text-muted-foreground">{genAttMsg}</p>
+                  )}
                   <QuarterCalendar
                     year={selectedSeason.year}
                     quarter={selectedSeason.quarter}
@@ -1028,7 +1059,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
             )}
           </section>
 
-          <BagPreview state={state} />
+          <BagPreview state={state} onRefresh={load} />
           </>
           )}
         </main>
@@ -1286,7 +1317,20 @@ function SummaryLine({ label, value }: { label: string; value: ReactNode }) {
   )
 }
 
-function BagPreview({ state }: { state: BillingState }) {
+interface RefundLine {
+  line_id: string
+  student_name: string
+  refund_sessions: number
+  rate_per_session: number
+  refund_amount: number
+}
+
+function BagPreview({ state, onRefresh }: { state: BillingState; onRefresh?: () => Promise<void> }) {
+  const [refundPreview, setRefundPreview] = useState<RefundLine[] | null>(null)
+  const [computing, setComputing] = useState(false)
+  const [applying, setApplying] = useState(false)
+  const [refundError, setRefundError] = useState('')
+
   const bag = state.activeBag
   if (!bag) {
     return (
@@ -1295,13 +1339,61 @@ function BagPreview({ state }: { state: BillingState }) {
       </section>
     )
   }
+
+  async function openRefundDialog() {
+    setComputing(true)
+    setRefundError('')
+    try {
+      const res = await fetch(`/api/billing/attendance-refund?bag_id=${bag!.id}`)
+      const data = await res.json() as { preview?: RefundLine[]; error?: string }
+      if (!res.ok) throw new Error(data.error ?? '計算失敗')
+      setRefundPreview(data.preview ?? [])
+    } catch (err) {
+      setRefundError(err instanceof Error ? err.message : '計算失敗')
+    } finally {
+      setComputing(false)
+    }
+  }
+
+  async function applyRefund() {
+    setApplying(true)
+    setRefundError('')
+    try {
+      const res = await fetch('/api/billing/attendance-refund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bag_id: bag!.id }),
+      })
+      const data = await res.json() as { updated?: number; error?: string }
+      if (!res.ok) throw new Error(data.error ?? '套用失敗')
+      setRefundPreview(null)
+      await onRefresh?.()
+    } catch (err) {
+      setRefundError(err instanceof Error ? err.message : '套用失敗')
+    } finally {
+      setApplying(false)
+    }
+  }
+
   const total = bag.lines.reduce((sum, line) => sum + Number(line.total_amount ?? 0), 0)
+  const refundTotal = refundPreview?.reduce((s, r) => s + r.refund_amount, 0) ?? 0
+
   return (
+    <>
     <section className="overflow-hidden rounded-lg border border-border bg-background">
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
         <ReceiptText size={16} />
         <h2 className="text-sm font-semibold">{bag.bag_code}</h2>
-        <span className="ml-auto text-xs text-muted-foreground">{bag.lines.length} 人 · {formatMoney(total)}</span>
+        <span className="text-xs text-muted-foreground">{bag.lines.length} 人 · {formatMoney(total)}</span>
+        <button
+          type="button"
+          onClick={openRefundDialog}
+          disabled={computing}
+          className="ml-auto inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
+        >
+          {computing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+          缺席退費
+        </button>
       </div>
       <div className="overflow-auto">
         <table className="w-full min-w-[820px] border-separate border-spacing-0 text-sm">
@@ -1334,5 +1426,71 @@ function BagPreview({ state }: { state: BillingState }) {
         </table>
       </div>
     </section>
+
+    {refundPreview !== null && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setRefundPreview(null)} />
+        <div className="relative flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-background shadow-2xl">
+          <div className="border-b border-border px-4 py-3">
+            <h2 className="font-semibold">缺席退費計算</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">依本期「缺席(退)」紀錄計算退費金額，套用後將覆蓋現有調整欄位</p>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {refundPreview.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">本期無「缺席(退)」紀錄</p>
+            ) : (
+              <table className="w-full border-separate border-spacing-0 text-sm">
+                <thead className="text-xs text-muted-foreground">
+                  <tr>
+                    <th className="border-b border-border px-4 py-2 text-left">學生</th>
+                    <th className="border-b border-border px-4 py-2 text-right">退堂</th>
+                    <th className="border-b border-border px-4 py-2 text-right">單價</th>
+                    <th className="border-b border-border px-4 py-2 text-right">退費</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {refundPreview.map((r, i) => (
+                    <tr key={r.line_id} className={i % 2 === 1 ? 'bg-muted/40' : ''}>
+                      <td className="border-b border-border px-4 py-2">{r.student_name}</td>
+                      <td className="border-b border-border px-4 py-2 text-right">{r.refund_sessions}</td>
+                      <td className="border-b border-border px-4 py-2 text-right">{formatMoney(r.rate_per_session)}</td>
+                      <td className="border-b border-border px-4 py-2 text-right text-orange-600 dark:text-orange-400">−{formatMoney(r.refund_amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={3} className="px-4 py-2 text-right text-xs text-muted-foreground">合計退費</td>
+                    <td className="px-4 py-2 text-right font-semibold text-orange-600 dark:text-orange-400">−{formatMoney(refundTotal)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            )}
+          </div>
+          {refundError && <p className="border-t border-border px-4 py-2 text-xs text-red-500">{refundError}</p>}
+          <div className="flex justify-end gap-2 border-t border-border px-4 py-3">
+            <button
+              type="button"
+              onClick={() => setRefundPreview(null)}
+              className="h-9 rounded-md border border-border px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
+            >
+              取消
+            </button>
+            {refundPreview.length > 0 && (
+              <button
+                type="button"
+                onClick={applyRefund}
+                disabled={applying}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-gold px-4 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50 dark:bg-[#ff4d4f]"
+              >
+                {applying && <Loader2 size={14} className="animate-spin" />}
+                套用退費
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   )
 }

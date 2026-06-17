@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
 
-const ALLOWED = new Set(['completed', 'missing', 'wont_do', 'pending'])
+const ALLOWED = new Set(['pending', 'present', 'late', 'absent_makeup', 'absent_refund'])
 
 interface UpdateItem {
   record_id: string
