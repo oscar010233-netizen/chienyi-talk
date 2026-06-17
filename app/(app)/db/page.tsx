@@ -70,6 +70,9 @@ export default function DbMonitorPage() {
   const [newIds, setNewIds] = useState<Set<number>>(new Set())
   const [auto, setAuto] = useState(true)
   const maxId = useRef(0)
+  const [colWidths, setColWidths] = useState<Record<string, number> | null>(null)
+  const tableRef = useRef<HTMLTableElement>(null)
+  const dragRef = useRef<{ col: string; startX: number; startW: number } | null>(null)
 
   const loadSnapshot = useCallback(async () => {
     const res = await fetch('/api/db/snapshot')
@@ -121,6 +124,35 @@ export default function DbMonitorPage() {
     }, 4000)
     return () => window.clearInterval(timer)
   }, [auto, pollAudit, loadSnapshot])
+
+  useEffect(() => { setColWidths(null) }, [selected])
+
+  function startResize(col: string, e: React.MouseEvent<HTMLDivElement>) {
+    e.preventDefault()
+    e.stopPropagation()
+    let currentWidths = colWidths
+    if (!currentWidths && tableRef.current) {
+      const ths = Array.from(tableRef.current.querySelectorAll('thead th'))
+      const cols = rows?.columns ?? []
+      currentWidths = {}
+      cols.forEach((c, i) => { currentWidths![c] = (ths[i] as HTMLElement)?.offsetWidth ?? 140 })
+      setColWidths(currentWidths)
+    }
+    const startW = currentWidths?.[col] ?? 140
+    dragRef.current = { col, startX: e.clientX, startW }
+    function onMove(ev: MouseEvent) {
+      if (!dragRef.current) return
+      const newW = Math.max(48, dragRef.current.startW + ev.clientX - dragRef.current.startX)
+      setColWidths(prev => ({ ...(prev ?? {}), [dragRef.current!.col]: newW }))
+    }
+    function onUp() {
+      dragRef.current = null
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
 
   const NON_DELETABLE = new Set(['profiles', 'tenants'])
 
@@ -220,14 +252,28 @@ export default function DbMonitorPage() {
                 {rowsLoading ? (
                   <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-muted-foreground" size={18} /></div>
                 ) : (
-                  <table className="w-full border-separate border-spacing-0 text-xs">
+                  <table
+                    ref={tableRef}
+                    className="border-separate border-spacing-0 text-xs"
+                    style={{ tableLayout: colWidths ? 'fixed' : 'auto', width: colWidths ? 'max-content' : '100%' }}
+                  >
                     <thead className="sticky top-0 z-10">
                       <tr>
                         {(rows?.columns ?? []).map((c) => (
-                          <th key={c} className="whitespace-nowrap border-b border-border bg-muted/80 px-2.5 py-1.5 text-left font-medium text-muted-foreground backdrop-blur">{c}</th>
+                          <th
+                            key={c}
+                            style={colWidths ? { width: colWidths[c] ?? 140 } : undefined}
+                            className="relative whitespace-nowrap border-b border-border bg-muted/80 px-2.5 py-1.5 text-left font-medium text-muted-foreground backdrop-blur"
+                          >
+                            <span className="block truncate">{c}</span>
+                            <div
+                              onMouseDown={(e) => startResize(c, e)}
+                              className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none hover:bg-gold/50 active:bg-gold/80"
+                            />
+                          </th>
                         ))}
                         {selected && !NON_DELETABLE.has(selected) && (
-                          <th className="border-b border-border bg-muted/80 px-2 py-1.5" />
+                          <th className="w-8 border-b border-border bg-muted/80 px-2 py-1.5" />
                         )}
                       </tr>
                     </thead>
@@ -238,7 +284,7 @@ export default function DbMonitorPage() {
                         rows!.rows.map((r, i) => (
                           <tr key={i} className="group hover:bg-muted/40">
                             {rows!.columns.map((c) => (
-                              <td key={c} className="max-w-[220px] truncate whitespace-nowrap border-b border-border/50 px-2.5 py-1 font-mono text-foreground/80" title={cell(r[c])}>{cell(r[c])}</td>
+                              <td key={c} className="max-w-0 truncate whitespace-nowrap border-b border-border/50 px-2.5 py-1 font-mono text-foreground/80" title={cell(r[c])}>{cell(r[c])}</td>
                             ))}
                             {selected && !NON_DELETABLE.has(selected) && (
                               <td className="border-b border-border/50 px-1.5 py-1">
