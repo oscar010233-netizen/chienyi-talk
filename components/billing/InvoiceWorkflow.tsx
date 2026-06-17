@@ -558,19 +558,19 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     : 0
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto bg-[#f6f7f9] text-foreground dark:bg-[#18181a]">
-      <div className="mac-hairline sticky top-0 z-40 border-b bg-background/95 px-4 py-3 backdrop-blur md:px-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight">Invoice</h1>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <TabButton active={tab === 'holidays'} onClick={() => setTab('holidays')} icon={<CalendarDays size={14} />}>季度放假</TabButton>
-          <TabButton active={tab === 'open'} onClick={() => setTab('open')} icon={<ReceiptText size={14} />}>開袋</TabButton>
+    <div className="flex h-full flex-col overflow-y-auto">
+      <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-3 md:px-6">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-xl font-semibold tracking-tight text-foreground">帳務</h1>
+          <div className="flex items-center gap-1.5">
+            <TabButton active={tab === 'holidays'} onClick={() => setTab('holidays')} icon={<CalendarDays size={14} />}>季度放假</TabButton>
+            <TabButton active={tab === 'open'} onClick={() => setTab('open')} icon={<ReceiptText size={14} />}>開袋</TabButton>
+          </div>
         </div>
         {message.text && (
-          <div className={`mt-2 text-xs ${message.tone === 'error' ? 'text-red-600' : 'text-emerald-700'}`}>
+          <p className={`mt-1.5 text-xs ${message.tone === 'error' ? 'text-red-600' : 'text-emerald-700'}`}>
             {message.text}
-          </div>
+          </p>
         )}
       </div>
 
@@ -1042,7 +1042,11 @@ function TabButton({ active, children, icon, onClick }: { active: boolean; child
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex h-9 items-center gap-2 rounded-md px-3 text-xs font-medium transition-colors ${active ? 'bg-foreground text-background' : 'border border-border bg-background text-foreground/75 hover:bg-muted'}`}
+      className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors ${
+        active
+          ? 'border-gold/40 bg-gold/10 text-gold dark:border-[#ff4d4f]/40 dark:bg-[#ff4d4f]/10 dark:text-[#ff4d4f]'
+          : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground'
+      }`}
     >
       {icon}
       {children}
