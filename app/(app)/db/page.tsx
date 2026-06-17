@@ -171,7 +171,7 @@ export default function DbMonitorPage() {
   const selectedMeta = tables.find((t) => t.name === selected)
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex flex-1 min-h-0 flex-col">
       {/* Header */}
       <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-3 md:px-6">
         <div className="flex items-center justify-between gap-4">
