@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { RefreshCw, Play, Pause, Loader2, AlertTriangle, Trash2 } from 'lucide-react'
+import { RefreshCw, Play, Pause, Loader2, AlertTriangle, Trash2, Eye, EyeOff } from 'lucide-react'
 
 interface TableInfo {
   name: string
@@ -71,6 +71,7 @@ export default function DbMonitorPage() {
   const [auto, setAuto] = useState(true)
   const maxId = useRef(0)
   const [colWidths, setColWidths] = useState<Record<string, number> | null>(null)
+  const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set())
   const tableRef = useRef<HTMLTableElement>(null)
   const dragRef = useRef<{ col: string; startX: number; startW: number } | null>(null)
 
@@ -125,7 +126,7 @@ export default function DbMonitorPage() {
     return () => window.clearInterval(timer)
   }, [auto, pollAudit, loadSnapshot])
 
-  useEffect(() => { setColWidths(null) }, [selected])
+  useEffect(() => { setColWidths(null); setHiddenCols(new Set()) }, [selected])
 
   function startResize(col: string, e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault()
@@ -249,6 +250,18 @@ export default function DbMonitorPage() {
                 </div>
               )}
               <div className="min-h-0 flex-1 overflow-auto">
+                {hiddenCols.size > 0 && (
+                  <div className="flex items-center gap-2 border-b border-border/50 px-3 py-1.5 text-[11px] text-muted-foreground">
+                    <EyeOff size={11} />
+                    已隱藏 {hiddenCols.size} 欄
+                    <button
+                      onClick={() => setHiddenCols(new Set())}
+                      className="ml-1 text-gold underline-offset-2 hover:underline dark:text-[#ff4d4f]"
+                    >
+                      全顯示
+                    </button>
+                  </div>
+                )}
                 {rowsLoading ? (
                   <div className="flex h-full items-center justify-center"><Loader2 className="animate-spin text-muted-foreground" size={18} /></div>
                 ) : (
@@ -259,22 +272,29 @@ export default function DbMonitorPage() {
                   >
                     <thead className="sticky top-0 z-10">
                       <tr>
-                        {(rows?.columns ?? []).map((c) => (
+                        {selected && !NON_DELETABLE.has(selected) && (
+                          <th className="w-8 border-b border-border bg-muted/80 px-2 py-1.5" />
+                        )}
+                        {(rows?.columns ?? []).filter((c) => !hiddenCols.has(c)).map((c) => (
                           <th
                             key={c}
                             style={colWidths ? { width: colWidths[c] ?? 140 } : undefined}
-                            className="relative whitespace-nowrap border-b border-border bg-muted/80 px-2.5 py-1.5 text-left font-medium text-muted-foreground backdrop-blur"
+                            className="group/th relative whitespace-nowrap border-b border-border bg-muted/80 px-2.5 py-1.5 text-left font-medium text-muted-foreground backdrop-blur"
                           >
-                            <span className="block truncate">{c}</span>
+                            <span className="block truncate pr-5">{c}</span>
+                            <button
+                              onClick={() => setHiddenCols((prev) => new Set([...prev, c]))}
+                              title={`隱藏 ${c}`}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground/0 transition-colors group-hover/th:text-muted-foreground/40 hover:!text-muted-foreground"
+                            >
+                              <Eye size={11} />
+                            </button>
                             <div
                               onMouseDown={(e) => startResize(c, e)}
                               className="absolute right-0 top-0 h-full w-1 cursor-col-resize select-none hover:bg-gold/50 active:bg-gold/80"
                             />
                           </th>
                         ))}
-                        {selected && !NON_DELETABLE.has(selected) && (
-                          <th className="w-8 border-b border-border bg-muted/80 px-2 py-1.5" />
-                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -283,9 +303,6 @@ export default function DbMonitorPage() {
                       ) : (
                         rows!.rows.map((r, i) => (
                           <tr key={i} className="group hover:bg-muted/40">
-                            {rows!.columns.map((c) => (
-                              <td key={c} className="max-w-0 truncate whitespace-nowrap border-b border-border/50 px-2.5 py-1 font-mono text-foreground/80" title={cell(r[c])}>{cell(r[c])}</td>
-                            ))}
                             {selected && !NON_DELETABLE.has(selected) && (
                               <td className="border-b border-border/50 px-1.5 py-1">
                                 <button
@@ -299,6 +316,9 @@ export default function DbMonitorPage() {
                                 </button>
                               </td>
                             )}
+                            {rows!.columns.filter((c) => !hiddenCols.has(c)).map((c) => (
+                              <td key={c} className="max-w-0 truncate whitespace-nowrap border-b border-border/50 px-2.5 py-1 font-mono text-foreground/80" title={cell(r[c])}>{cell(r[c])}</td>
+                            ))}
                           </tr>
                         ))
                       )}
