@@ -94,6 +94,11 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     return map
   }, [records])
 
+  const [attendanceTasks, otherTasks] = useMemo(() => [
+    tasks.filter((t) => t.task_type === 'attendance'),
+    tasks.filter((t) => t.task_type !== 'attendance'),
+  ], [tasks])
+
   const handleModalClose = (refresh?: boolean) => {
     setShowAddTask(false)
     setShowEnroll(false)
@@ -239,18 +244,85 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 {tasks.length === 0 && (
                   <tr>
                     <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      還沒有任務，點「加任務」開始新增
+                      還沒有任務，開袋後出席會自動建立
                     </td>
                   </tr>
                 )}
-                {tasks.map((task, rowIndex) => {
+
+                {/* 出席區 — 骨架，自動生成 */}
+                {attendanceTasks.map((task) => {
+                  const meta = taskMeta(task)
+                  const attBg = 'bg-sky-50/70 dark:bg-sky-500/[0.06] group-hover:bg-sky-100/70 dark:group-hover:bg-sky-500/[0.10]'
+                  return (
+                    <tr key={task.id} className="group">
+                      <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] border-l-sky-400 dark:border-l-sky-500/70 px-4 py-3.5 transition-colors', attBg)}>
+                        <div className="flex min-w-0 items-start gap-2">
+                          <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
+                            {TASK_SHORT[task.task_type]}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate font-medium text-foreground">{task.task_name ?? '出席'}</p>
+                            {meta && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{meta}</p>}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setAttendanceTask(task)}
+                            title="點名"
+                            className="mt-0.5 shrink-0 rounded p-1 text-sky-500/0 transition-colors group-hover:text-sky-500/70 hover:!text-sky-600"
+                          >
+                            <ClipboardCheck size={13} />
+                          </button>
+                        </div>
+                      </td>
+                      {students.map((student) => {
+                        const record = recordMap.get(`${student.student_id}:${task.id}`)
+                        const display = lampFor(record?.status, task.task_type)
+                        return (
+                          <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', attBg)}>
+                            <button
+                              type="button"
+                              onClick={() => handleCellClick(task, student)}
+                              className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-sky-200/50 dark:hover:bg-sky-500/20"
+                            >
+                              {record
+                                ? <LampBadge color={display.color} label={display.label} detail={null} />
+                                : <span className="text-gray-300 dark:text-white/20">未派發</span>}
+                            </button>
+                          </td>
+                        )
+                      })}
+                      <td aria-hidden className={cn('border-b border-border transition-colors', attBg)} />
+                    </tr>
+                  )
+                })}
+
+                {/* 分隔線 */}
+                {attendanceTasks.length > 0 && (
+                  <tr>
+                    <td
+                      colSpan={students.length + 2}
+                      className="border-b border-border bg-muted/50 px-4 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50"
+                    >
+                      教師任務
+                    </td>
+                  </tr>
+                )}
+
+                {/* 教師任務區 */}
+                {otherTasks.length === 0 && attendanceTasks.length > 0 && (
+                  <tr>
+                    <td colSpan={students.length + 2} className="px-4 py-6 text-center text-sm text-muted-foreground/60">
+                      點「加任務」新增這季的考試、作業、練習
+                    </td>
+                  </tr>
+                )}
+                {otherTasks.map((task, rowIndex) => {
                   const zebra = cn(
                     rowIndex % 2 === 1 ? 'bg-[#f3f4f6] dark:bg-[#353537]' : 'bg-white dark:bg-[#2c2c2e]',
                     'group-hover:bg-[#e5e7eb] dark:group-hover:bg-[#3a3a3c]',
                   )
                   const meta = taskMeta(task)
                   const threshold = thresholdText(task)
-
                   return (
                     <tr key={task.id} className="group">
                       <td className={cn('sticky left-0 z-10 border-b border-border px-4 py-3.5 transition-colors', zebra)}>
@@ -265,16 +337,6 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                               {threshold && <span> · 門檻 {threshold}</span>}
                             </p>
                           </div>
-                          {task.task_type === 'attendance' && (
-                            <button
-                              type="button"
-                              onClick={() => setAttendanceTask(task)}
-                              title="點名"
-                              className="mt-0.5 shrink-0 rounded p-1 text-sky-500/0 transition-colors group-hover:text-sky-500/70 hover:!text-sky-600"
-                            >
-                              <ClipboardCheck size={13} />
-                            </button>
-                          )}
                           <button
                             type="button"
                             onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
@@ -286,7 +348,6 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                           </button>
                         </div>
                       </td>
-
                       {students.map((student) => {
                         const record = recordMap.get(`${student.student_id}:${task.id}`)
                         const isComment = task.task_type === 'comment'
@@ -296,12 +357,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                         const detailText = task.task_type === 'quiz'
                           ? (record?.result_history || record?.latest_result)
                           : null
-
                         return (
-                          <td
-                            key={student.student_id}
-                            className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', zebra)}
-                          >
+                          <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', zebra)}>
                             <button
                               type="button"
                               onClick={() => handleCellClick(task, student)}
@@ -314,7 +371,6 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                           </td>
                         )
                       })}
-
                       <td aria-hidden className={cn('border-b border-border transition-colors', zebra)} />
                     </tr>
                   )
