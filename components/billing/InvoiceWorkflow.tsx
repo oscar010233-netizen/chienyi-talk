@@ -9,12 +9,10 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  LayoutList,
   Loader2,
   ReceiptText,
   RefreshCw,
   Save,
-  Trash2,
 } from 'lucide-react'
 import {
   buildSeasonCode,
@@ -26,9 +24,9 @@ import {
   quarterDates,
 } from '@/lib/billing/calendar'
 import type { BillingQuarter } from '@/lib/billing/calendar'
-import type { BillingClass, BillingState, BillingStudent, FeePreset, OpenBagStudentInput } from '@/lib/billing/types'
+import type { BillingClass, BillingState, BillingStudent, OpenBagStudentInput } from '@/lib/billing/types'
 
-type TabKey = 'holidays' | 'open' | 'presets'
+type TabKey = 'holidays' | 'open'
 type Message = { tone: 'ok' | 'error' | 'idle'; text: string }
 type FeeRowDraft = { preset?: string; note: string; amount: string }
 type AdjustmentDraft = { name: string; amount: string }
@@ -273,18 +271,8 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [currentStudentId, setCurrentStudentId] = useState(state.students[0]?.student_id ?? '')
   const [sessionMode, setSessionMode] = useState<'team' | 'intensive'>('team')
   const [bagForm, setBagForm] = useState({ issue_date: todayDate(), due_date: '', note: '' })
-  const [genAttMsg, setGenAttMsg] = useState('')
   const [prevRefundMap, setPrevRefundMap] = useState<Map<string, { sessions: number; rate: number; amount: number; note: string }>>(new Map())
   const [prevRefundLoading, setPrevRefundLoading] = useState(false)
-  const [presets, setPresets] = useState<FeePreset[]>([])
-  const [presetsLoading, setPresetsLoading] = useState(false)
-  const [presetsAll, setPresetsAll] = useState<FeePreset[]>([])
-  const [presetsAllLoading, setPresetsAllLoading] = useState(false)
-  const [presetDraft, setPresetDraft] = useState<{
-    name: string; classId: string | null; tuitionAmount: string
-    bookRows: FeeRowDraft[]; miscRows: FeeRowDraft[]; discountRows: FeeRowDraft[]; isDefault: boolean
-  }>({ name: '', classId: null, tuitionAmount: '0', bookRows: [emptyFeeRow()], miscRows: [emptyFeeRow()], discountRows: [emptyFeeRow()], isDefault: false })
-
   async function load(nextClassId = classId, nextSeasonId = seasonId) {
     const search = new URLSearchParams()
     if (nextClassId) search.set('classId', nextClassId)
@@ -322,22 +310,6 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     })
   }
 
-  async function handleGenAttendance() {
-    if (!selectedClass || !selectedSeason) return
-    setGenAttMsg('')
-    startTransition(async () => {
-      try {
-        const result = await post({
-          action: 'generate-attendance',
-          class_id: selectedClass.id,
-          season_id: selectedSeason.id,
-        }) as { generated: number; tasks: number; records: number }
-        setGenAttMsg(`已建立 ${result.tasks} 筆出席任務、${result.records} 筆點名記錄`)
-      } catch (err) {
-        setGenAttMsg(err instanceof Error ? err.message : '建立失敗')
-      }
-    })
-  }
 
   useEffect(() => {
     if (!holidaySeasonId) return
@@ -400,16 +372,6 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   function handleSelectBag(bag: BagListItem) {
     handleEnterWorkflow(bag.class_id, bag.season_id)
   }
-
-  useEffect(() => {
-    if (tab !== 'presets') return
-    setPresetsAllLoading(true)
-    fetch('/api/billing/fee-presets', { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data: { presets?: FeePreset[] }) => setPresetsAll(data.presets ?? []))
-      .catch(() => setPresetsAll([]))
-      .finally(() => setPresetsAllLoading(false))
-  }, [tab])
 
   useEffect(() => {
     if (tab !== 'open' || openMode !== 'list') return
@@ -504,13 +466,6 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     if (!selectedStudents.size || !selectedClass || !selectedSeason) return
     setOpenStep(2)
 
-    setPresetsLoading(true)
-    fetch(`/api/billing/fee-presets?class_id=${selectedClass.id}`, { cache: 'no-store' })
-      .then((res) => res.json())
-      .then((data: { presets?: FeePreset[] }) => setPresets(data.presets ?? []))
-      .catch(() => setPresets([]))
-      .finally(() => setPresetsLoading(false))
-
     setPrevRefundLoading(true)
     fetch(`/api/billing/attendance-refund?class_id=${selectedClass.id}&season_id=${selectedSeason.id}`, { cache: 'no-store' })
       .then((res) => res.json())
@@ -584,59 +539,6 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     })
   }
 
-  function applyPreset(presetId: string) {
-    const preset = presets.find((p) => p.id === presetId)
-    if (!preset) return
-    setFeeTemplate({
-      tuitionAmount: String(preset.tuition_amount),
-      bookRows: preset.book_rows.length ? preset.book_rows.map((r) => ({ note: r.note, amount: String(r.amount) })) : [emptyFeeRow()],
-      miscRows: preset.misc_rows.length ? preset.misc_rows.map((r) => ({ note: r.note, amount: String(r.amount) })) : [emptyFeeRow()],
-      discountRows: preset.discount_rows.length ? preset.discount_rows.map((r) => ({ note: r.note, amount: String(r.amount) })) : [emptyFeeRow()],
-    })
-  }
-
-  async function handleCreatePreset() {
-    if (!presetDraft.name.trim()) return
-    try {
-      const res = await fetch('/api/billing/fee-presets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'save',
-          class_id: presetDraft.classId,
-          name: presetDraft.name.trim(),
-          tuition_amount: numberInput(presetDraft.tuitionAmount),
-          book_rows: normalizeRows(presetDraft.bookRows),
-          misc_rows: normalizeRows(presetDraft.miscRows),
-          discount_rows: normalizeRows(presetDraft.discountRows),
-          is_default: presetDraft.isDefault,
-        }),
-      })
-      const data = await res.json() as { preset?: FeePreset; error?: string }
-      if (!res.ok) throw new Error(data.error ?? '儲存失敗')
-      setPresetsAll((prev) => [data.preset!, ...prev])
-      setPresetDraft({ name: '', classId: null, tuitionAmount: '0', bookRows: [emptyFeeRow()], miscRows: [emptyFeeRow()], discountRows: [emptyFeeRow()], isDefault: false })
-      setMessage({ tone: 'ok', text: '費用範本已儲存' })
-    } catch (err) {
-      setMessage({ tone: 'error', text: err instanceof Error ? err.message : '儲存失敗' })
-    }
-  }
-
-  async function handleDeletePreset(presetId: string) {
-    try {
-      const res = await fetch('/api/billing/fee-presets', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'delete', id: presetId }),
-      })
-      if (!res.ok) throw new Error('刪除失敗')
-      setPresets((prev) => prev.filter((p) => p.id !== presetId))
-      setPresetsAll((prev) => prev.filter((p) => p.id !== presetId))
-    } catch (err) {
-      setMessage({ tone: 'error', text: err instanceof Error ? err.message : '刪除失敗' })
-    }
-  }
-
   function openBag() {
     const selected = Array.from(selectedStudents)
       .map((studentId): OpenBagStudentInput | null => {
@@ -690,7 +592,6 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
           <div className="flex items-center gap-1.5">
             <TabButton active={tab === 'holidays'} onClick={() => setTab('holidays')} icon={<CalendarDays size={14} />}>季度放假</TabButton>
             <TabButton active={tab === 'open'} onClick={() => setTab('open')} icon={<ReceiptText size={14} />}>開袋</TabButton>
-            <TabButton active={tab === 'presets'} onClick={() => setTab('presets')} icon={<LayoutList size={14} />}>費用範本</TabButton>
           </div>
         </div>
         {message.text && (
@@ -835,141 +736,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
         </main>
       )}
 
-      {tab === 'presets' && (
-        <main className="grid gap-4 p-4 md:grid-cols-[340px_1fr] md:p-6">
-          {/* Left: new preset form */}
-          <section className="overflow-hidden rounded-lg border border-border bg-background">
-            <div className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold">新增費用範本</h2>
-            </div>
-            <div className="grid gap-3 p-4">
-              <label>
-                <span className={labelClass}>範本名稱</span>
-                <input
-                  value={presetDraft.name}
-                  onChange={(e) => setPresetDraft((prev) => ({ ...prev, name: e.target.value }))}
-                  placeholder="例：Q3 標準方案"
-                  className={`${inputClass} w-full`}
-                />
-              </label>
-              <label>
-                <span className={labelClass}>適用班級（空白 = 全班通用）</span>
-                <select
-                  value={presetDraft.classId ?? ''}
-                  onChange={(e) => setPresetDraft((prev) => ({ ...prev, classId: e.target.value || null }))}
-                  className={`${inputClass} w-full`}
-                >
-                  <option value="">全班通用</option>
-                  {state.classes.map((cls) => <option key={cls.id} value={cls.id}>{cls.class_name}</option>)}
-                </select>
-              </label>
-              <label>
-                <span className={labelClass}>學費</span>
-                <input
-                  value={presetDraft.tuitionAmount}
-                  onChange={(e) => setPresetDraft((prev) => ({ ...prev, tuitionAmount: e.target.value }))}
-                  className={`${inputClass} w-full`}
-                />
-              </label>
-              <FeeRowsEditor
-                title="教材費"
-                rows={presetDraft.bookRows}
-                onChange={(bookRows) => setPresetDraft((prev) => ({ ...prev, bookRows }))}
-              />
-              <FeeRowsEditor
-                title="雜費"
-                rows={presetDraft.miscRows}
-                onChange={(miscRows) => setPresetDraft((prev) => ({ ...prev, miscRows }))}
-              />
-              <FeeRowsEditor
-                title="折扣"
-                rows={presetDraft.discountRows}
-                onChange={(discountRows) => setPresetDraft((prev) => ({ ...prev, discountRows }))}
-              />
-              <label className="inline-flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={presetDraft.isDefault}
-                  onChange={(e) => setPresetDraft((prev) => ({ ...prev, isDefault: e.target.checked }))}
-                  className="accent-foreground"
-                />
-                設為預設（開袋時自動顯示在頂端）
-              </label>
-              <button
-                type="button"
-                onClick={() => void handleCreatePreset()}
-                disabled={!presetDraft.name.trim() || pending}
-                className={`${primaryButton} w-full`}
-              >
-                <Save size={14} />
-                儲存範本
-              </button>
-            </div>
-          </section>
 
-          {/* Right: existing presets list */}
-          <section className="overflow-hidden rounded-lg border border-border bg-background">
-            <div className="border-b border-border px-4 py-3">
-              <h2 className="text-sm font-semibold">已儲存範本</h2>
-            </div>
-            {presetsAllLoading ? (
-              <div className="grid min-h-48 place-items-center">
-                <Loader2 size={20} className="animate-spin text-muted-foreground" />
-              </div>
-            ) : presetsAll.length === 0 ? (
-              <div className="grid min-h-48 place-items-center text-sm text-muted-foreground">尚無範本</div>
-            ) : (
-              <div className="overflow-auto">
-                <table className="w-full border-separate border-spacing-0 text-sm">
-                  <thead className="text-xs text-muted-foreground">
-                    <tr>
-                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">名稱</th>
-                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">適用班級</th>
-                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">學費</th>
-                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">教材</th>
-                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">雜費</th>
-                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">折扣</th>
-                      <th className="border-b border-border px-4 py-2.5" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {presetsAll.map((p) => {
-                      const bookTotal = p.book_rows.reduce((s, r) => s + r.amount, 0)
-                      const miscTotal = p.misc_rows.reduce((s, r) => s + r.amount, 0)
-                      const discountTotal = p.discount_rows.reduce((s, r) => s + r.amount, 0)
-                      const cls = state.classes.find((c) => c.id === p.class_id)
-                      return (
-                        <tr key={p.id} className="group">
-                          <td className="border-b border-border px-4 py-2.5 font-medium">
-                            {p.name}
-                            {p.is_default && <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">預設</span>}
-                          </td>
-                          <td className="border-b border-border px-4 py-2.5 text-muted-foreground">
-                            {cls ? cls.class_name : <span className="italic">全班通用</span>}
-                          </td>
-                          <td className="border-b border-border px-4 py-2.5 text-right">{formatMoney(p.tuition_amount)}</td>
-                          <td className="border-b border-border px-4 py-2.5 text-right text-muted-foreground">{bookTotal ? formatMoney(bookTotal) : '—'}</td>
-                          <td className="border-b border-border px-4 py-2.5 text-right text-muted-foreground">{miscTotal ? formatMoney(miscTotal) : '—'}</td>
-                          <td className="border-b border-border px-4 py-2.5 text-right text-muted-foreground">{discountTotal ? formatMoney(discountTotal) : '—'}</td>
-                          <td className="border-b border-border px-4 py-2.5 text-right">
-                            <button
-                              type="button"
-                              onClick={() => void handleDeletePreset(p.id)}
-                              className="invisible rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600 group-hover:visible"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </main>
-      )}
 
       {tab === 'open' && (
         <main className="grid gap-4 p-4 md:p-6">
@@ -1097,19 +864,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     {selectedClass.class_type === 'intensive' && (
                       <span>強化課 {intensiveWeeks.size} 堂</span>
                     )}
-                    <button
-                      type="button"
-                      onClick={() => void handleGenAttendance()}
-                      disabled={pending}
-                      className="inline-flex h-6 items-center gap-1 rounded border border-border bg-background px-2 text-[11px] font-medium text-foreground/70 hover:bg-muted disabled:opacity-50"
-                    >
-                      {pending ? <Loader2 size={10} className="animate-spin" /> : <Check size={10} />}
-                      建立出席任務
-                    </button>
                   </div>
-                  {genAttMsg && (
-                    <p className="mb-2 rounded-md bg-muted px-3 py-1.5 text-xs text-muted-foreground">{genAttMsg}</p>
-                  )}
                   <QuarterCalendar
                     year={selectedSeason.year}
                     quarter={selectedSeason.quarter}
@@ -1189,22 +944,6 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                   )}
                 </section>
                 <section className="grid gap-4">
-                  {/* Preset picker */}
-                  <div className="flex items-center gap-2">
-                    <select
-                      value=""
-                      onChange={(e) => applyPreset(e.target.value)}
-                      disabled={presetsLoading}
-                      className={`${inputClass} flex-1`}
-                    >
-                      <option value="">{presetsLoading ? '讀取範本…' : presets.length ? '套用費用範本…' : '（尚無費用範本）'}</option>
-                      {presets.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.class_id ? '● ' : '○ '}{p.name}{p.is_default ? ' ★' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
                   <label>
                     <span className={labelClass}>學費</span>
                     <input value={feeTemplate.tuitionAmount} onChange={(event) => setFeeTemplate((prev) => ({ ...prev, tuitionAmount: event.target.value }))} className={`${inputClass} w-full`} />

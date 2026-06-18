@@ -506,15 +506,12 @@ export async function replaceSeasonHolidays(input: {
   return { saved: uniqueDates.length }
 }
 
-export async function generateDefaultAttendance(input: {
-  seasonId: string
-  classId: string
-  limit?: number
-}): Promise<{ generated: number; tasks: number; records: number }> {
-  const supabase = await createServiceClient()
-  const season = await getSeasonOrThrow(supabase, input.seasonId)
-  const cls = await getClassOrThrow(supabase, input.classId)
-  const students = await getStudentsForClass(supabase, cls.id)
+async function buildAndStoreDefaultAttendance(
+  supabase: Supabase,
+  cls: BillingClass,
+  season: BillingSeason,
+  limit?: number,
+): Promise<DefaultAttendance[]> {
   const { data: seasonData } = await supabase.from('billing_seasons').select('holiday_dates').eq('id', season.id).single()
   const holidaySet = new Set<string>((seasonData?.holiday_dates ?? []) as string[])
   const baseDates = generateClassDates({
@@ -523,16 +520,13 @@ export async function generateDefaultAttendance(input: {
     weekday1: cls.weekday1,
     weekday2: cls.weekday2,
     classType: cls.class_type,
-    limit: input.limit ?? cls.system_sessions ?? MAX_BILLING_SESSIONS,
+    limit: limit ?? cls.system_sessions ?? MAX_BILLING_SESSIONS,
   })
-
   const shiftedDates = baseDates.map((originalDate) => {
     const shifted = shiftHolidayDate(originalDate, holidaySet)
     return { originalDate, date: shifted.date, shifted: shifted.shifted }
   })
-  // Keep sessions in chronological order even after a holiday pushes one later.
   shiftedDates.sort((a, b) => compareDate(a.date, b.date))
-
   const rows = shiftedDates.map((entry, index) => ({
     tenant_id: cls.tenant_id,
     season_id: season.id,
@@ -545,12 +539,12 @@ export async function generateDefaultAttendance(input: {
     status: entry.shifted ? 'holiday_shifted' : 'scheduled',
     note: entry.shifted ? `${formatDateMd(entry.originalDate)} 假日順延` : null,
   }))
-
-  const { error } = await supabase
-    .from('default_attendance')
-    .upsert(rows, { onConflict: 'tenant_id,season_id,class_id,session_index' })
-  if (error) throw new Error(error.message)
-
+  if (rows.length > 0) {
+    const { error } = await supabase
+      .from('default_attendance')
+      .upsert(rows, { onConflict: 'tenant_id,season_id,class_id,session_index' })
+    if (error) throw new Error(error.message)
+  }
   const { data: defaults, error: defaultsError } = await supabase
     .from('default_attendance')
     .select('*')
@@ -558,9 +552,21 @@ export async function generateDefaultAttendance(input: {
     .eq('class_id', cls.id)
     .order('session_index')
   if (defaultsError) throw new Error(defaultsError.message)
+  return (defaults ?? []) as DefaultAttendance[]
+}
 
-  const taskStats = await ensureAttendanceTasks(supabase, cls, season, (defaults ?? []) as DefaultAttendance[], students)
-  return { generated: rows.length, ...taskStats }
+export async function generateDefaultAttendance(input: {
+  seasonId: string
+  classId: string
+  limit?: number
+}): Promise<{ generated: number; tasks: number; records: number }> {
+  const supabase = await createServiceClient()
+  const season = await getSeasonOrThrow(supabase, input.seasonId)
+  const cls = await getClassOrThrow(supabase, input.classId)
+  const students = await getStudentsForClass(supabase, cls.id)
+  const defaults = await buildAndStoreDefaultAttendance(supabase, cls, season, input.limit)
+  const taskStats = await ensureAttendanceTasks(supabase, cls, season, defaults, students)
+  return { generated: defaults.length, ...taskStats }
 }
 
 async function ensureAttendanceTasks(
@@ -1044,7 +1050,10 @@ export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWit
   const season = await getSeasonOrThrow(supabase, input.seasonId)
   const cls = await getClassOrThrow(supabase, input.classId)
   const students = await getStudentsForClass(supabase, cls.id)
-  const defaults = await getDefaultAttendanceRows(supabase, season.id, cls.id)
+  let defaults = await getDefaultAttendanceRows(supabase, season.id, cls.id)
+  if (defaults.length === 0) {
+    defaults = await buildAndStoreDefaultAttendance(supabase, cls, season)
+  }
   const fallbackSessionCount = defaults.length || cls.system_sessions || 0
   const tuitionAmount = toNumber(input.tuitionAmount)
   const hasStudentDrafts = Boolean(input.selectedStudents?.length)
