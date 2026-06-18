@@ -10,6 +10,7 @@ import {
   Database,
   GraduationCap,
   Home,
+  Map,
   ReceiptText,
   Table2,
   Users,
@@ -32,6 +33,7 @@ const navItems = [
   { href: "/speaking", icon: BookOpen, label: "口說練習" },
   { href: "/exam-grading", icon: ClipboardCheck, label: "試卷批改" },
   { href: "/db", icon: Table2, label: "DB 監看" },
+  { href: "/docs", icon: Map, label: "地圖" },
 ];
 
 export function Sidebar() {
