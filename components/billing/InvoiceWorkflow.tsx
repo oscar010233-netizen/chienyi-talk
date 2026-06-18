@@ -9,10 +9,12 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  LayoutList,
   Loader2,
   ReceiptText,
   RefreshCw,
   Save,
+  Trash2,
 } from 'lucide-react'
 import {
   buildSeasonCode,
@@ -26,7 +28,7 @@ import {
 import type { BillingQuarter } from '@/lib/billing/calendar'
 import type { BillingClass, BillingState, BillingStudent, FeePreset, OpenBagStudentInput } from '@/lib/billing/types'
 
-type TabKey = 'holidays' | 'open'
+type TabKey = 'holidays' | 'open' | 'presets'
 type Message = { tone: 'ok' | 'error' | 'idle'; text: string }
 type FeeRowDraft = { preset?: string; note: string; amount: string }
 type AdjustmentDraft = { name: string; amount: string }
@@ -271,9 +273,12 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [prevRefundLoading, setPrevRefundLoading] = useState(false)
   const [presets, setPresets] = useState<FeePreset[]>([])
   const [presetsLoading, setPresetsLoading] = useState(false)
-  const [showSaveForm, setShowSaveForm] = useState(false)
-  const [saveName, setSaveName] = useState('')
-  const [saveClassScoped, setSaveClassScoped] = useState(false)
+  const [presetsAll, setPresetsAll] = useState<FeePreset[]>([])
+  const [presetsAllLoading, setPresetsAllLoading] = useState(false)
+  const [presetDraft, setPresetDraft] = useState<{
+    name: string; classId: string | null; tuitionAmount: string
+    bookRows: FeeRowDraft[]; miscRows: FeeRowDraft[]; discountRows: FeeRowDraft[]; isDefault: boolean
+  }>({ name: '', classId: null, tuitionAmount: '0', bookRows: [emptyFeeRow()], miscRows: [emptyFeeRow()], discountRows: [emptyFeeRow()], isDefault: false })
 
   async function load(nextClassId = classId, nextSeasonId = seasonId) {
     const search = new URLSearchParams()
@@ -388,6 +393,16 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   function handleSelectBag(bag: BagListItem) {
     handleEnterWorkflow(bag.class_id, bag.season_id)
   }
+
+  useEffect(() => {
+    if (tab !== 'presets') return
+    setPresetsAllLoading(true)
+    fetch('/api/billing/fee-presets', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data: { presets?: FeePreset[] }) => setPresetsAll(data.presets ?? []))
+      .catch(() => setPresetsAll([]))
+      .finally(() => setPresetsAllLoading(false))
+  }, [tab])
 
   useEffect(() => {
     if (tab !== 'open' || openMode !== 'list') return
@@ -577,30 +592,28 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     })
   }
 
-  async function handleSavePreset() {
-    if (!saveName.trim()) return
-    const body = {
-      action: 'save',
-      class_id: saveClassScoped && selectedClass ? selectedClass.id : null,
-      name: saveName.trim(),
-      tuition_amount: numberInput(feeTemplate.tuitionAmount),
-      book_rows: normalizeRows(feeTemplate.bookRows),
-      misc_rows: normalizeRows(feeTemplate.miscRows),
-      discount_rows: normalizeRows(feeTemplate.discountRows),
-      is_default: false,
-    }
+  async function handleCreatePreset() {
+    if (!presetDraft.name.trim()) return
     try {
       const res = await fetch('/api/billing/fee-presets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          action: 'save',
+          class_id: presetDraft.classId,
+          name: presetDraft.name.trim(),
+          tuition_amount: numberInput(presetDraft.tuitionAmount),
+          book_rows: normalizeRows(presetDraft.bookRows),
+          misc_rows: normalizeRows(presetDraft.miscRows),
+          discount_rows: normalizeRows(presetDraft.discountRows),
+          is_default: presetDraft.isDefault,
+        }),
       })
       const data = await res.json() as { preset?: FeePreset; error?: string }
       if (!res.ok) throw new Error(data.error ?? '儲存失敗')
-      setPresets((prev) => [...prev.filter((p) => p.id !== data.preset!.id), data.preset!]
-        .sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0) || a.name.localeCompare(b.name)))
-      setSaveName('')
-      setShowSaveForm(false)
+      setPresetsAll((prev) => [data.preset!, ...prev])
+      setPresetDraft({ name: '', classId: null, tuitionAmount: '0', bookRows: [emptyFeeRow()], miscRows: [emptyFeeRow()], discountRows: [emptyFeeRow()], isDefault: false })
+      setMessage({ tone: 'ok', text: '費用範本已儲存' })
     } catch (err) {
       setMessage({ tone: 'error', text: err instanceof Error ? err.message : '儲存失敗' })
     }
@@ -615,6 +628,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       })
       if (!res.ok) throw new Error('刪除失敗')
       setPresets((prev) => prev.filter((p) => p.id !== presetId))
+      setPresetsAll((prev) => prev.filter((p) => p.id !== presetId))
     } catch (err) {
       setMessage({ tone: 'error', text: err instanceof Error ? err.message : '刪除失敗' })
     }
@@ -673,6 +687,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
           <div className="flex items-center gap-1.5">
             <TabButton active={tab === 'holidays'} onClick={() => setTab('holidays')} icon={<CalendarDays size={14} />}>季度放假</TabButton>
             <TabButton active={tab === 'open'} onClick={() => setTab('open')} icon={<ReceiptText size={14} />}>開袋</TabButton>
+            <TabButton active={tab === 'presets'} onClick={() => setTab('presets')} icon={<LayoutList size={14} />}>費用範本</TabButton>
           </div>
         </div>
         {message.text && (
@@ -814,6 +829,142 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
               </section>
             )
           })()}
+        </main>
+      )}
+
+      {tab === 'presets' && (
+        <main className="grid gap-4 p-4 md:grid-cols-[340px_1fr] md:p-6">
+          {/* Left: new preset form */}
+          <section className="overflow-hidden rounded-lg border border-border bg-background">
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold">新增費用範本</h2>
+            </div>
+            <div className="grid gap-3 p-4">
+              <label>
+                <span className={labelClass}>範本名稱</span>
+                <input
+                  value={presetDraft.name}
+                  onChange={(e) => setPresetDraft((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="例：Q3 標準方案"
+                  className={`${inputClass} w-full`}
+                />
+              </label>
+              <label>
+                <span className={labelClass}>適用班級（空白 = 全班通用）</span>
+                <select
+                  value={presetDraft.classId ?? ''}
+                  onChange={(e) => setPresetDraft((prev) => ({ ...prev, classId: e.target.value || null }))}
+                  className={`${inputClass} w-full`}
+                >
+                  <option value="">全班通用</option>
+                  {state.classes.map((cls) => <option key={cls.id} value={cls.id}>{cls.class_name}</option>)}
+                </select>
+              </label>
+              <label>
+                <span className={labelClass}>學費</span>
+                <input
+                  value={presetDraft.tuitionAmount}
+                  onChange={(e) => setPresetDraft((prev) => ({ ...prev, tuitionAmount: e.target.value }))}
+                  className={`${inputClass} w-full`}
+                />
+              </label>
+              <FeeRowsEditor
+                title="教材費"
+                rows={presetDraft.bookRows}
+                onChange={(bookRows) => setPresetDraft((prev) => ({ ...prev, bookRows }))}
+              />
+              <FeeRowsEditor
+                title="雜費"
+                rows={presetDraft.miscRows}
+                onChange={(miscRows) => setPresetDraft((prev) => ({ ...prev, miscRows }))}
+              />
+              <FeeRowsEditor
+                title="折扣"
+                rows={presetDraft.discountRows}
+                onChange={(discountRows) => setPresetDraft((prev) => ({ ...prev, discountRows }))}
+              />
+              <label className="inline-flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={presetDraft.isDefault}
+                  onChange={(e) => setPresetDraft((prev) => ({ ...prev, isDefault: e.target.checked }))}
+                  className="accent-foreground"
+                />
+                設為預設（開袋時自動顯示在頂端）
+              </label>
+              <button
+                type="button"
+                onClick={() => void handleCreatePreset()}
+                disabled={!presetDraft.name.trim() || pending}
+                className={`${primaryButton} w-full`}
+              >
+                <Save size={14} />
+                儲存範本
+              </button>
+            </div>
+          </section>
+
+          {/* Right: existing presets list */}
+          <section className="overflow-hidden rounded-lg border border-border bg-background">
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="text-sm font-semibold">已儲存範本</h2>
+            </div>
+            {presetsAllLoading ? (
+              <div className="grid min-h-48 place-items-center">
+                <Loader2 size={20} className="animate-spin text-muted-foreground" />
+              </div>
+            ) : presetsAll.length === 0 ? (
+              <div className="grid min-h-48 place-items-center text-sm text-muted-foreground">尚無範本</div>
+            ) : (
+              <div className="overflow-auto">
+                <table className="w-full border-separate border-spacing-0 text-sm">
+                  <thead className="text-xs text-muted-foreground">
+                    <tr>
+                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">名稱</th>
+                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">適用班級</th>
+                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">學費</th>
+                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">教材</th>
+                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">雜費</th>
+                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">折扣</th>
+                      <th className="border-b border-border px-4 py-2.5" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {presetsAll.map((p) => {
+                      const bookTotal = p.book_rows.reduce((s, r) => s + r.amount, 0)
+                      const miscTotal = p.misc_rows.reduce((s, r) => s + r.amount, 0)
+                      const discountTotal = p.discount_rows.reduce((s, r) => s + r.amount, 0)
+                      const cls = state.classes.find((c) => c.id === p.class_id)
+                      return (
+                        <tr key={p.id} className="group">
+                          <td className="border-b border-border px-4 py-2.5 font-medium">
+                            {p.name}
+                            {p.is_default && <span className="ml-1.5 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] text-amber-700">預設</span>}
+                          </td>
+                          <td className="border-b border-border px-4 py-2.5 text-muted-foreground">
+                            {cls ? cls.class_name : <span className="italic">全班通用</span>}
+                          </td>
+                          <td className="border-b border-border px-4 py-2.5 text-right">{formatMoney(p.tuition_amount)}</td>
+                          <td className="border-b border-border px-4 py-2.5 text-right text-muted-foreground">{bookTotal ? formatMoney(bookTotal) : '—'}</td>
+                          <td className="border-b border-border px-4 py-2.5 text-right text-muted-foreground">{miscTotal ? formatMoney(miscTotal) : '—'}</td>
+                          <td className="border-b border-border px-4 py-2.5 text-right text-muted-foreground">{discountTotal ? formatMoney(discountTotal) : '—'}</td>
+                          <td className="border-b border-border px-4 py-2.5 text-right">
+                            <button
+                              type="button"
+                              onClick={() => void handleDeletePreset(p.id)}
+                              className="invisible rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-600 group-hover:visible"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
         </main>
       )}
 
@@ -1042,55 +1193,21 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                   )}
                 </section>
                 <section className="grid gap-4">
-                  {/* Preset bar */}
-                  <div className="flex flex-wrap items-center gap-2">
+                  {/* Preset picker */}
+                  <div className="flex items-center gap-2">
                     <select
                       value=""
                       onChange={(e) => applyPreset(e.target.value)}
                       disabled={presetsLoading}
-                      className={`${inputClass} min-w-44 flex-1`}
+                      className={`${inputClass} flex-1`}
                     >
-                      <option value="">{presetsLoading ? '讀取範本…' : presets.length ? '套用費用範本…' : '（無已儲存範本）'}</option>
+                      <option value="">{presetsLoading ? '讀取範本…' : presets.length ? '套用費用範本…' : '（尚無費用範本）'}</option>
                       {presets.map((p) => (
                         <option key={p.id} value={p.id}>
                           {p.class_id ? '● ' : '○ '}{p.name}{p.is_default ? ' ★' : ''}
                         </option>
                       ))}
                     </select>
-                    {!showSaveForm ? (
-                      <button type="button" onClick={() => { setShowSaveForm(true); setSaveClassScoped(!!selectedClass) }} className={buttonBase}>
-                        另存範本
-                      </button>
-                    ) : (
-                      <>
-                        <input
-                          value={saveName}
-                          onChange={(e) => setSaveName(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === 'Enter') void handleSavePreset(); if (e.key === 'Escape') setShowSaveForm(false) }}
-                          placeholder="範本名稱"
-                          className={`${inputClass} w-40`}
-                          autoFocus
-                        />
-                        <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <input type="checkbox" checked={saveClassScoped} onChange={(e) => setSaveClassScoped(e.target.checked)} className="accent-foreground" />
-                          只限此班
-                        </label>
-                        <button type="button" onClick={() => void handleSavePreset()} disabled={!saveName.trim()} className={primaryButton}>儲存</button>
-                        <button type="button" onClick={() => setShowSaveForm(false)} className={buttonBase}>取消</button>
-                      </>
-                    )}
-                    {presets.length > 0 && !showSaveForm && (
-                      <select
-                        value=""
-                        onChange={(e) => { if (e.target.value) void handleDeletePreset(e.target.value) }}
-                        className={`${inputClass} text-muted-foreground`}
-                      >
-                        <option value="">刪除範本…</option>
-                        {presets.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                    )}
                   </div>
                   <div className="grid gap-2 md:grid-cols-[1fr_160px]">
                     <label>
