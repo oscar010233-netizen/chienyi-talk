@@ -1498,8 +1498,7 @@ function QuarterCalendar({
                       : isSelected ? 'bg-blue-600 text-white'
                         : isSecondary ? 'bg-emerald-600 text-white'
                           : isHoliday ? 'text-muted-foreground/40'
-                            : isOverflow ? 'text-muted-foreground/30'
-                              : 'hover:bg-black/5'
+                            : 'hover:bg-black/5'
                     return (
                       <td key={cell.date} className={`p-0.5 ${cellBg} ${isMonthBoundary ? 'border-t border-border' : ''}`}>
                         <button
