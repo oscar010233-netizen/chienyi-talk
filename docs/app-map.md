@@ -6,26 +6,26 @@
 
 ## DB 表名對照
 
-| 英文表名 | 中文名稱 | 用途 |
-|----------|----------|------|
-| `tenants` | 租戶 | 補習班識別，app 幾乎不直接碰 |
-| `profiles` | 帳號 | 登入/權限根本，勿刪 |
-| `classes` | 班級 | 每個上課群體 |
-| `students` | 學生 | 全校學生名冊 |
-| `class_enrollments` | 選課紀錄 | 哪個學生在哪個班 |
-| `class_tasks` | 任務 | 班級的作業/考試/出席等任務 |
-| `student_task_records` | 任務紀錄 | 每個學生對應每個任務的狀態與成績 |
-| `rooms` | 教室 | 配課表用的房間 |
-| `schedule_days` | 日期 | 配課表的日曆日期 |
-| `schedule_events` | 課程事件 | 某天某時段某教室排了哪個班 |
-| `schedule_event_teachers` | 授課老師 | 預留多老師，目前無寫入 UI |
-| `day_entries` | 日記事 | 配課表的晚餐/待辦事項 |
-| `billing_seasons` | 帳務季 | Q1/Q2/Q3/Q4 的課程期間（含假日清單） |
-| `default_attendance` | 預設出席 | 每班每期應上幾堂、哪些日期 |
-| `payment_bags` | 繳費袋 | 一個班級一個期間的帳單（會印出來） |
-| `payment_bag_lines` | 帳單明細 | 袋子裡每個學生的學費、書費、折扣、補繳 |
-| `billing_fee_presets` | 費用範本 | 可重複使用的學費/書費/折扣組合 |
-| `audit_log` | 變更紀錄 | DB 觸發器自動寫入每筆新增/更改/刪除 |
+| 英文表名 | 中文名稱 | 角色 | 類別（哪些頁面） | 用途 |
+|----------|----------|------|-----------------|------|
+| `tenants` | 租戶 | 系統輔助 | 全域 | 補習班識別，app 幾乎不直接碰 |
+| `profiles` | 帳號 | 系統輔助 | 全域（登入） | 登入/權限根本，勿刪 |
+| `classes` | 班級 | 主體 | 班級、強化、Buffer、配課表 | 每個上課群體 |
+| `students` | 學生 | 主體 | 學生、班級、強化、Buffer | 全校學生名冊 |
+| `class_enrollments` | 選課紀錄 | 關係 | 班級、強化、Buffer | 橋接 students ↔ classes，哪個學生在哪個班 |
+| `class_tasks` | 任務 | 定義 | 班級、強化、Buffer | 班級的作業/考試/出席等任務定義 |
+| `student_task_records` | 任務紀錄 | 資料 | 班級成績表、強化、Buffer | 每個學生對應每個任務的狀態與成績 |
+| `rooms` | 教室 | 主體 | 配課表 | 配課表用的房間 |
+| `schedule_days` | 日期 | 定義 | 配課表 | 配課表的日曆日期 |
+| `schedule_events` | 課程事件 | 資料 | 配課表 | 某天某時段某教室排了哪個班 |
+| `schedule_event_teachers` | 授課老師 | 關係 | 配課表（未完成） | 預留多老師，目前無寫入 UI |
+| `day_entries` | 日記事 | 資料 | 配課表 | 配課表的晚餐/待辦事項 |
+| `billing_seasons` | 帳務季 | 定義 | 開袋 | Q1/Q2/Q3/Q4 的課程期間（含假日清單） |
+| `default_attendance` | 預設出席 | 定義 | 開袋 | 每班每期應上幾堂、哪些日期 |
+| `payment_bags` | 繳費袋 | 資料 | 開袋 | 一個班級一個期間的帳單（會印出來） |
+| `payment_bag_lines` | 帳單明細 | 資料 | 開袋 | 袋子裡每個學生的學費、書費、折扣、補繳 |
+| `billing_fee_presets` | 費用範本 | 定義 | 開袋 | 可重複使用的學費/書費/折扣組合 |
+| `audit_log` | 變更紀錄 | 系統輔助 | DB 監看 | DB 觸發器自動寫入每筆新增/更改/刪除 |
 
 ---
 
