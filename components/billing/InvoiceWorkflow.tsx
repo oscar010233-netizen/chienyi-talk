@@ -157,6 +157,19 @@ function generateTeamDates(cls: BillingClass, season: NonNullable<BillingState['
   return dates.sort(compareDate)
 }
 
+// Returns every occurrence of weekday1 in the quarter, holidays included.
+// Used to pre-populate intensiveWeeks (one 強化 slot per week).
+function generateAllIntensiveWeekDates(cls: BillingClass, season: NonNullable<BillingState['selectedSeason']>): string[] {
+  if (!cls.weekday1) return []
+  const dates: string[] = []
+  for (const month of monthsForQuarter(season.quarter)) {
+    for (const date of datesInMonth(season.year, month)) {
+      if (isoWeekday(date) === cls.weekday1) dates.push(date)
+    }
+  }
+  return dates.sort(compareDate)
+}
+
 function emptyFeeRow(): FeeRowDraft {
   return { preset: 'custom', note: '', amount: '0' }
 }
@@ -256,7 +269,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [openStep, setOpenStep] = useState(1)
   const [teamDates, setTeamDates] = useState<Set<string>>(new Set())
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set(state.students.map((student) => student.student_id)))
-  const [intensiveSessions, setIntensiveSessions] = useState('0')
+  const [intensiveWeeks, setIntensiveWeeks] = useState<Set<string>>(new Set())
   const [feeTemplate, setFeeTemplate] = useState<FeeTemplateDraft>({
     tuitionPreset: 'custom',
     tuitionAmount: '0',
@@ -358,9 +371,11 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     setTeamDates(new Set(generated))
     setSelectedStudents(new Set(state.students.map((student) => student.student_id)))
     setCurrentStudentId(state.students[0]?.student_id ?? '')
-    setIntensiveSessions(selectedClass.class_type === 'intensive'
-      ? String(quarterWeekCount(selectedSeason.year, selectedSeason.quarter))
-      : '0')
+    setIntensiveWeeks(
+      selectedClass.class_type === 'intensive'
+        ? new Set(generateAllIntensiveWeekDates(selectedClass, selectedSeason))
+        : new Set()
+    )
     setStudentDrafts({})
     setOpenStep(1)
   }, [selectedClass, selectedSeason, globalHolidayDates, state.students])
@@ -520,7 +535,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
   function applyTuitionPreset(key: string) {
     const preset = tuitionPresets.find((item) => item.key === key)
-    const totalSessions = teamDates.size + (selectedClass?.class_type === 'intensive' ? numberInput(intensiveSessions) : 0)
+    const totalSessions = teamDates.size + (selectedClass?.class_type === 'intensive' ? intensiveWeeks.size : 0)
     setFeeTemplate((prev) => ({
       ...prev,
       tuitionPreset: key,
@@ -532,7 +547,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
   function goStudentAdjustments() {
     const baseTeamDates = Array.from(teamDates).sort(compareDate)
-    const intensiveCount = selectedClass?.class_type === 'intensive' ? numberInput(intensiveSessions) : 0
+    const intensiveCount = selectedClass?.class_type === 'intensive' ? intensiveWeeks.size : 0
     setStudentDrafts((prev) => {
       const next = { ...prev }
       for (const studentId of selectedStudents) {
@@ -558,10 +573,19 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     setStudentDrafts((prev) => {
       const fallback = studentDraftFromTemplate(
         Array.from(teamDates).sort(compareDate),
-        selectedClass?.class_type === 'intensive' ? numberInput(intensiveSessions) : 0,
+        selectedClass?.class_type === 'intensive' ? intensiveWeeks.size : 0,
         feeTemplate,
       )
       return { ...prev, [currentStudentId]: mutator(prev[currentStudentId] ?? fallback) }
+    })
+  }
+
+  function toggleIntensiveWeek(date: string) {
+    setIntensiveWeeks((prev) => {
+      const next = new Set(prev)
+      if (next.has(date)) next.delete(date)
+      else next.add(date)
+      return next
     })
   }
 
@@ -1092,16 +1116,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     <span>{teamDates.size} 堂團課</span>
                     <span className="flex-1" />
                     {selectedClass.class_type === 'intensive' && (
-                      <label className="inline-flex items-center gap-2">
-                        <span>精修</span>
-                        <input
-                          type="number"
-                          min="0"
-                          value={intensiveSessions}
-                          onChange={(event) => setIntensiveSessions(event.target.value)}
-                          className={`${inputClass} w-20`}
-                        />
-                      </label>
+                      <span>強化課 {intensiveWeeks.size} 堂</span>
                     )}
                     <button
                       type="button"
@@ -1123,7 +1138,9 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     holidays={globalHolidayDates}
                     onToggle={toggleTeamDate}
                     mode="team"
-                    showIntensiveCol={selectedClass.class_type === 'intensive'}
+                    intensiveWeeks={selectedClass.class_type === 'intensive' ? intensiveWeeks : undefined}
+                    teamWeekday={selectedClass.class_type === 'intensive' ? (selectedClass.weekday1 ?? undefined) : undefined}
+                    onToggleIntensiveWeek={selectedClass.class_type === 'intensive' ? toggleIntensiveWeek : undefined}
                   />
                 </div>
                 <aside className="overflow-hidden rounded-lg border border-border">
@@ -1166,7 +1183,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                 <section className="rounded-lg border border-border bg-muted/20 p-4">
                   <div className="grid gap-2 text-sm">
                     <SummaryLine label="團課" value={`${teamDates.size} 堂`} />
-                    {selectedClass.class_type === 'intensive' && <SummaryLine label="精修" value={`${numberInput(intensiveSessions)} 堂`} />}
+                    {selectedClass.class_type === 'intensive' && <SummaryLine label="強化課" value={`${intensiveWeeks.size} 堂`} />}
                     <SummaryLine label="學生" value={`${selectedStudents.size} 人`} />
                     <SummaryLine label="小計" value={formatMoney(numberInput(feeTemplate.tuitionAmount) + rowsTotal(feeTemplate.bookRows) + rowsTotal(feeTemplate.miscRows) - rowsTotal(feeTemplate.discountRows))} />
                   </div>
@@ -1443,7 +1460,9 @@ function QuarterCalendar({
   holidays,
   onToggle,
   mode,
-  showIntensiveCol,
+  intensiveWeeks,
+  teamWeekday,
+  onToggleIntensiveWeek,
 }: {
   year: number
   quarter: string
@@ -1452,10 +1471,15 @@ function QuarterCalendar({
   holidays: Set<string>
   onToggle: (date: string) => void
   mode: 'holiday' | 'team' | 'intensive'
-  showIntensiveCol?: boolean
+  intensiveWeeks?: Set<string>
+  teamWeekday?: number
+  onToggleIntensiveWeek?: (date: string) => void
 }) {
   const qMonths = monthsForQuarter(quarter)
   const groups = buildQuarterWeeksGrouped(year, quarter)
+  const showIntensiveCol = !!intensiveWeeks && teamWeekday != null
+  // ISO weekday → Sun-indexed array position (0=Sun…6=Sat)
+  const teamDayIdx = teamWeekday == null ? -1 : teamWeekday === 7 ? 0 : teamWeekday
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-background">
@@ -1467,7 +1491,7 @@ function QuarterCalendar({
               <th key={d} className="border-b border-border py-2 text-center text-xs font-normal text-muted-foreground">{d}</th>
             ))}
             {showIntensiveCol && (
-              <th className="border-b border-l border-border py-2 text-center text-xs font-semibold text-emerald-600">強</th>
+              <th className="border-b border-l border-border py-2 text-center text-xs font-normal text-emerald-600">強</th>
             )}
           </tr>
         </thead>
@@ -1475,6 +1499,10 @@ function QuarterCalendar({
           {groups.map(({ month, monthIdx, weeks }) =>
             weeks.map((week, weekIdx) => {
               const isMonthBoundary = weekIdx === 0 && monthIdx > 0
+              // Date key for this week's intensive slot (same weekday as team day)
+              const intensiveCell = teamDayIdx >= 0 ? week[teamDayIdx] : null
+              const intensiveDate = intensiveCell?.date ?? null
+              const intensiveOn = intensiveDate != null && (intensiveWeeks?.has(intensiveDate) ?? false)
               return (
                 <tr key={`${month}-${weekIdx}`}>
                   {weekIdx === 0 && (
@@ -1489,10 +1517,8 @@ function QuarterCalendar({
                     if (!cell) {
                       return <td key={cellIdx} className={`p-0.5 ${isMonthBoundary ? 'border-t border-border' : ''}`} />
                     }
-                    // Overflow = day belongs to adjacent month shown in this section
                     const isOverflow = cell.month !== month
                     const pos = qMonths.indexOf(cell.month)
-                    // Overflow days: no tint; same-month days: tint
                     const cellBg = !isOverflow && pos >= 0 ? QM[pos].cell : ''
                     const isSelected = selected.has(cell.date)
                     const isSecondary = secondary?.has(cell.date) ?? false
@@ -1509,7 +1535,7 @@ function QuarterCalendar({
                         <button
                           type="button"
                           onClick={() => onToggle(cell.date)}
-                          className={`relative flex h-8 w-full items-center justify-center rounded-full text-xs font-medium transition-colors ${btnTone}`}
+                          className={`relative mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium transition-colors ${btnTone}`}
                           title={formatDateMd(cell.date)}
                         >
                           {Number(cell.date.slice(8, 10))}
@@ -1521,10 +1547,17 @@ function QuarterCalendar({
                     )
                   })}
                   {showIntensiveCol && (
-                    <td className={`border-l border-border p-1 text-center ${isMonthBoundary ? 'border-t border-border' : ''}`}>
-                      <div className="flex h-8 items-center justify-center">
-                        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-[11px] font-bold text-white">強</span>
-                      </div>
+                    <td className={`border-l border-border p-0.5 ${isMonthBoundary ? 'border-t border-border' : ''}`}>
+                      {intensiveDate && onToggleIntensiveWeek ? (
+                        <button
+                          type="button"
+                          onClick={() => onToggleIntensiveWeek(intensiveDate)}
+                          title={`強化 ${formatDateMd(intensiveDate)}`}
+                          className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium transition-colors ${intensiveOn ? 'bg-emerald-500 text-white' : 'border border-emerald-300 text-emerald-500 hover:bg-emerald-50'}`}
+                        />
+                      ) : (
+                        <div className="h-8" />
+                      )}
                     </td>
                   )}
                 </tr>
