@@ -24,7 +24,7 @@ import {
   quarterDates,
 } from '@/lib/billing/calendar'
 import type { BillingQuarter } from '@/lib/billing/calendar'
-import type { BillingClass, BillingState, BillingStudent, OpenBagStudentInput } from '@/lib/billing/types'
+import type { BillingClass, BillingState, BillingStudent, FeePreset, OpenBagStudentInput } from '@/lib/billing/types'
 
 type TabKey = 'holidays' | 'open'
 type Message = { tone: 'ok' | 'error' | 'idle'; text: string }
@@ -269,6 +269,11 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [genAttMsg, setGenAttMsg] = useState('')
   const [prevRefundMap, setPrevRefundMap] = useState<Map<string, { sessions: number; rate: number; amount: number; note: string }>>(new Map())
   const [prevRefundLoading, setPrevRefundLoading] = useState(false)
+  const [presets, setPresets] = useState<FeePreset[]>([])
+  const [presetsLoading, setPresetsLoading] = useState(false)
+  const [showSaveForm, setShowSaveForm] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const [saveClassScoped, setSaveClassScoped] = useState(false)
 
   async function load(nextClassId = classId, nextSeasonId = seasonId) {
     const search = new URLSearchParams()
@@ -476,6 +481,14 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   function goFees() {
     if (!selectedStudents.size || !selectedClass || !selectedSeason) return
     setOpenStep(2)
+
+    setPresetsLoading(true)
+    fetch(`/api/billing/fee-presets?class_id=${selectedClass.id}`, { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((data: { presets?: FeePreset[] }) => setPresets(data.presets ?? []))
+      .catch(() => setPresets([]))
+      .finally(() => setPresetsLoading(false))
+
     setPrevRefundLoading(true)
     fetch(`/api/billing/attendance-refund?class_id=${selectedClass.id}&season_id=${selectedSeason.id}`, { cache: 'no-store' })
       .then((res) => res.json())
@@ -550,6 +563,61 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       else intensive.add(date)
       return { ...draft, intensiveDates: Array.from(intensive).sort(compareDate), teamDates: draft.teamDates.filter((item) => item !== date) }
     })
+  }
+
+  function applyPreset(presetId: string) {
+    const preset = presets.find((p) => p.id === presetId)
+    if (!preset) return
+    setFeeTemplate({
+      tuitionPreset: 'custom',
+      tuitionAmount: String(preset.tuition_amount),
+      bookRows: preset.book_rows.length ? preset.book_rows.map((r) => ({ note: r.note, amount: String(r.amount) })) : [emptyFeeRow()],
+      miscRows: preset.misc_rows.length ? preset.misc_rows.map((r) => ({ note: r.note, amount: String(r.amount) })) : [emptyFeeRow()],
+      discountRows: preset.discount_rows.length ? preset.discount_rows.map((r) => ({ note: r.note, amount: String(r.amount) })) : [emptyFeeRow()],
+    })
+  }
+
+  async function handleSavePreset() {
+    if (!saveName.trim()) return
+    const body = {
+      action: 'save',
+      class_id: saveClassScoped && selectedClass ? selectedClass.id : null,
+      name: saveName.trim(),
+      tuition_amount: numberInput(feeTemplate.tuitionAmount),
+      book_rows: normalizeRows(feeTemplate.bookRows),
+      misc_rows: normalizeRows(feeTemplate.miscRows),
+      discount_rows: normalizeRows(feeTemplate.discountRows),
+      is_default: false,
+    }
+    try {
+      const res = await fetch('/api/billing/fee-presets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json() as { preset?: FeePreset; error?: string }
+      if (!res.ok) throw new Error(data.error ?? '儲存失敗')
+      setPresets((prev) => [...prev.filter((p) => p.id !== data.preset!.id), data.preset!]
+        .sort((a, b) => (b.is_default ? 1 : 0) - (a.is_default ? 1 : 0) || a.name.localeCompare(b.name)))
+      setSaveName('')
+      setShowSaveForm(false)
+    } catch (err) {
+      setMessage({ tone: 'error', text: err instanceof Error ? err.message : '儲存失敗' })
+    }
+  }
+
+  async function handleDeletePreset(presetId: string) {
+    try {
+      const res = await fetch('/api/billing/fee-presets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'delete', id: presetId }),
+      })
+      if (!res.ok) throw new Error('刪除失敗')
+      setPresets((prev) => prev.filter((p) => p.id !== presetId))
+    } catch (err) {
+      setMessage({ tone: 'error', text: err instanceof Error ? err.message : '刪除失敗' })
+    }
   }
 
   function openBag() {
@@ -974,6 +1042,56 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                   )}
                 </section>
                 <section className="grid gap-4">
+                  {/* Preset bar */}
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value=""
+                      onChange={(e) => applyPreset(e.target.value)}
+                      disabled={presetsLoading}
+                      className={`${inputClass} min-w-44 flex-1`}
+                    >
+                      <option value="">{presetsLoading ? '讀取範本…' : presets.length ? '套用費用範本…' : '（無已儲存範本）'}</option>
+                      {presets.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.class_id ? '● ' : '○ '}{p.name}{p.is_default ? ' ★' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {!showSaveForm ? (
+                      <button type="button" onClick={() => { setShowSaveForm(true); setSaveClassScoped(!!selectedClass) }} className={buttonBase}>
+                        另存範本
+                      </button>
+                    ) : (
+                      <>
+                        <input
+                          value={saveName}
+                          onChange={(e) => setSaveName(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') void handleSavePreset(); if (e.key === 'Escape') setShowSaveForm(false) }}
+                          placeholder="範本名稱"
+                          className={`${inputClass} w-40`}
+                          autoFocus
+                        />
+                        <label className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <input type="checkbox" checked={saveClassScoped} onChange={(e) => setSaveClassScoped(e.target.checked)} className="accent-foreground" />
+                          只限此班
+                        </label>
+                        <button type="button" onClick={() => void handleSavePreset()} disabled={!saveName.trim()} className={primaryButton}>儲存</button>
+                        <button type="button" onClick={() => setShowSaveForm(false)} className={buttonBase}>取消</button>
+                      </>
+                    )}
+                    {presets.length > 0 && !showSaveForm && (
+                      <select
+                        value=""
+                        onChange={(e) => { if (e.target.value) void handleDeletePreset(e.target.value) }}
+                        className={`${inputClass} text-muted-foreground`}
+                      >
+                        <option value="">刪除範本…</option>
+                        {presets.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
                   <div className="grid gap-2 md:grid-cols-[1fr_160px]">
                     <label>
                       <span className={labelClass}>學費方案</span>

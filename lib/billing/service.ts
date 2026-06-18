@@ -30,6 +30,7 @@ import type {
   PaymentBagLineSession,
   PaymentBagWithLines,
   ReconciliationStatus,
+  FeePreset,
 } from './types'
 
 type Supabase = Awaited<ReturnType<typeof createServiceClient>>
@@ -1364,6 +1365,91 @@ export async function computeAttendanceRefunds(bagId: string): Promise<Attendanc
     .filter(p => p.refund_sessions > 0)
 }
 
+
+// ─── Fee Presets ────────────────────────────────────────────────────────────
+
+async function getFirstTenantId(supabase: Supabase): Promise<string> {
+  const { data } = await supabase.from('tenants').select('id').limit(1)
+  const id = (data ?? [])[0]?.id as string | undefined
+  if (!id) throw new Error('tenant not found')
+  return id
+}
+
+export async function listFeePresets(params: { classId?: string | null }): Promise<FeePreset[]> {
+  const supabase = await createServiceClient()
+  const tenantId = await getFirstTenantId(supabase)
+
+  let query = supabase
+    .from('billing_fee_presets')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .order('is_default', { ascending: false })
+    .order('name')
+
+  if (params.classId) {
+    // class-specific + global
+    query = query.or(`class_id.eq.${params.classId},class_id.is.null`)
+  } else {
+    query = query.is('class_id', null)
+  }
+
+  const { data, error } = await query
+  if (error) throw new Error(error.message)
+  return (data ?? []) as FeePreset[]
+}
+
+export async function saveFeePreset(input: {
+  id?: string
+  classId?: string | null
+  name: string
+  tuitionAmount: number
+  bookRows: Array<{ note: string; amount: number }>
+  miscRows: Array<{ note: string; amount: number }>
+  discountRows: Array<{ note: string; amount: number }>
+  isDefault?: boolean
+}): Promise<FeePreset> {
+  const supabase = await createServiceClient()
+  const tenantId = await getFirstTenantId(supabase)
+
+  const row = {
+    tenant_id: tenantId,
+    class_id: input.classId ?? null,
+    name: input.name.trim(),
+    tuition_amount: input.tuitionAmount,
+    book_rows: input.bookRows,
+    misc_rows: input.miscRows,
+    discount_rows: input.discountRows,
+    is_default: input.isDefault ?? false,
+    updated_at: new Date().toISOString(),
+  }
+
+  if (input.id) {
+    const { data, error } = await supabase
+      .from('billing_fee_presets')
+      .update(row)
+      .eq('id', input.id)
+      .select()
+      .single()
+    if (error) throw new Error(error.message)
+    return data as FeePreset
+  }
+
+  const { data, error } = await supabase
+    .from('billing_fee_presets')
+    .insert(row)
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data as FeePreset
+}
+
+export async function deleteFeePreset(id: string): Promise<void> {
+  const supabase = await createServiceClient()
+  const { error } = await supabase.from('billing_fee_presets').delete().eq('id', id)
+  if (error) throw new Error(error.message)
+}
+
+// ─── (end fee presets) ───────────────────────────────────────────────────────
 
 export function normalizeSeasonDraft(raw: { year?: unknown; quarter?: unknown; startDate?: unknown; endDate?: unknown }) {
   const fallback = defaultSeasonDraft()
