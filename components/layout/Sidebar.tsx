@@ -84,7 +84,7 @@ export function Sidebar() {
         </button>
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2.5">
+      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2.5">
         {navItems.map(({ href, icon: Icon, label }) => {
           const isActive =
             pathname === href || (href !== "/" && pathname.startsWith(href));
