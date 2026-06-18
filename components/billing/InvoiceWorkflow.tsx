@@ -70,12 +70,6 @@ const weekdays = [
   { value: 7, label: '週日' },
 ]
 
-const tuitionPresets = [
-  { key: 'basic', label: '基礎 24 堂', sessions: 24, price: 10000 },
-  { key: 'standard', label: '標準 24 堂', sessions: 24, price: 11000 },
-  { key: 'advanced', label: '進階 24 堂', sessions: 24, price: 12000 },
-]
-
 function todayDate() {
   return new Date().toISOString().slice(0, 10)
 }
@@ -210,7 +204,6 @@ function studentDraftFromTemplate(teamDates: string[], intensiveSessions: number
 }
 
 type FeeTemplateDraft = {
-  tuitionPreset: string
   tuitionAmount: string
   bookRows: FeeRowDraft[]
   miscRows: FeeRowDraft[]
@@ -271,7 +264,6 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set(state.students.map((student) => student.student_id)))
   const [intensiveWeeks, setIntensiveWeeks] = useState<Set<string>>(new Set())
   const [feeTemplate, setFeeTemplate] = useState<FeeTemplateDraft>({
-    tuitionPreset: 'custom',
     tuitionAmount: '0',
     bookRows: [emptyFeeRow()],
     miscRows: [emptyFeeRow()],
@@ -533,18 +525,6 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       .finally(() => setPrevRefundLoading(false))
   }
 
-  function applyTuitionPreset(key: string) {
-    const preset = tuitionPresets.find((item) => item.key === key)
-    const totalSessions = teamDates.size + (selectedClass?.class_type === 'intensive' ? intensiveWeeks.size : 0)
-    setFeeTemplate((prev) => ({
-      ...prev,
-      tuitionPreset: key,
-      tuitionAmount: preset
-        ? String(Math.round((preset.price / preset.sessions) * totalSessions / 10) * 10)
-        : prev.tuitionAmount,
-    }))
-  }
-
   function goStudentAdjustments() {
     const baseTeamDates = Array.from(teamDates).sort(compareDate)
     const intensiveCount = selectedClass?.class_type === 'intensive' ? intensiveWeeks.size : 0
@@ -608,7 +588,6 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     const preset = presets.find((p) => p.id === presetId)
     if (!preset) return
     setFeeTemplate({
-      tuitionPreset: 'custom',
       tuitionAmount: String(preset.tuition_amount),
       bookRows: preset.book_rows.length ? preset.book_rows.map((r) => ({ note: r.note, amount: String(r.amount) })) : [emptyFeeRow()],
       miscRows: preset.misc_rows.length ? preset.misc_rows.map((r) => ({ note: r.note, amount: String(r.amount) })) : [emptyFeeRow()],
@@ -1226,19 +1205,10 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                       ))}
                     </select>
                   </div>
-                  <div className="grid gap-2 md:grid-cols-[1fr_160px]">
-                    <label>
-                      <span className={labelClass}>學費方案</span>
-                      <select value={feeTemplate.tuitionPreset} onChange={(event) => applyTuitionPreset(event.target.value)} className={`${inputClass} w-full`}>
-                        <option value="custom">自訂</option>
-                        {tuitionPresets.map((preset) => <option key={preset.key} value={preset.key}>{preset.label}</option>)}
-                      </select>
-                    </label>
-                    <label>
-                      <span className={labelClass}>學費</span>
-                      <input value={feeTemplate.tuitionAmount} onChange={(event) => setFeeTemplate((prev) => ({ ...prev, tuitionAmount: event.target.value, tuitionPreset: 'custom' }))} className={`${inputClass} w-full`} />
-                    </label>
-                  </div>
+                  <label>
+                    <span className={labelClass}>學費</span>
+                    <input value={feeTemplate.tuitionAmount} onChange={(event) => setFeeTemplate((prev) => ({ ...prev, tuitionAmount: event.target.value }))} className={`${inputClass} w-full`} />
+                  </label>
                   <FeeRowsEditor title="教材費" rows={feeTemplate.bookRows} onChange={(bookRows) => setFeeTemplate((prev) => ({ ...prev, bookRows }))} />
                   <FeeRowsEditor title="雜費" rows={feeTemplate.miscRows} onChange={(miscRows) => setFeeTemplate((prev) => ({ ...prev, miscRows }))} />
                   <FeeRowsEditor title="折扣" rows={feeTemplate.discountRows} onChange={(discountRows) => setFeeTemplate((prev) => ({ ...prev, discountRows }))} />
@@ -1554,7 +1524,7 @@ function QuarterCalendar({
                           onClick={() => onToggleIntensiveWeek(intensiveDate)}
                           title={`強化 ${formatDateMd(intensiveDate)}`}
                           className={`mx-auto flex h-8 w-8 items-center justify-center rounded-full text-xs font-medium transition-colors ${intensiveOn ? 'bg-emerald-500 text-white' : 'border border-emerald-300 text-emerald-500 hover:bg-emerald-50'}`}
-                        />
+                        >強</button>
                       ) : (
                         <div className="h-8" />
                       )}
