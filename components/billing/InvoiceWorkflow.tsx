@@ -1489,7 +1489,7 @@ function QuarterCalendar({
                     }
                     const isOverflow = cell.month !== month
                     const pos = qMonths.indexOf(cell.month)
-                    const cellBg = !isOverflow && pos >= 0 ? QM[pos].cell : ''
+                    const cellBg = pos >= 0 ? QM[pos].cell : ''
                     const isSelected = selected.has(cell.date)
                     const isSecondary = secondary?.has(cell.date) ?? false
                     const isHoliday = holidays.has(cell.date)
