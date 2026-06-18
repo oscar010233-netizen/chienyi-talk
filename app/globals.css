@@ -173,6 +173,28 @@
   }
 }
 
+/* Docs page: style the HTML rendered by marked */
+.docs-content h1 { @apply mb-6 text-2xl font-bold tracking-tight text-foreground; }
+.docs-content h2 { @apply mt-10 mb-3 border-b border-border pb-2 text-lg font-semibold text-foreground; }
+.docs-content h3 { @apply mt-6 mb-2 font-semibold text-foreground; }
+.docs-content p  { @apply mb-3 leading-relaxed text-foreground/80; }
+.docs-content ul { @apply mb-3 ml-5 list-disc space-y-1 text-foreground/80; }
+.docs-content ol { @apply mb-3 ml-5 list-decimal space-y-1 text-foreground/80; }
+.docs-content li { @apply leading-relaxed; }
+.docs-content hr { @apply my-8 border-border; }
+.docs-content strong { @apply font-semibold text-foreground; }
+.docs-content blockquote { @apply my-3 border-l-4 border-gold/50 pl-4 text-sm text-muted-foreground dark:border-[#ff4d4f]/50; }
+.docs-content code { @apply rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-gold dark:text-[#ff4d4f]; }
+.docs-content pre { @apply my-3 overflow-x-auto rounded-lg bg-muted px-4 py-3 font-mono text-xs text-foreground/80; }
+.docs-content pre code { @apply bg-transparent px-0 py-0; }
+.docs-content table { @apply my-4 w-full overflow-hidden rounded-lg border border-border text-sm; }
+.docs-content th { @apply border-b border-border bg-muted/60 px-4 py-2.5 text-left text-xs font-semibold text-muted-foreground; }
+.docs-content td { @apply border-b border-border/50 px-4 py-2 text-sm text-foreground/80; }
+.docs-content tr:last-child td { @apply border-0; }
+.docs-content details { @apply my-3 rounded-lg border border-border; }
+.docs-content summary { @apply cursor-pointer px-4 py-2.5 text-sm font-medium text-foreground select-none hover:bg-muted/40; }
+.docs-content details[open] { @apply bg-muted/20; }
+
 @layer utilities {
   /* Clears iOS status bar (Dynamic Island / notch) */
   .pt-safe-top {
