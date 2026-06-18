@@ -39,7 +39,6 @@ const TYPE_CHIP: Record<TaskType, string> = {
 }
 
 const TYPE_OPTIONS: { value: TaskType; label: string }[] = [
-  { value: 'attendance', label: '出席' },
   { value: 'homework', label: '作業' },
   { value: 'practice', label: '練習' },
   { value: 'quiz', label: '測驗' },
@@ -49,9 +48,8 @@ const TYPE_OPTIONS: { value: TaskType; label: string }[] = [
 const WEEKLY_TEMPLATES: Record<WeeklyTemplateKey, { label: string; description: string; rows: Omit<WeeklyTaskRow, 'key'>[] }> = {
   eng: {
     label: '英文班',
-    description: '出席 1、作業 3、測驗 3、練習 2、評語 1',
+    description: '作業 3、測驗 3、練習 2、評語 1',
     rows: [
-      { task_type: 'attendance', label: '出席', task_name: '出席', threshold: '' },
       { task_type: 'homework', label: '作業 1', task_name: '作業 1', threshold: '' },
       { task_type: 'homework', label: '作業 2', task_name: '作業 2', threshold: '' },
       { task_type: 'homework', label: '作業 3', task_name: '作業 3', threshold: '' },
@@ -65,9 +63,8 @@ const WEEKLY_TEMPLATES: Record<WeeklyTemplateKey, { label: string; description: 
   },
   xiao: {
     label: '小學堂',
-    description: '出席 1、作業 5、測驗 3、評語 1',
+    description: '作業 5、測驗 3、評語 1',
     rows: [
-      { task_type: 'attendance', label: '出席', task_name: '出席', threshold: '' },
       { task_type: 'homework', label: '作業 1', task_name: '作業 1', threshold: '' },
       { task_type: 'homework', label: '作業 2', task_name: '作業 2', threshold: '' },
       { task_type: 'homework', label: '作業 3', task_name: '作業 3', threshold: '' },
