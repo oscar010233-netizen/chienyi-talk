@@ -543,7 +543,6 @@ export async function generateDefaultAttendance(input: {
     period_key: periodKey(season.season_code, season.start_date, entry.date),
     source: 'generated',
     status: entry.shifted ? 'holiday_shifted' : 'scheduled',
-    holiday_id: null,
     note: entry.shifted ? `${formatDateMd(entry.originalDate)} 假日順延` : null,
   }))
 
