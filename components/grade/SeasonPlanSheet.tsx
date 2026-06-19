@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, CalendarDays, Loader2 } from 'lucide-react'
 import Link from 'next/link'
@@ -157,6 +157,16 @@ export function SeasonPlanSheet({ classId, cls }: Props) {
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
+  const displayedSessions = useMemo(() => {
+    const hasIntensiveSessions = sessions.some((session) => session.session_type === 'intensive')
+    if (cls.class_type !== 'intensive' || hasIntensiveSessions) return sessions
+
+    return sessions.flatMap((session) => {
+      if (session.session_type !== 'group') return [session]
+      return [session, { ...session, session_type: 'intensive' as const }]
+    })
+  }, [cls.class_type, sessions])
+
   useEffect(() => {
     fetch(`/api/season-plan?class_id=${classId}`)
       .then((r) => r.json())
@@ -225,12 +235,12 @@ export function SeasonPlanSheet({ classId, cls }: Props) {
               </tr>
             </thead>
             <tbody>
-              {sessions.map((session, idx) => {
+              {displayedSessions.map((session, idx) => {
                 const { md, day } = fmtDate(session.default_date)
                 const isGroup = session.session_type === 'group'
                 const isIntensive = session.session_type === 'intensive'
                 return (
-                  <tr key={session.id} className={cn(idx % 2 === 1 && 'bg-muted/20')}>
+                  <tr key={`${session.id}-${session.session_type}`} className={cn(idx % 2 === 1 && 'bg-muted/20')}>
                     <td className="border border-border px-3 py-2 align-middle">
                       <div className="font-medium text-foreground">{md} {day}</div>
                       <div className="text-[10px] text-muted-foreground">{session.period_key}</div>
