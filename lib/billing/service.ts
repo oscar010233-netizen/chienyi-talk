@@ -1132,8 +1132,6 @@ export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWit
         .join(' / ') || null,
       adjustment_amount: adjustmentAmount,
       total_amount: total,
-      issue_status: '未發',
-      payment_status: 'unpaid',
     }
   })
 
@@ -1158,34 +1156,6 @@ export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWit
 
   const activeBag = await getActiveBag(supabase, season.id, cls.id)
   return requireValue(activeBag, 'payment bag not found after opening')
-}
-
-export async function updatePaymentBagLine(input: {
-  lineId: string
-  issueStatus?: string | null
-  paymentStatus?: string | null
-  paidAmount?: number | null
-  handler?: string | null
-  introCardReceived?: boolean
-  note?: string | null
-}): Promise<PaymentBagLine> {
-  const supabase = await createServiceClient()
-  const patch: Record<string, unknown> = {}
-  if (input.issueStatus != null) patch.issue_status = input.issueStatus
-  if (input.paymentStatus != null) patch.payment_status = input.paymentStatus
-  if (input.paidAmount !== undefined) patch.paid_amount = input.paidAmount
-  if (input.handler !== undefined) patch.handler = input.handler?.trim() || null
-  if (input.introCardReceived !== undefined) patch.intro_card_received = input.introCardReceived
-  if (input.note !== undefined) patch.note = input.note?.trim() || null
-
-  const { data, error } = await supabase
-    .from('payment_bag_lines')
-    .update(patch)
-    .eq('id', input.lineId)
-    .select()
-    .single()
-  if (error) throw new Error(error.message)
-  return data as PaymentBagLine
 }
 
 // Print/PDF history is tracked by counters on payment_bags (no events table).

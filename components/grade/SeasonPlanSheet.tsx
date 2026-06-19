@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft, CalendarDays, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import type { ClassRow, SeasonSession, Task, TaskType } from '@/lib/grade/types'
+import type { ClassRow, SeasonSession, Task } from '@/lib/grade/types'
 
 const WEEKDAY_ZH = ['', '一', '二', '三', '四', '五', '六', '日']
 

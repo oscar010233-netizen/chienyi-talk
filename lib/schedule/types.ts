@@ -38,4 +38,5 @@ export interface ScheduleEventTeacher {
   start_time: string
   end_time: string
   color: string | null
+  teacher?: { id: string; display_name: string | null } | null
 }

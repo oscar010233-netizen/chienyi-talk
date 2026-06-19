@@ -10,11 +10,15 @@ export async function proxy(request: NextRequest) {
     process.env.NODE_ENV === 'development' &&
     (
       pathname.startsWith('/workspace') ||
+      pathname.startsWith('/classes') ||
       pathname.startsWith('/billing') ||
       pathname.startsWith('/api/billing') ||
       pathname.startsWith('/api/rooms') ||
       pathname.startsWith('/api/schedule') ||
-      pathname.startsWith('/api/classes')
+      pathname.startsWith('/api/classes') ||
+      pathname.startsWith('/api/season-plan') ||
+      pathname.startsWith('/api/profiles') ||
+      pathname.startsWith('/api/day-entries')
     )
 
   if (isPublicExamGrading || isPublicWorkspacePreview || pathname.startsWith('/api/auth')) {

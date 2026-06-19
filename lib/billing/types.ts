@@ -99,11 +99,6 @@ export interface PaymentBagLine {
   adjustment_label: string | null
   adjustment_amount: number
   total_amount: number
-  issue_status: string
-  paid_amount: number | null
-  intro_card_received: boolean
-  handler: string | null
-  payment_status: string
   note: string | null
   student?: BillingStudent
   sessions?: PaymentBagLineSession[]

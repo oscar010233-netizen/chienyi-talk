@@ -201,6 +201,7 @@ export type Database = {
           id: string
           tenant_id: string
           class_id: string
+          default_attendance_id: string | null
           week_label: string | null
           lesson_label: string | null
           task_type: string
@@ -217,6 +218,7 @@ export type Database = {
           id?: string
           tenant_id: string
           class_id: string
+          default_attendance_id?: string | null
           week_label?: string | null
           lesson_label?: string | null
           task_type: string
@@ -233,6 +235,7 @@ export type Database = {
           id?: string
           tenant_id?: string
           class_id?: string
+          default_attendance_id?: string | null
           week_label?: string | null
           lesson_label?: string | null
           task_type?: string
@@ -246,7 +249,8 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          { foreignKeyName: "class_tasks_class_id_fkey"; columns: ["class_id"]; referencedRelation: "classes"; referencedColumns: ["id"] }
+          { foreignKeyName: "class_tasks_class_id_fkey"; columns: ["class_id"]; referencedRelation: "classes"; referencedColumns: ["id"] },
+          { foreignKeyName: "class_tasks_default_attendance_id_fkey"; columns: ["default_attendance_id"]; referencedRelation: "default_attendance"; referencedColumns: ["id"] }
         ]
       }
       student_task_records: {
@@ -552,7 +556,6 @@ export type Database = {
           default_date: string | null
           original_date: string | null
           period_key: string | null
-          source: string | null
           status: string
           note: string | null
           created_at: string
@@ -567,7 +570,6 @@ export type Database = {
           default_date?: string | null
           original_date?: string | null
           period_key?: string | null
-          source?: string | null
           status?: string
           note?: string | null
           created_at?: string
@@ -582,7 +584,6 @@ export type Database = {
           default_date?: string | null
           original_date?: string | null
           period_key?: string | null
-          source?: string | null
           status?: string
           note?: string | null
           created_at?: string

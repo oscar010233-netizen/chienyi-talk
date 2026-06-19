@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       *,
       room:rooms(id, name, display_order),
       class_info:classes(id, class_name, class_code),
-      teachers:schedule_event_teachers(*)
+      teachers:schedule_event_teachers(*, teacher:profiles(id, display_name))
     `)
     .eq('schedule_day_id', day.id)
     .order('start_time')
@@ -31,14 +31,22 @@ export async function GET(request: NextRequest) {
   return NextResponse.json(data ?? [])
 }
 
+interface TeacherSegmentInput {
+  teacher_id: string
+  start_time: string
+  end_time: string
+  color?: string | null
+}
+
 // POST /api/schedule/events
 export async function POST(request: NextRequest) {
   const body = await request.json() as Record<string, unknown>
-  const { date, room_id, class_id, title, event_type, start_time, end_time, color, note } = body as {
+  const { date, room_id, class_id, title, event_type, start_time, end_time, color, note, teachers } = body as {
     date?: string; room_id?: string; class_id?: string
     title?: string; event_type?: string
     start_time?: string; end_time?: string
     color?: string; note?: string
+    teachers?: TeacherSegmentInput[]
   }
 
   if (!date || !room_id || !start_time || !end_time) {
@@ -91,5 +99,20 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  if (event && teachers && teachers.length > 0) {
+    const { error: teacherError } = await supabase.from('schedule_event_teachers').insert(
+      teachers.map(t => ({
+        tenant_id: tenant.id,
+        schedule_event_id: event.id,
+        teacher_id: t.teacher_id,
+        start_time: t.start_time,
+        end_time: t.end_time,
+        color: t.color ?? null,
+      }))
+    )
+    if (teacherError) return NextResponse.json({ error: teacherError.message }, { status: 500 })
+  }
+
   return NextResponse.json(event)
 }

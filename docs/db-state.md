@@ -1,6 +1,6 @@
 # DB 現況與約定（給後續 AI agent / 開發者）
 
-> 最後更新：2026-06-15。本檔記錄「光看 schema 看不出來」的真相，動 DB 或寫程式前先讀。
+> 最後更新：2026-06-19。本檔記錄「光看 schema 看不出來」的真相，動 DB 或寫程式前先讀。
 > Schema 欄位清單的單一事實來源在 `lib/db/schema.ts`，並可在前端 `/db` 頁即時檢視。
 
 ## 近期已執行的變更
@@ -12,23 +12,29 @@
 2. **`schedule_event_students` 表已 DROP。**
    原為「補課/個別安排」預留，零程式碼引用。要復用直接重跑 migration `20260614000002_schedule_tables.sql` 內對應段落即可。
 
-3. **新增 `audit_log` 表 + `zz_audit` 觸發器。**
+3. **`payment_bag_lines` 的 5 個付款狀態欄位仍在 live DB，但 app 已停止寫入。**
+   `issue_status` / `paid_amount` / `intro_card_received` / `handler` / `payment_status` 目前無 UI 觸發；對應 `updatePaymentBagLine` service function 和 `update-line` API action 已移除。DDL 已準備於 `supabase/migrations/202606190001_drop_payment_bag_line_payment_status_columns.sql`，但尚未套用 live DB；套用後需重新產生 types / snapshot。
+
+4. **新增 `audit_log` 表 + `zz_audit` 觸發器。**
    掛在所有業務表上（after insert/update/delete），自動記錄 op / row_id / changed_columns / old_data / new_data / actor。
    前端 `/db` 頁即時顯示。注意：因 app 全用 service role，`actor` 多半是 `postgres`，不是真人。
 
-4. **`/api/task-records` PATCH 不再接受 `status` / `lamp`。**
+5. **`default_attendance.source` 欄位已 DROP。**
+   原意是記錄 session 由 weekday1 或 weekday2 產生，但實際值全為 `'generated'`，沒有區分意義。
+   判斷 session 類型改用 `original_date` 的星期幾比對 `classes.weekday1`/`weekday2`（見 `app/api/season-plan/route.ts`）。
+
+6. **`/api/task-records` PATCH 不再接受 `status` / `lamp`。**
    狀態變更一律走 `/api/reinforcement/tasks`（內含 `resolveTaskSubmission` 狀態機）。`/api/task-records` 只能改 latest_result / result_history / teacher_note / comment_text / comment_status。
 
 ## 不能動的東西
 
 - **`profiles`**：RLS policy（`tenant members can manage`）靠它判斷 tenant 歸屬，是整個權限體系的根。app 程式碼不直接讀寫它（用 service role 繞過 RLS）≠ 沒用。**不可刪。**
-- **`schedule_event_teachers`**：被 `/api/schedule/events` GET 的 `teachers:schedule_event_teachers(*)` join 著。目前 0 筆、無寫入 UI，是「多老師排課」路線圖預留。直接 DROP 會讓配課表查詢爆掉——要砍必須先移除該 join。
+- **`schedule_event_teachers`**：被 `/api/schedule/events` GET 的 `teachers:schedule_event_teachers(*)` join 著，配課表新增/編輯時段可寫入授課老師。直接 DROP 會讓配課表查詢爆掉——要砍必須先移除該 join 與 UI。
 
 ## 已知缺口 / 殭屍欄位（不是 bug，是待補）
 
-- **`classes.department` 從來沒有寫入點**（CreateClassModal 無此欄）。所有班級 department 皆為 null，導致 buffer 頁 `sourceFromDepartment()` 永遠回傳 `ENG`，**ENG/XIAO 來源分類與篩選實質失效**。正解是補 department 輸入 UI，不是刪欄。
-- **從不寫入的欄位**：`schedule_days.note`、`students.note`、`day_entries.notes`、`day_entries.sort_order`（排序實際靠 created_at）。屬無害冗餘，未來要用再接 UI。
-- **`payment_bag_lines`** 的 `issue_status` / `paid_amount` / `handler` / `payment_status` / `intro_card_received`：有 API（billing `update-line` action）但**無任何 UI 觸發**。繳費袋只顯示不可改。帳務 UI 待重寫。
+- **`classes.department` 已有新增班級寫入 UI**，但舊資料可能仍為 null。若 buffer 的 ENG/XIAO 分類不準，優先回填舊班級 department。
+- **近期已補 UI 的欄位**：`schedule_days.note`、`students.note`、`day_entries.notes`、`day_entries.sort_order`。
 - **DB 預設值欄位**（非 app 寫入，勿誤判為「有在用」）：各表 `status`（rooms/schedule_days/schedule_events… 有 DEFAULT）、`updated_at`（trigger 自動維護）。
 
 ## 對 DB 跑 DDL 的方法

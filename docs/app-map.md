@@ -18,7 +18,7 @@
 | `rooms` | 教室 | 主體 | 配課表 | 配課表用的房間 |
 | `schedule_days` | 日期 | 定義 | 配課表 | 配課表的日曆日期 |
 | `schedule_events` | 課程事件 | 資料 | 配課表 | 某天某時段某教室排了哪個班 |
-| `schedule_event_teachers` | 授課老師 | 關係 | 配課表（未完成） | 預留多老師，目前無寫入 UI |
+| `schedule_event_teachers` | 授課老師 | 關係 | 配課表 | 課程事件的授課老師段落 |
 | `day_entries` | 日記事 | 資料 | 配課表 | 配課表的晚餐/待辦事項 |
 | `billing_seasons` | 帳務季 | 定義 | 開袋 | Q1/Q2/Q3/Q4 的課程期間（含假日清單） |
 | `default_attendance` | 預設出席 | 定義 | 開袋 | 每班每期應上幾堂、哪些日期 |
@@ -113,11 +113,11 @@
 | `adjustment_label` | 調整項目名稱 |
 | `adjustment_amount` | 調整金額 |
 | `total_amount` | 總金額 |
-| `issue_status` | 發單狀態 |
-| `paid_amount` | 已付金額 |
-| `intro_card_received` | 介紹卡收到 |
-| `handler` | 經手人 |
-| `payment_status` | 付款狀態 |
+| `issue_status` | 發單狀態（live DB 尚存在；目前 app 不寫入） |
+| `paid_amount` | 已付金額（live DB 尚存在；目前 app 不寫入） |
+| `intro_card_received` | 介紹卡收到（live DB 尚存在；目前 app 不寫入） |
+| `handler` | 經手人（live DB 尚存在；目前 app 不寫入） |
+| `payment_status` | 付款狀態（live DB 尚存在；目前 app 不寫入） |
 </details>
 
 ---
@@ -311,6 +311,5 @@
 
 | 功能 | 問題 |
 |------|------|
-| Buffer 部門篩選 | `classes.department` 從未寫入，ENG/XIAO 無效 |
-| 授課老師 | `schedule_event_teachers` 有表但無 UI |
-| 學生備註 | `students.note` 有欄但表單沒有這個欄位 |
+| Buffer 部門篩選 | 新班級已可寫 `classes.department`，舊班級若為 null 仍需回填 |
+| 授課老師 | 目前可在配課表時段指定老師；進階分段/換老師仍待細化 |

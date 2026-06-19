@@ -1,0 +1,49 @@
+資料表,欄位,/classes 列表頁,/classes/[classId] 詳細頁,用途,備註
+classes,id,✅ 讀,✅ 讀（WHERE 條件）,班級識別，URL param,
+classes,tenant_id,✅ 讀,✅ 讀（SELECT *）,多租戶,
+classes,class_name,✅ 顯示,✅ 顯示（頁面標題）,班名,
+classes,class_code,✅ 讀（未顯示）,✅ 顯示（副標題）,班級代號,列表頁讀了但不展示
+classes,department,✅ 讀（未顯示）,✅ 讀,ENG/XIAO 分類,buffer 頁也用；列表頁不展示
+classes,level,✅ 讀（未顯示）,✅ 讀,程度,列表頁不展示
+classes,class_type,✅ 顯示（TYPE_LABEL）,✅ 讀,課型（英文／數學／…）,
+classes,weekday1,✅ 顯示（weekStr）,✅ 讀,第一上課日,
+classes,weekday2,✅ 顯示（weekStr）,✅ 讀,第二上課日,
+classes,system_sessions,✅ 讀（未顯示）,✅ 讀,系統節數,billing 頁也用；列表頁不展示
+classes,status,✅ WHERE='active',✅ 讀,篩選在用班級,
+class_enrollments,id,—,✅ 讀,enrollment 識別,
+class_enrollments,class_id,✅ 讀（count）,✅ WHERE 條件,屬於哪個班,
+class_enrollments,student_id,—,✅ 讀,關聯學生,
+class_enrollments,slot_order,—,✅ ORDER BY,學生在班級的排序,
+class_enrollments,status,✅ WHERE='active',✅ WHERE='active',篩選有效報名,
+students,id,—,✅ 讀（JOIN）,學生識別,
+students,chinese_name,—,✅ 顯示,學生中文名,
+students,english_name,—,✅ 顯示,學生英文名,
+students,status,—,✅ 顯示,學生狀態,
+students,school,—,✅ 顯示,學校,
+students,grade,—,✅ 顯示,年級,
+students,parent_name,—,—,不讀,此頁未讀取
+students,parent_phone,—,—,不讀,此頁未讀取
+students,tenant_id,—,—,不讀,此頁未讀取
+students,created_at,—,—,不讀,此頁未讀取
+class_tasks,id,—,✅ 讀,任務識別；矩陣欄 key；查 records 用,
+class_tasks,tenant_id,—,✅ 讀,多租戶,
+class_tasks,class_id,—,✅ WHERE 條件,屬於哪個班,
+class_tasks,week_label,—,✅ 顯示,週次 tag,
+class_tasks,lesson_label,—,✅ 顯示,課次,
+class_tasks,task_type,—,✅ 邏輯判斷,決定燈號邏輯（quiz/work/attendance）,
+class_tasks,task_name,—,✅ 顯示,任務名稱,
+class_tasks,threshold_value,—,✅ 顯示,門檻分數,
+class_tasks,max_score,—,✅ 顯示,滿分,
+class_tasks,threshold_text,—,✅ 顯示,文字門檻（如「背誦完成」）,
+class_tasks,display_order,—,✅ ORDER BY,欄順序,
+student_task_records,id,—,✅ 讀,record 識別；更新時用,
+student_task_records,tenant_id,—,✅ 讀,多租戶,
+student_task_records,student_id,—,✅ 矩陣定位,對應學生,
+student_task_records,class_task_id,—,✅ 矩陣定位,對應任務,
+student_task_records,status,—,✅ 驅動燈號,lampFor(status,taskType) 的輸入；實際顯示依據；DB 已不存 lamp,
+student_task_records,latest_result,—,✅ 顯示,最新分數（LampBadge detail）,
+student_task_records,result_history,—,✅ 顯示,歷史分數列表（hover 展開）,
+student_task_records,comment_text,—,✅ 顯示／編輯,留言內容（TaskUpdateDrawer）,
+student_task_records,comment_status,—,✅ 顯示,留言燈號,
+student_task_records,teacher_note,—,✅ 顯示／編輯,老師備註（TaskUpdateDrawer）,
+student_task_records,updated_at,—,✅ 顯示,更新時間（矩陣格 tooltip）,

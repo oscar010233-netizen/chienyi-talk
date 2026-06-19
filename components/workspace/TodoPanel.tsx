@@ -1,18 +1,21 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { GripVertical, Plus, Trash2 } from 'lucide-react'
 
 interface Todo {
   id: string
   content: string
   done: boolean
+  sort_order: number | null
 }
 
 export function TodoPanel({ date }: { date: string }) {
   const [todos, setTodos]     = useState<Todo[]>([])
   const [input, setInput]     = useState('')
   const [loading, setLoading] = useState(false)
+  const [dragId, setDragId]   = useState<string | null>(null)
+  const [overId, setOverId]   = useState<string | null>(null)
 
   useEffect(() => {
     if (!date) return
@@ -53,8 +56,75 @@ export function TodoPanel({ date }: { date: string }) {
     setTodos(prev => prev.filter(t => t.id !== id))
   }
 
-  const pending  = todos.filter(t => !t.done)
-  const done     = todos.filter(t => t.done)
+  function handleDragStart(id: string) {
+    setDragId(id)
+  }
+
+  function handleDragOver(e: React.DragEvent, id: string) {
+    e.preventDefault()
+    if (id !== overId) setOverId(id)
+  }
+
+  function handleDrop(targetId: string) {
+    if (!dragId || dragId === targetId) { setDragId(null); setOverId(null); return }
+    const ordered = [...pending, ...done]
+    const from = ordered.findIndex(t => t.id === dragId)
+    const to   = ordered.findIndex(t => t.id === targetId)
+    if (from < 0 || to < 0) { setDragId(null); setOverId(null); return }
+    const next = [...ordered]
+    next.splice(from, 1)
+    next.splice(to, 0, ordered[from])
+    // Merge back non-reordered items (shouldn't exist, but be safe)
+    setTodos(next)
+    next.forEach((t, i) => {
+      void fetch(`/api/day-entries?id=${t.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sort_order: i }),
+      })
+    })
+    setDragId(null)
+    setOverId(null)
+  }
+
+  const pending = todos.filter(t => !t.done)
+  const done    = todos.filter(t => t.done)
+
+  const renderItem = (t: Todo, i: number) => (
+    <li
+      key={t.id}
+      draggable
+      onDragStart={() => handleDragStart(t.id)}
+      onDragOver={e => handleDragOver(e, t.id)}
+      onDrop={() => handleDrop(t.id)}
+      onDragEnd={() => { setDragId(null); setOverId(null) }}
+      className={[
+        'flex items-center gap-1.5 px-2 py-2',
+        i % 2 === 0 ? 'bg-background' : 'bg-muted',
+        dragId === t.id ? 'opacity-40' : '',
+        overId === t.id && dragId !== t.id ? 'ring-1 ring-inset ring-gold/40' : '',
+      ].join(' ')}
+    >
+      <span className="shrink-0 cursor-grab text-muted-foreground/30 active:cursor-grabbing">
+        <GripVertical size={12} />
+      </span>
+      <input
+        type="checkbox"
+        checked={t.done}
+        onChange={() => toggle(t.id, t.done)}
+        className="size-3.5 shrink-0 accent-gold"
+      />
+      <span className={['flex-1 text-xs', t.done ? 'line-through text-muted-foreground/60' : 'text-foreground'].join(' ')}>
+        {t.content}
+      </span>
+      <button
+        onClick={() => remove(t.id)}
+        className="shrink-0 text-muted-foreground/50 hover:text-red-500"
+      >
+        <Trash2 size={11} />
+      </button>
+    </li>
+  )
 
   return (
     <div className="flex flex-1 flex-col rounded-xl mac-soft overflow-hidden min-h-0">
@@ -86,31 +156,7 @@ export function TodoPanel({ date }: { date: string }) {
           <p className="py-4 text-center text-xs text-muted-foreground">今天沒有待辦</p>
         ) : (
           <ul>
-            {[...pending, ...done].map((t, i) => (
-              <li
-                key={t.id}
-                className={[
-                  'flex items-center gap-2 px-3 py-2',
-                  i % 2 === 0 ? 'bg-background' : 'bg-muted',
-                ].join(' ')}
-              >
-                <input
-                  type="checkbox"
-                  checked={t.done}
-                  onChange={() => toggle(t.id, t.done)}
-                  className="size-3.5 shrink-0 accent-gold"
-                />
-                <span className={['flex-1 text-xs', t.done ? 'line-through text-muted-foreground/60' : 'text-foreground'].join(' ')}>
-                  {t.content}
-                </span>
-                <button
-                  onClick={() => remove(t.id)}
-                  className="shrink-0 text-muted-foreground/50 hover:text-red-500"
-                >
-                  <Trash2 size={11} />
-                </button>
-              </li>
-            ))}
+            {[...pending, ...done].map((t, i) => renderItem(t, i))}
           </ul>
         )}
       </div>

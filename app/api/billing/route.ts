@@ -11,7 +11,6 @@ import {
   replaceSeasonHolidays,
   saveBillingClassConfig,
   syncActualAttendanceFromClassSheet,
-  updatePaymentBagLine,
 } from '@/lib/billing/service'
 import { toNumber } from '@/lib/billing/calendar'
 import type { ActualAttendanceStatus, OpenBagStudentInput } from '@/lib/billing/types'
@@ -162,21 +161,6 @@ export async function POST(request: NextRequest) {
           : undefined,
       })
       return NextResponse.json({ bag })
-    }
-
-    if (action === 'update-line') {
-      const lineId = String(body.line_id ?? '')
-      if (!lineId) return jsonError('line_id required', 400)
-      const line = await updatePaymentBagLine({
-        lineId,
-        issueStatus: typeof body.issue_status === 'string' ? body.issue_status : undefined,
-        paymentStatus: typeof body.payment_status === 'string' ? body.payment_status : undefined,
-        paidAmount: body.paid_amount === null ? null : body.paid_amount === undefined ? undefined : toNumber(body.paid_amount),
-        handler: typeof body.handler === 'string' ? body.handler : undefined,
-        introCardReceived: typeof body.intro_card_received === 'boolean' ? body.intro_card_received : undefined,
-        note: typeof body.note === 'string' ? body.note : undefined,
-      })
-      return NextResponse.json({ line })
     }
 
     if (action === 'record-print') {

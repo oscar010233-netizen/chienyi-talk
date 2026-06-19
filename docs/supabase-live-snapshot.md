@@ -12,10 +12,10 @@ It intentionally contains schema metadata, row counts, and class-level aggregate
 | billing_season_holidays | 2 | HTTP 200 |
 | billing_seasons | 2 | HTTP 200 |
 | class_enrollments | 4 | HTTP 200 |
-| class_tasks | 62 | HTTP 200 |
+| class_tasks | 14 | HTTP 200 |
 | classes | 2 | HTTP 200 |
 | day_entries | 1 | HTTP 200 |
-| default_attendance | 48 | HTTP 200 |
+| default_attendance | 13 | HTTP 200 |
 | payment_bag_lines | 2 | HTTP 200 |
 | payment_bags | 1 | HTTP 200 |
 | profiles | 1 | HTTP 200 |
@@ -42,10 +42,10 @@ It intentionally contains schema metadata, row counts, and class-level aggregate
 | billing_season_holidays | 7 | id:uuid, tenant_id:uuid, season_id:uuid, class_id:uuid, holiday_date:date, label:text, created_at:timestamp with time zone |
 | billing_seasons | 11 | id:uuid, tenant_id:uuid, season_code:text, year:integer, quarter:text, start_date:date, end_date:date, label:text, status:text, created_at:timestamp with time zone, updated_at:timestamp with time zone |
 | class_enrollments | 10 | id:uuid, tenant_id:uuid, class_id:uuid, student_id:uuid, status:text, slot_order:integer, joined_at:date, left_at:date, created_at:timestamp with time zone, updated_at:timestamp with time zone |
-| class_tasks | 14 | id:uuid, tenant_id:uuid, class_id:uuid, week_label:text, lesson_label:text, task_type:text, task_name:text, threshold_value:numeric, max_score:numeric, threshold_text:text, display_order:integer, status:text, created_at:timestamp with time zone, updated_at:timestamp with time zone |
+| class_tasks | 15 | id:uuid, tenant_id:uuid, class_id:uuid, default_attendance_id:uuid, week_label:text, lesson_label:text, task_type:text, task_name:text, threshold_value:numeric, max_score:numeric, threshold_text:text, display_order:integer, status:text, created_at:timestamp with time zone, updated_at:timestamp with time zone |
 | classes | 13 | id:uuid, tenant_id:uuid, class_name:text, class_code:text, department:text, level:text, class_type:text, weekday1:integer, weekday2:integer, system_sessions:integer, status:text, created_at:timestamp with time zone, updated_at:timestamp with time zone |
 | day_entries | 10 | id:uuid, tenant_id:uuid, schedule_day_id:uuid, type:text, person:text, content:text, done:boolean, notes:text, sort_order:integer, created_at:timestamp with time zone |
-| default_attendance | 14 | id:uuid, tenant_id:uuid, season_id:uuid, class_id:uuid, session_index:integer, default_date:date, original_date:date, period_key:text, source:text, status:text, holiday_id:uuid, note:text, created_at:timestamp with time zone, updated_at:timestamp with time zone |
+| default_attendance | 12 | id:uuid, tenant_id:uuid, season_id:uuid, class_id:uuid, session_index:integer, default_date:date, original_date:date, period_key:text, status:text, note:text, created_at:timestamp with time zone, updated_at:timestamp with time zone |
 | payment_bag_lines | 27 | id:uuid, tenant_id:uuid, bag_id:uuid, student_id:uuid, student_order:integer, session_count:integer, rate_per_session:numeric, tuition_amount:numeric, book_name:text, book_fee:numeric, misc_label:text, misc_fee:numeric, discount_label:text, discount_amount:numeric, carryover_amount:numeric, carryover_note:text, adjustment_label:text, adjustment_amount:numeric, total_amount:numeric, issue_status:text, paid_amount:numeric, intro_card_received:boolean, handler:text, payment_status:text, note:text, created_at:timestamp with time zone, updated_at:timestamp with time zone |
 | payment_bags | 14 | id:uuid, tenant_id:uuid, season_id:uuid, class_id:uuid, bag_code:text, issue_date:date, due_date:date, status:text, tuition_note:text, note:text, print_count:integer, last_printed_at:timestamp with time zone, created_at:timestamp with time zone, updated_at:timestamp with time zone |
 | profiles | 5 | id:uuid, tenant_id:uuid, role:text, display_name:text, created_at:timestamp with time zone |

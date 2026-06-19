@@ -1,13 +1,33 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { GripVertical, Plus, Trash2 } from 'lucide-react'
 
 interface DinnerOrder {
   id: string
   person: string
   content: string
   notes: string | null
+  sort_order: number | null
+}
+
+function NoteInput({ id, notes }: { id: string; notes: string | null }) {
+  const [val, setVal] = useState(notes ?? '')
+  return (
+    <input
+      value={val}
+      onChange={e => setVal(e.target.value)}
+      onBlur={() => {
+        void fetch(`/api/day-entries?id=${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: val.trim() || null }),
+        })
+      }}
+      placeholder="備注…"
+      className="w-full bg-transparent text-[10px] text-muted-foreground/60 outline-none placeholder:text-muted-foreground/25"
+    />
+  )
 }
 
 export function DinnerPanel({ date }: { date: string }) {
@@ -15,6 +35,8 @@ export function DinnerPanel({ date }: { date: string }) {
   const [name, setName]       = useState('')
   const [meal, setMeal]       = useState('')
   const [loading, setLoading] = useState(false)
+  const [dragId, setDragId]   = useState<string | null>(null)
+  const [overId, setOverId]   = useState<string | null>(null)
   const mealRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -46,6 +68,35 @@ export function DinnerPanel({ date }: { date: string }) {
   async function remove(id: string) {
     await fetch(`/api/day-entries?id=${id}`, { method: 'DELETE' })
     setOrders(prev => prev.filter(o => o.id !== id))
+  }
+
+  function handleDragStart(id: string) {
+    setDragId(id)
+  }
+
+  function handleDragOver(e: React.DragEvent, id: string) {
+    e.preventDefault()
+    if (id !== overId) setOverId(id)
+  }
+
+  function handleDrop(targetId: string) {
+    if (!dragId || dragId === targetId) { setDragId(null); setOverId(null); return }
+    const from = orders.findIndex(o => o.id === dragId)
+    const to   = orders.findIndex(o => o.id === targetId)
+    if (from < 0 || to < 0) { setDragId(null); setOverId(null); return }
+    const next = [...orders]
+    next.splice(from, 1)
+    next.splice(to, 0, orders[from])
+    setOrders(next)
+    next.forEach((o, i) => {
+      void fetch(`/api/day-entries?id=${o.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sort_order: i }),
+      })
+    })
+    setDragId(null)
+    setOverId(null)
   }
 
   return (
@@ -89,16 +140,29 @@ export function DinnerPanel({ date }: { date: string }) {
             {orders.map((o, i) => (
               <li
                 key={o.id}
+                draggable
+                onDragStart={() => handleDragStart(o.id)}
+                onDragOver={e => handleDragOver(e, o.id)}
+                onDrop={() => handleDrop(o.id)}
+                onDragEnd={() => { setDragId(null); setOverId(null) }}
                 className={[
-                  'flex items-center gap-2 px-3 py-2 text-xs',
+                  'flex items-start gap-1.5 px-2 py-1.5 text-xs transition-opacity',
                   i % 2 === 0 ? 'bg-background' : 'bg-muted',
+                  dragId === o.id ? 'opacity-40' : '',
+                  overId === o.id && dragId !== o.id ? 'ring-1 ring-inset ring-gold/40' : '',
                 ].join(' ')}
               >
-                <span className="min-w-[40px] font-medium text-foreground">{o.person}</span>
-                <span className="flex-1 text-muted-foreground">{o.content}</span>
+                <span className="mt-0.5 shrink-0 cursor-grab text-muted-foreground/30 active:cursor-grabbing">
+                  <GripVertical size={12} />
+                </span>
+                <span className="min-w-[36px] shrink-0 font-medium text-foreground">{o.person}</span>
+                <div className="min-w-0 flex-1">
+                  <span className="block text-muted-foreground">{o.content}</span>
+                  <NoteInput id={o.id} notes={o.notes} />
+                </div>
                 <button
                   onClick={() => remove(o.id)}
-                  className="shrink-0 text-muted-foreground/50 hover:text-red-500"
+                  className="mt-0.5 shrink-0 text-muted-foreground/50 hover:text-red-500"
                 >
                   <Trash2 size={11} />
                 </button>

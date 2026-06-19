@@ -84,6 +84,8 @@ export default function DbMonitorPage() {
 
   const loadRows = useCallback(async (table: string) => {
     setSelected(table)
+    setColWidths(null)
+    setHiddenCols(new Set())
     setRowsLoading(true)
     try {
       const res = await fetch(`/api/db/rows?table=${table}`)
@@ -114,9 +116,34 @@ export default function DbMonitorPage() {
   }, [])
 
   useEffect(() => {
-    void loadSnapshot()
-    void pollAudit(true)
-  }, [loadSnapshot, pollAudit])
+    let cancelled = false
+
+    async function loadInitial() {
+      const [snapshotRes, auditRes] = await Promise.all([
+        fetch('/api/db/snapshot'),
+        fetch('/api/db/audit?limit=80'),
+      ])
+
+      if (cancelled) return
+
+      if (snapshotRes.ok) {
+        const snapshotData = await snapshotRes.json()
+        if (!cancelled) setTables(snapshotData.tables ?? [])
+      }
+
+      if (auditRes.ok) {
+        const auditData = await auditRes.json()
+        const entries: AuditEntry[] = auditData.entries ?? []
+        if (entries.length > 0) {
+          maxId.current = Math.max(maxId.current, ...entries.map((e) => e.id))
+          if (!cancelled) setAudit(entries)
+        }
+      }
+    }
+
+    void loadInitial()
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     if (!auto) return
@@ -126,8 +153,6 @@ export default function DbMonitorPage() {
     }, 4000)
     return () => window.clearInterval(timer)
   }, [auto, pollAudit, loadSnapshot])
-
-  useEffect(() => { setColWidths(null); setHiddenCols(new Set()) }, [selected])
 
   function startResize(col: string, e: React.MouseEvent<HTMLDivElement>) {
     e.preventDefault()

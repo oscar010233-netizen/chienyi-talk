@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { CalendarClock, Loader2, Trash2, X } from 'lucide-react'
+import { CalendarClock, Loader2, Plus, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Room, ScheduleEvent } from '@/lib/schedule/types'
 
@@ -9,6 +9,12 @@ interface ClassOption {
   id: string
   class_name: string
   class_code: string | null
+}
+
+interface ProfileOption {
+  id: string
+  display_name: string | null
+  role: string | null
 }
 
 interface Props {
@@ -21,6 +27,14 @@ interface Props {
   onSaved: () => void
 }
 
+interface TeacherSegmentDraft {
+  localId: string
+  teacherId: string
+  startTime: string
+  endTime: string
+  color: string
+}
+
 interface FormState {
   roomId: string
   classId: string
@@ -30,6 +44,7 @@ interface FormState {
   endTime: string
   color: string
   note: string
+  teacherSegments: TeacherSegmentDraft[]
 }
 
 const EVENT_COLORS = [
@@ -44,7 +59,7 @@ const EVENT_COLORS = [
 ]
 
 const EVENT_TYPES: { value: ScheduleEvent['event_type']; label: string }[] = [
-  { value: 'class', label: '正課' },
+  { value: 'class', label: '團課' },
   { value: 'makeup', label: '補課' },
   { value: 'other', label: '其他' },
 ]
@@ -54,8 +69,13 @@ function minutes(value: string): number {
   return hours * 60 + mins
 }
 
+function segmentId(index: number): string {
+  return `segment-${index}-${Math.random().toString(36).slice(2)}`
+}
+
 function initialForm(event: ScheduleEvent | null | undefined, draft: Props['draft']): FormState {
   if (event) {
+    const eventColor = event.color ?? EVENT_COLORS[0]
     return {
       roomId: event.room_id,
       classId: event.class_id ?? '',
@@ -63,8 +83,17 @@ function initialForm(event: ScheduleEvent | null | undefined, draft: Props['draf
       eventType: event.event_type,
       startTime: event.start_time.slice(0, 5),
       endTime: event.end_time.slice(0, 5),
-      color: event.color ?? EVENT_COLORS[0],
+      color: eventColor,
       note: event.note ?? '',
+      teacherSegments: [...(event.teachers ?? [])]
+        .sort((a, b) => a.start_time.localeCompare(b.start_time))
+        .map((teacher, index) => ({
+          localId: teacher.id ?? segmentId(index),
+          teacherId: teacher.teacher_id,
+          startTime: teacher.start_time.slice(0, 5),
+          endTime: teacher.end_time.slice(0, 5),
+          color: teacher.color ?? eventColor,
+        })),
     }
   }
 
@@ -77,6 +106,7 @@ function initialForm(event: ScheduleEvent | null | undefined, draft: Props['draf
     endTime: draft?.endTime ?? '13:00',
     color: EVENT_COLORS[0],
     note: '',
+    teacherSegments: [],
   }
 }
 
@@ -89,21 +119,32 @@ async function readJsonArray<T>(response: Response): Promise<T[]> {
 
 export function CreateEventModal({ open, onClose, rooms, draft, event, date, onSaved }: Props) {
   const [classes, setClasses] = useState<ClassOption[]>([])
+  const [profiles, setProfiles] = useState<ProfileOption[]>([])
 
   useEffect(() => {
     let cancelled = false
 
-    async function loadClasses() {
+    async function loadData() {
       try {
-        const response = await fetch('/api/classes')
-        const data = await readJsonArray<ClassOption>(response)
-        if (!cancelled) setClasses(data)
+        const [classRes, profileRes] = await Promise.all([
+          fetch('/api/classes'),
+          fetch('/api/profiles'),
+        ])
+        const classData = await readJsonArray<ClassOption>(classRes)
+        const profileData = await readJsonArray<ProfileOption>(profileRes)
+        if (!cancelled) {
+          setClasses(classData)
+          setProfiles(profileData)
+        }
       } catch {
-        if (!cancelled) setClasses([])
+        if (!cancelled) {
+          setClasses([])
+          setProfiles([])
+        }
       }
     }
 
-    void loadClasses()
+    void loadData()
     return () => {
       cancelled = true
     }
@@ -122,6 +163,7 @@ export function CreateEventModal({ open, onClose, rooms, draft, event, date, onS
       key={formKey}
       rooms={rooms}
       classes={classes}
+      profiles={profiles}
       draft={draft}
       event={event}
       date={date}
@@ -134,6 +176,7 @@ export function CreateEventModal({ open, onClose, rooms, draft, event, date, onS
 function EventForm({
   rooms,
   classes,
+  profiles,
   draft,
   event,
   date,
@@ -142,6 +185,7 @@ function EventForm({
 }: {
   rooms: Room[]
   classes: ClassOption[]
+  profiles: ProfileOption[]
   draft: Props['draft']
   event?: ScheduleEvent | null
   date: string
@@ -157,6 +201,68 @@ function EventForm({
     setForm(previous => ({ ...previous, [key]: value }))
   }
 
+  function updateSegment(index: number, patch: Partial<TeacherSegmentDraft>) {
+    setForm(previous => ({
+      ...previous,
+      teacherSegments: previous.teacherSegments.map((segment, currentIndex) =>
+        currentIndex === index ? { ...segment, ...patch } : segment
+      ),
+    }))
+  }
+
+  function addSegment() {
+    setForm(previous => {
+      const last = previous.teacherSegments.at(-1)
+      const nextIndex = previous.teacherSegments.length
+      return {
+        ...previous,
+        teacherSegments: [
+          ...previous.teacherSegments,
+          {
+            localId: segmentId(nextIndex),
+            teacherId: profiles[0]?.id ?? '',
+            startTime: last?.endTime ?? previous.startTime,
+            endTime: previous.endTime,
+            color: EVENT_COLORS[(nextIndex + 1) % EVENT_COLORS.length],
+          },
+        ],
+      }
+    })
+  }
+
+  function removeSegment(index: number) {
+    setForm(previous => ({
+      ...previous,
+      teacherSegments: previous.teacherSegments.filter((_, currentIndex) => currentIndex !== index),
+    }))
+  }
+
+  function validateTeacherSegments(): string | null {
+    const eventStart = minutes(form.startTime)
+    const eventEnd = minutes(form.endTime)
+    const sortedSegments = [...form.teacherSegments].sort((a, b) => minutes(a.startTime) - minutes(b.startTime))
+
+    for (let index = 0; index < sortedSegments.length; index += 1) {
+      const segment = sortedSegments[index]
+
+      if (!segment.teacherId) return `第 ${index + 1} 段尚未選老師`
+      if (!segment.startTime || !segment.endTime) return `第 ${index + 1} 段時間不完整`
+
+      const start = minutes(segment.startTime)
+      const end = minutes(segment.endTime)
+
+      if (end <= start) return `第 ${index + 1} 段結束時間必須晚於開始時間`
+      if (start < eventStart || end > eventEnd) return `第 ${index + 1} 段必須落在整堂課時間內`
+
+      const previous = sortedSegments[index - 1]
+      if (previous && start < minutes(previous.endTime)) {
+        return `第 ${index} 段與第 ${index + 1} 段時間重疊`
+      }
+    }
+
+    return null
+  }
+
   async function handleSave() {
     if (!form.roomId) {
       setError('請選擇教室')
@@ -167,7 +273,13 @@ function EventForm({
       return
     }
     if (minutes(form.endTime) <= minutes(form.startTime)) {
-      setError('結束時間要晚於開始時間')
+      setError('結束時間必須晚於開始時間')
+      return
+    }
+
+    const segmentError = validateTeacherSegments()
+    if (segmentError) {
+      setError(segmentError)
       return
     }
 
@@ -175,6 +287,15 @@ function EventForm({
     setError('')
 
     try {
+      const teacherSegments = [...form.teacherSegments]
+        .sort((a, b) => minutes(a.startTime) - minutes(b.startTime))
+        .map(segment => ({
+          teacher_id: segment.teacherId,
+          start_time: segment.startTime,
+          end_time: segment.endTime,
+          color: segment.color,
+        }))
+
       const payload = {
         room_id: form.roomId,
         class_id: form.classId || null,
@@ -184,6 +305,7 @@ function EventForm({
         end_time: form.endTime,
         color: form.color,
         note: form.note || null,
+        teachers: teacherSegments,
       }
 
       const response = event
@@ -213,7 +335,7 @@ function EventForm({
 
   async function handleDelete() {
     if (!event) return
-    if (!window.confirm('確定刪除這個時段？')) return
+    if (!window.confirm('確定要刪除這堂課？')) return
 
     setDeleting(true)
     try {
@@ -232,7 +354,7 @@ function EventForm({
         className="absolute inset-0 bg-black/35 backdrop-blur-[2px]"
         onClick={onClose}
       />
-      <div className="relative z-10 max-h-[92vh] w-full overflow-y-auto rounded-t-lg border border-white/70 bg-white shadow-[0_30px_90px_-45px_rgba(0,0,0,0.75)] md:max-w-lg md:rounded-lg dark:border-white/10 dark:bg-[#2c2c2e]">
+      <div className="relative z-10 max-h-[92vh] w-full overflow-y-auto rounded-t-lg border border-white/70 bg-white shadow-[0_30px_90px_-45px_rgba(0,0,0,0.75)] md:max-w-2xl md:rounded-lg dark:border-white/10 dark:bg-[#2c2c2e]">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
             <span
@@ -243,7 +365,7 @@ function EventForm({
             </span>
             <div className="min-w-0">
               <h2 className="truncate text-base font-semibold text-foreground">
-                {event ? '編輯時段' : '新增時段'}
+                {event ? '編輯課程' : '新增課程'}
               </h2>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {date} · {form.startTime} - {form.endTime}
@@ -282,7 +404,7 @@ function EventForm({
                 onChange={event => update('classId', event.target.value)}
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
               >
-                <option value="">不綁定班級</option>
+                <option value="">不指定班級</option>
                 {classes.map(item => (
                   <option key={item.id} value={item.id}>
                     {item.class_code ? `[${item.class_code}] ` : ''}{item.class_name}
@@ -298,7 +420,7 @@ function EventForm({
               type="text"
               value={form.title}
               onChange={event => update('title', event.target.value)}
-              placeholder="例如：英文 A 班"
+              placeholder="例如：國三 A 班"
               className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
             />
           </label>
@@ -347,7 +469,7 @@ function EventForm({
           </div>
 
           <div className="grid gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">顏色</span>
+            <span className="text-xs font-medium text-muted-foreground">課程顏色</span>
             <div className="flex flex-wrap gap-2">
               {EVENT_COLORS.map(color => (
                 <button
@@ -363,6 +485,100 @@ function EventForm({
                 />
               ))}
             </div>
+          </div>
+
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium text-muted-foreground">授課分段</span>
+              <button
+                type="button"
+                onClick={addSegment}
+                disabled={profiles.length === 0}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-semibold text-foreground/75 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Plus size={14} />
+                加入分段
+              </button>
+            </div>
+
+            {profiles.length === 0 && (
+              <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                目前沒有可選老師帳號。
+              </p>
+            )}
+
+            {form.teacherSegments.length > 0 && (
+              <div className="grid gap-2">
+                {form.teacherSegments.map((segment, index) => (
+                  <div
+                    key={segment.localId}
+                    className="grid gap-2 rounded-md border border-border bg-muted/25 p-2 sm:grid-cols-[1.25fr_0.8fr_0.8fr_auto] sm:items-end"
+                  >
+                    <label className="grid gap-1.5">
+                      <span className="text-[11px] font-medium text-muted-foreground">老師</span>
+                      <select
+                        value={segment.teacherId}
+                        onChange={event => updateSegment(index, { teacherId: event.target.value })}
+                        className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
+                      >
+                        <option value="">選擇老師</option>
+                        {profiles.map(profile => (
+                          <option key={profile.id} value={profile.id}>
+                            {profile.display_name ?? profile.id.slice(0, 8)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="grid gap-1.5">
+                      <span className="text-[11px] font-medium text-muted-foreground">開始</span>
+                      <input
+                        type="time"
+                        value={segment.startTime}
+                        onChange={event => updateSegment(index, { startTime: event.target.value })}
+                        className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
+                      />
+                    </label>
+
+                    <label className="grid gap-1.5">
+                      <span className="text-[11px] font-medium text-muted-foreground">結束</span>
+                      <input
+                        type="time"
+                        value={segment.endTime}
+                        onChange={event => updateSegment(index, { endTime: event.target.value })}
+                        className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
+                      />
+                    </label>
+
+                    <div className="flex items-center justify-between gap-2 sm:justify-end">
+                      <div className="flex gap-1.5">
+                        {EVENT_COLORS.slice(0, 6).map(color => (
+                          <button
+                            key={color}
+                            type="button"
+                            aria-label={`選擇分段顏色 ${color}`}
+                            onClick={() => updateSegment(index, { color })}
+                            style={{ backgroundColor: color }}
+                            className={cn(
+                              'size-5 rounded-full ring-offset-2 ring-offset-background transition-transform',
+                              segment.color === color ? 'scale-110 ring-2 ring-foreground' : 'hover:scale-105'
+                            )}
+                          />
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        aria-label="刪除分段"
+                        onClick={() => removeSegment(index)}
+                        className="grid size-8 place-items-center rounded-md text-muted-foreground transition-colors hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-400/10"
+                      >
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <label className="grid gap-1.5">

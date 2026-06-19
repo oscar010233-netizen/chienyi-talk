@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   const { data: rawSessions } = await supabase
     .from('default_attendance')
-    .select('id, season_id, session_index, default_date, original_date, period_key, status, source')
+    .select('id, season_id, session_index, default_date, original_date, period_key, status')
     .eq('class_id', classId)
     .order('default_date', { ascending: true })
 
@@ -44,8 +44,13 @@ export async function GET(request: NextRequest) {
 
   const sessions = rawSessions.map((s) => {
     let sessionType: 'group' | 'intensive' | 'unknown' = 'unknown'
-    if (s.source === 'weekday1') sessionType = 'group'
-    else if (s.source === 'weekday2') sessionType = 'intensive'
+    if (cls.weekday1 || cls.weekday2) {
+      // getUTCDay: 0=Sun,1=Mon,...,6=Sat → convert to 1=Mon,...,7=Sun
+      const raw = new Date(s.original_date + 'T00:00:00Z').getUTCDay()
+      const wd = raw === 0 ? 7 : raw
+      if (cls.weekday1 && wd === cls.weekday1) sessionType = 'group'
+      else if (cls.weekday2 && wd === cls.weekday2) sessionType = 'intensive'
+    }
 
     const sessionTasks = tasksBySession.get(s.id) ?? []
     const tasksByType: Partial<Record<TaskType, unknown>> = {}
