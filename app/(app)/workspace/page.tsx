@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, CalendarDays, UtensilsCrossed, CheckSquare } from 'lucide-react'
 import { ScheduleGrid, type NewEventDraft } from '@/components/schedule/ScheduleGrid'
 import { CreateEventModal } from '@/components/schedule/CreateEventModal'
@@ -57,6 +57,8 @@ export default function WorkspacePage() {
   const [showGrid,    setShowGrid]    = useState(true)
   const [showDinner,  setShowDinner]  = useState(true)
   const [showTodo,    setShowTodo]    = useState(true)
+  const [dayNote,     setDayNote]     = useState('')
+  const dayNoteSaving = useRef(false)
 
   useEffect(() => {
     fetch('/api/rooms').then(r => r.json()).then(setRooms).catch(() => {})
@@ -79,9 +81,29 @@ export default function WorkspacePage() {
     const timer = window.setTimeout(() => {
       void fetchEvents()
     }, 0)
-
     return () => window.clearTimeout(timer)
   }, [fetchEvents])
+
+  useEffect(() => {
+    fetch(`/api/schedule/day-note?date=${date}`)
+      .then(r => r.json())
+      .then(d => setDayNote(d.note ?? ''))
+      .catch(() => setDayNote(''))
+  }, [date])
+
+  async function saveDayNote(value: string) {
+    if (dayNoteSaving.current) return
+    dayNoteSaving.current = true
+    try {
+      await fetch('/api/schedule/day-note', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date, note: value }),
+      })
+    } finally {
+      dayNoteSaving.current = false
+    }
+  }
 
   function shiftDate(days: number) {
     const d = parseLocal(date)
@@ -108,10 +130,19 @@ export default function WorkspacePage() {
 
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-foreground">配課表</h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {dateLabel(parseLocal(date))}
-              {loading && <span className="ml-2 animate-pulse">載入中…</span>}
-            </p>
+            <div className="mt-0.5 flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {dateLabel(parseLocal(date))}
+                {loading && <span className="ml-2 animate-pulse">載入中…</span>}
+              </span>
+              <input
+                value={dayNote}
+                onChange={e => setDayNote(e.target.value)}
+                onBlur={e => void saveDayNote(e.target.value)}
+                placeholder="全日備注…"
+                className="h-6 w-40 rounded-md bg-transparent px-1.5 text-xs text-muted-foreground outline-none placeholder:text-muted-foreground/40 hover:bg-black/[0.04] focus:bg-black/[0.04] focus:ring-1 focus:ring-border dark:hover:bg-white/[0.05] dark:focus:bg-white/[0.05]"
+              />
+            </div>
           </div>
 
           <div className="flex items-center gap-3">

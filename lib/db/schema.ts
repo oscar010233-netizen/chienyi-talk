@@ -21,7 +21,7 @@ export const DB_TABLES: TableMeta[] = [
   { name: 'student_task_records', group: '班級', columns: ['id', 'tenant_id', 'class_task_id', 'student_id', 'status', 'latest_result', 'result_history', 'teacher_note', 'comment_text', 'comment_status', 'created_at', 'updated_at'] },
 
   { name: 'rooms', group: '配課表', columns: ['id', 'tenant_id', 'name', 'room_type', 'display_order', 'status', 'created_at', 'updated_at'] },
-  { name: 'schedule_days', group: '配課表', note: 'note 欄從不寫入', columns: ['id', 'tenant_id', 'date', 'weekday', 'note', 'status', 'created_at', 'updated_at'] },
+  { name: 'schedule_days', group: '配課表', columns: ['id', 'tenant_id', 'date', 'weekday', 'note', 'status', 'created_at', 'updated_at'] },
   { name: 'schedule_events', group: '配課表', columns: ['id', 'tenant_id', 'schedule_day_id', 'room_id', 'class_id', 'title', 'event_type', 'start_time', 'end_time', 'color', 'note', 'status', 'created_at', 'updated_at'] },
   { name: 'schedule_event_teachers', group: '配課表', note: '多老師預留；被 events 查詢 join，但無寫入 UI', columns: ['id', 'tenant_id', 'schedule_event_id', 'teacher_id', 'start_time', 'end_time', 'color', 'created_at', 'updated_at'] },
   { name: 'day_entries', group: '配課表', note: 'notes：API 支援但 UI 未開放。sort_order：有讀排序但無寫入路徑', columns: ['id', 'tenant_id', 'schedule_day_id', 'type', 'person', 'content', 'done', 'notes', 'sort_order', 'created_at'] },
