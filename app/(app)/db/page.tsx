@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { RefreshCw, Play, Pause, Loader2, Info, Trash2, Eye, EyeOff } from 'lucide-react'
+import { RefreshCw, Play, Pause, Loader2, Info, Trash2, Eye, EyeOff, Flame } from 'lucide-react'
 
 interface TableInfo {
   name: string
@@ -70,6 +70,9 @@ export default function DbMonitorPage() {
   const [newIds, setNewIds] = useState<Set<number>>(new Set())
   const [auto, setAuto] = useState(true)
   const maxId = useRef(0)
+  const [clearing, setClearing] = useState(false)
+  const [clearConfirm, setClearConfirm] = useState(false)
+  const [clearResult, setClearResult] = useState<Record<string, number> | null>(null)
   const [colWidths, setColWidths] = useState<Record<string, number> | null>(null)
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set())
   const tableRef = useRef<HTMLTableElement>(null)
@@ -181,6 +184,22 @@ export default function DbMonitorPage() {
     window.addEventListener('mouseup', onUp)
   }
 
+  async function handleClearFlowData() {
+    setClearing(true)
+    setClearResult(null)
+    try {
+      const res = await fetch('/api/admin/clear-flow-data', { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok) { alert(data.error ?? '清除失敗'); return }
+      setClearResult(data.cleared)
+      void loadSnapshot()
+      if (selected) void loadRows(selected)
+    } finally {
+      setClearing(false)
+      setClearConfirm(false)
+    }
+  }
+
   const NON_DELETABLE = new Set(['profiles', 'tenants'])
 
   async function handleDelete(id: string) {
@@ -207,6 +226,37 @@ export default function DbMonitorPage() {
             <p className="mt-0.5 text-sm text-muted-foreground">即時顯示 Supabase 各表內容與寫入 / 更動 / 刪除紀錄</p>
           </div>
           <div className="flex items-center gap-2">
+            {/* Clear flow data */}
+            {clearResult && (
+              <div className="flex items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+                已清：{Object.entries(clearResult).filter(([,n]) => n > 0).map(([t, n]) => `${t}×${n}`).join('、') || '無資料'}
+                <button onClick={() => setClearResult(null)} className="ml-1 opacity-50 hover:opacity-100">✕</button>
+              </div>
+            )}
+            {clearConfirm ? (
+              <div className="flex items-center gap-1">
+                <span className="text-xs text-red-600 dark:text-red-400">確定清除流動資料？</span>
+                <button
+                  onClick={() => void handleClearFlowData()}
+                  disabled={clearing}
+                  className="flex h-8 items-center gap-1.5 rounded-lg border border-red-300 bg-red-50 px-2.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-500/40 dark:bg-red-500/10 dark:text-red-400"
+                >
+                  {clearing ? <Loader2 size={13} className="animate-spin" /> : <Flame size={13} />}
+                  確定清
+                </button>
+                <button
+                  onClick={() => setClearConfirm(false)}
+                  className="flex h-8 items-center px-2 text-xs text-muted-foreground hover:text-foreground"
+                >取消</button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setClearConfirm(true)}
+                className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:hover:border-red-500/40 dark:hover:bg-red-500/10 dark:hover:text-red-400"
+              >
+                <Flame size={13} /> 清流動資料
+              </button>
+            )}
             <button
               onClick={() => setAuto((v) => !v)}
               className={[
