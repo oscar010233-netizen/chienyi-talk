@@ -94,6 +94,18 @@ function isMissingTable(error: unknown): boolean {
   return maybe?.code === 'PGRST205' || /Could not find the table/i.test(maybe?.message ?? '')
 }
 
+async function assertPaymentBagDetailTables(supabase: Supabase): Promise<void> {
+  for (const table of ['payment_bag_line_sessions', 'payment_bag_line_items'] as const) {
+    const { error } = await supabase.from(table).select('id').limit(1)
+    if (error) {
+      if (isMissingTable(error)) {
+        throw new Error(`Billing schema incomplete: missing ${table}. Apply the latest Supabase migrations.`)
+      }
+      throw new Error(error.message)
+    }
+  }
+}
+
 function mdToDate(year: number, mmdd: string): string | null {
   const match = String(mmdd).match(/^(\d{1,2})\/(\d{1,2})$/)
   if (!match) return null
@@ -853,7 +865,6 @@ async function writeOpenBagLineDetails(
     .delete()
     .in('line_id', lineIds)
   if (deleteSessionError) {
-    if (isMissingTable(deleteSessionError)) return
     throw new Error(deleteSessionError.message)
   }
 
@@ -920,7 +931,7 @@ async function writeOpenBagLineDetails(
 
   if (sessionRows.length > 0) {
     const { error } = await supabase.from('payment_bag_line_sessions').insert(sessionRows)
-    if (error && !isMissingTable(error)) throw new Error(error.message)
+    if (error) throw new Error(error.message)
   }
 
   const { error: deleteItemError } = await supabase
@@ -928,7 +939,6 @@ async function writeOpenBagLineDetails(
     .delete()
     .in('line_id', lineIds)
   if (deleteItemError) {
-    if (isMissingTable(deleteItemError)) return
     throw new Error(deleteItemError.message)
   }
 
@@ -1001,18 +1011,22 @@ async function writeOpenBagLineDetails(
 
   if (itemRows.length > 0) {
     const { error } = await supabase.from('payment_bag_line_items').insert(itemRows)
-    if (error && !isMissingTable(error)) throw new Error(error.message)
+    if (error) throw new Error(error.message)
   }
 }
 
 export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWithLines> {
   const supabase = await createServiceClient()
+  await assertPaymentBagDetailTables(supabase)
   const season = await getSeasonOrThrow(supabase, input.seasonId)
   const cls = await getClassOrThrow(supabase, input.classId)
   const students = await getStudentsForClass(supabase, cls.id)
   const fallbackSessionCount = cls.system_sessions || 0
   const tuitionAmount = toNumber(input.tuitionAmount)
   const hasStudentDrafts = Boolean(input.selectedStudents?.length)
+  if (!hasStudentDrafts) {
+    throw new Error('Open bag requires at least one selected student with session dates.')
+  }
   const studentDrafts = new Map((input.selectedStudents ?? []).map((row) => [row.studentId, row]))
   const targetStudents = hasStudentDrafts
     ? students.filter((student) => studentDrafts.has(student.student_id))
