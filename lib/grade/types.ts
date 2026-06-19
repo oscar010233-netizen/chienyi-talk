@@ -92,6 +92,7 @@ export interface RosterStudent {
   status: string
   school: string | null
   grade: string | null
+  note: string | null
   parent_name: string | null
   parent_phone: string | null
   classes: string[]

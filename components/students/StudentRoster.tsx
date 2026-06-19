@@ -162,6 +162,7 @@ function StudentFormModal({ student, onClose }: { student: RosterStudent | null;
   const [grade, setGrade] = useState(student?.grade ?? '')
   const [parentName, setParentName] = useState(student?.parent_name ?? '')
   const [parentPhone, setParentPhone] = useState(student?.parent_phone ?? '')
+  const [note, setNote] = useState(student?.note ?? '')
   const [status, setStatus] = useState(student?.status ?? 'active')
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState('')
@@ -176,7 +177,7 @@ function StudentFormModal({ student, onClose }: { student: RosterStudent | null;
     try {
       const body: Record<string, unknown> = {
         chinese_name: chi, english_name: eng, school, grade,
-        parent_name: parentName, parent_phone: parentPhone,
+        parent_name: parentName, parent_phone: parentPhone, note,
       }
       if (isEdit) { body.id = student!.id; body.status = status }
       const res = await fetch('/api/students', {
@@ -235,6 +236,17 @@ function StudentFormModal({ student, onClose }: { student: RosterStudent | null;
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">家長電話</label>
               <input value={parentPhone} onChange={e => setParentPhone(e.target.value)} className={field} />
             </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">備注</label>
+            <textarea
+              value={note}
+              onChange={e => setNote(e.target.value)}
+              rows={2}
+              className={`${field} resize-none py-2`}
+              placeholder="家長備注、特殊注意事項…"
+            />
           </div>
 
           {isEdit && (

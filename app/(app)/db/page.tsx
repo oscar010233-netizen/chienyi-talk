@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { RefreshCw, Play, Pause, Loader2, AlertTriangle, Trash2, Eye, EyeOff } from 'lucide-react'
+import { RefreshCw, Play, Pause, Loader2, Info, Trash2, Eye, EyeOff } from 'lucide-react'
 
 interface TableInfo {
   name: string
@@ -223,7 +223,7 @@ export default function DbMonitorPage() {
                   title={t.note ?? undefined}
                 >
                   <span className="flex min-w-0 items-center gap-1 truncate font-mono">
-                    {t.note && <AlertTriangle size={11} className="shrink-0 text-amber-500" />}
+                    {t.note && <Info size={11} className="shrink-0 text-amber-500" />}
                     <span className="truncate">{t.name}</span>
                   </span>
                   <span className="shrink-0 rounded-full bg-black/[0.06] px-1.5 text-[11px] tabular-nums text-muted-foreground dark:bg-white/10">
@@ -250,7 +250,7 @@ export default function DbMonitorPage() {
               </div>
               {selectedMeta?.note && (
                 <div className="flex items-start gap-1.5 border-b border-amber-200/60 bg-amber-50/60 px-4 py-2 text-xs text-amber-700 dark:border-amber-500/20 dark:bg-amber-500/10 dark:text-amber-300">
-                  <AlertTriangle size={13} className="mt-0.5 shrink-0" />{selectedMeta.note}
+                  <Info size={13} className="mt-0.5 shrink-0" />{selectedMeta.note}
                 </div>
               )}
               <div className="min-h-0 flex-1 overflow-auto">

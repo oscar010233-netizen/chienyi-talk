@@ -7,7 +7,7 @@ export async function getAllStudents(): Promise<RosterStudent[]> {
 
   const { data: students, error } = await supabase
     .from('students')
-    .select('id, chinese_name, english_name, status, school, grade, parent_name, parent_phone')
+    .select('id, chinese_name, english_name, status, school, grade, note, parent_name, parent_phone')
     .order('chinese_name')
 
   if (error || !students) return []

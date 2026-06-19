@@ -14,11 +14,11 @@ export const DB_TABLES: TableMeta[] = [
   { name: 'tenants', group: '共用', columns: ['id', 'name', 'created_at'] },
   { name: 'profiles', group: '共用', note: 'RLS 命脈，勿刪；勿直接讀寫', columns: ['id', 'tenant_id', 'role', 'display_name', 'created_at'] },
 
-  { name: 'classes', group: '班級', note: 'department 欄無寫入 UI，常為 null，導致 buffer 分類失效', columns: ['id', 'tenant_id', 'class_name', 'class_code', 'department', 'level', 'class_type', 'weekday1', 'weekday2', 'system_sessions', 'status', 'created_at', 'updated_at'] },
-  { name: 'students', group: '班級', note: 'note 欄無對應表單', columns: ['id', 'tenant_id', 'chinese_name', 'english_name', 'status', 'school', 'grade', 'note', 'parent_name', 'parent_phone', 'created_at', 'updated_at'] },
+  { name: 'classes', group: '班級', columns: ['id', 'tenant_id', 'class_name', 'class_code', 'department', 'level', 'class_type', 'weekday1', 'weekday2', 'system_sessions', 'status', 'created_at', 'updated_at'] },
+  { name: 'students', group: '班級', columns: ['id', 'tenant_id', 'chinese_name', 'english_name', 'status', 'school', 'grade', 'note', 'parent_name', 'parent_phone', 'created_at', 'updated_at'] },
   { name: 'class_enrollments', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'student_id', 'status', 'slot_order', 'joined_at', 'left_at', 'created_at', 'updated_at'] },
   { name: 'class_tasks', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'week_label', 'lesson_label', 'task_type', 'task_name', 'threshold_value', 'max_score', 'threshold_text', 'display_order', 'status', 'created_at', 'updated_at'] },
-  { name: 'student_task_records', group: '班級', note: 'lamp 欄已移除（燈號改為前端 derive）', columns: ['id', 'tenant_id', 'class_task_id', 'student_id', 'status', 'latest_result', 'result_history', 'teacher_note', 'comment_text', 'comment_status', 'created_at', 'updated_at'] },
+  { name: 'student_task_records', group: '班級', columns: ['id', 'tenant_id', 'class_task_id', 'student_id', 'status', 'latest_result', 'result_history', 'teacher_note', 'comment_text', 'comment_status', 'created_at', 'updated_at'] },
 
   { name: 'rooms', group: '配課表', columns: ['id', 'tenant_id', 'name', 'room_type', 'display_order', 'status', 'created_at', 'updated_at'] },
   { name: 'schedule_days', group: '配課表', note: 'note 欄從不寫入', columns: ['id', 'tenant_id', 'date', 'weekday', 'note', 'status', 'created_at', 'updated_at'] },

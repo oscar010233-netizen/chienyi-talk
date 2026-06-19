@@ -46,6 +46,7 @@ export async function POST(request: NextRequest) {
       grade: (body.grade as string)?.trim() || null,
       parent_name: (body.parent_name as string)?.trim() || null,
       parent_phone: (body.parent_phone as string)?.trim() || null,
+      note: (body.note as string)?.trim() || null,
       status: 'active',
     })
     .select()
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
 }
 
 // PATCH /api/students — edit a roster student's basic info.
-const EDITABLE = ['chinese_name', 'english_name', 'school', 'grade', 'parent_name', 'parent_phone', 'status'] as const
+const EDITABLE = ['chinese_name', 'english_name', 'school', 'grade', 'note', 'parent_name', 'parent_phone', 'status'] as const
 
 export async function PATCH(request: NextRequest) {
   const body = await request.json() as Record<string, unknown>

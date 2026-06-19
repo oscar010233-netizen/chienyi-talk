@@ -9,6 +9,11 @@ interface Props {
   onClose: () => void
 }
 
+const DEPARTMENTS = [
+  { value: 'ENG',  label: '英文部' },
+  { value: 'XIAO', label: '小學部' },
+] as const
+
 const CLASS_TYPES = [
   { value: 'intensive', label: '團課 + 強化' },
   { value: 'double',    label: '雙團課' },
@@ -31,6 +36,7 @@ export function CreateClassModal({ open, onClose }: Props) {
   const [classType, setClassType] = useState<ClassTypeValue>('intensive')
   const [classCode, setClassCode] = useState('')
   const [className, setClassName] = useState('')
+  const [department, setDepartment] = useState('')
   const [weekday1, setWeekday1] = useState<number | ''>('')
   const [weekday2, setWeekday2] = useState<number | ''>('')
   const [saving, setSaving] = useState(false)
@@ -39,6 +45,7 @@ export function CreateClassModal({ open, onClose }: Props) {
   function resetForm() {
     setClassType('intensive')
     setClassCode(''); setClassName('')
+    setDepartment('')
     setWeekday1(''); setWeekday2('')
     setError('')
   }
@@ -62,6 +69,7 @@ export function CreateClassModal({ open, onClose }: Props) {
           class_name: className.trim(),
           class_code: classCode.trim() || undefined,
           class_type: classType,
+          department: department || null,
           weekday1:   weekday1 !== '' ? weekday1 : null,
           weekday2:   classType === 'double' && weekday2 !== '' ? weekday2 : null,
         }),
@@ -146,6 +154,32 @@ export function CreateClassModal({ open, onClose }: Props) {
                 placeholder="自動產生"
                 className={`${inputClass} bg-muted/40 text-muted-foreground`}
               />
+            </div>
+          </div>
+
+          {/* Department */}
+          <div>
+            <label className={labelClass}>部門</label>
+            <div className="flex gap-2">
+              {DEPARTMENTS.map((d) => (
+                <button
+                  key={d.value}
+                  type="button"
+                  onClick={() => setDepartment(prev => prev === d.value ? '' : d.value)}
+                  className={`rounded-xl border px-4 py-2 text-sm font-medium transition-colors ${
+                    department === d.value
+                      ? 'border-red-500 bg-red-500 text-white'
+                      : 'border-border bg-background text-foreground hover:border-foreground/30'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+              {department && (
+                <button type="button" onClick={() => setDepartment('')} className="text-xs text-muted-foreground hover:text-foreground">
+                  清除
+                </button>
+              )}
             </div>
           </div>
 
