@@ -59,20 +59,18 @@ interface CellProps {
 
 function PlanCell({ sessionId, classId, col, task, applicable, onSaved }: CellProps) {
   const [editing, setEditing] = useState(false)
-  const [value, setValue] = useState(task?.task_name ?? '')
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    setValue(task?.task_name ?? '')
-  }, [task])
-
-  useEffect(() => {
-    if (editing) inputRef.current?.focus()
-  }, [editing])
+    if (editing && inputRef.current) {
+      inputRef.current.value = task?.task_name ?? ''
+      inputRef.current.focus()
+    }
+  }, [editing, task])
 
   const save = useCallback(async () => {
-    const trimmed = value.trim()
+    const trimmed = (inputRef.current?.value ?? '').trim()
     if (trimmed === (task?.task_name ?? '')) {
       setEditing(false)
       return
@@ -97,7 +95,7 @@ function PlanCell({ sessionId, classId, col, task, applicable, onSaved }: CellPr
       setSaving(false)
       setEditing(false)
     }
-  }, [value, task, classId, sessionId, col, onSaved])
+  }, [task, classId, sessionId, col, onSaved])
 
   if (!applicable) {
     return <td className="border border-border bg-muted/30 p-0" />
@@ -117,12 +115,11 @@ function PlanCell({ sessionId, classId, col, task, applicable, onSaved }: CellPr
         <div className="flex items-center gap-1 px-2 py-1.5">
           <input
             ref={inputRef}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
+            defaultValue={task?.task_name ?? ''}
             onBlur={save}
             onKeyDown={(e) => {
               if (e.key === 'Enter') { e.preventDefault(); save() }
-              if (e.key === 'Escape') { setValue(task?.task_name ?? ''); setEditing(false) }
+              if (e.key === 'Escape') { setEditing(false) }
             }}
             className="h-7 w-full min-w-0 rounded border border-border bg-background px-1.5 text-xs outline-none focus:border-foreground/40"
             placeholder={isComment ? '寫給家長的話…' : '填入內容…'}
