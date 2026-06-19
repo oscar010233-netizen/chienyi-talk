@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
-import { weekdayOf } from '@/lib/billing/calendar'
 import type { TaskType } from '@/lib/grade/types'
 
 // GET /api/season-plan?class_id=xxx
@@ -20,7 +19,7 @@ export async function GET(request: NextRequest) {
 
   const { data: rawSessions } = await supabase
     .from('default_attendance')
-    .select('id, season_id, session_index, default_date, original_date, period_key, status')
+    .select('id, season_id, session_index, default_date, original_date, period_key, status, source')
     .eq('class_id', classId)
     .order('default_date', { ascending: true })
 
@@ -44,10 +43,9 @@ export async function GET(request: NextRequest) {
   }
 
   const sessions = rawSessions.map((s) => {
-    const dayOfWeek = weekdayOf(s.default_date)
     let sessionType: 'group' | 'intensive' | 'unknown' = 'unknown'
-    if (cls.weekday1 !== null && dayOfWeek === cls.weekday1) sessionType = 'group'
-    else if (cls.weekday2 !== null && dayOfWeek === cls.weekday2) sessionType = 'intensive'
+    if (s.source === 'weekday1') sessionType = 'group'
+    else if (s.source === 'weekday2') sessionType = 'intensive'
 
     const sessionTasks = tasksBySession.get(s.id) ?? []
     const tasksByType: Partial<Record<TaskType, unknown>> = {}
