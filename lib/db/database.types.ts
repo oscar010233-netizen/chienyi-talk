@@ -669,11 +669,6 @@ export type Database = {
           adjustment_label: string | null
           adjustment_amount: number | null
           total_amount: number | null
-          issue_status: string | null
-          paid_amount: number | null
-          intro_card_received: boolean | null
-          handler: string | null
-          payment_status: string | null
           note: string | null
           created_at: string
           updated_at: string
@@ -698,11 +693,6 @@ export type Database = {
           adjustment_label?: string | null
           adjustment_amount?: number | null
           total_amount?: number | null
-          issue_status?: string | null
-          paid_amount?: number | null
-          intro_card_received?: boolean | null
-          handler?: string | null
-          payment_status?: string | null
           note?: string | null
           created_at?: string
           updated_at?: string
@@ -727,11 +717,6 @@ export type Database = {
           adjustment_label?: string | null
           adjustment_amount?: number | null
           total_amount?: number | null
-          issue_status?: string | null
-          paid_amount?: number | null
-          intro_card_received?: boolean | null
-          handler?: string | null
-          payment_status?: string | null
           note?: string | null
           created_at?: string
           updated_at?: string

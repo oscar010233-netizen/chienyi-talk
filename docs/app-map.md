@@ -113,11 +113,6 @@
 | `adjustment_label` | 調整項目名稱 |
 | `adjustment_amount` | 調整金額 |
 | `total_amount` | 總金額 |
-| `issue_status` | 發單狀態（live DB 尚存在；目前 app 不寫入） |
-| `paid_amount` | 已付金額（live DB 尚存在；目前 app 不寫入） |
-| `intro_card_received` | 介紹卡收到（live DB 尚存在；目前 app 不寫入） |
-| `handler` | 經手人（live DB 尚存在；目前 app 不寫入） |
-| `payment_status` | 付款狀態（live DB 尚存在；目前 app 不寫入） |
 </details>
 
 ---

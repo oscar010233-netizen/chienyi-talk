@@ -12,8 +12,8 @@
 2. **`schedule_event_students` 表已 DROP。**
    原為「補課/個別安排」預留，零程式碼引用。要復用直接重跑 migration `20260614000002_schedule_tables.sql` 內對應段落即可。
 
-3. **`payment_bag_lines` 的 5 個付款狀態欄位仍在 live DB，但 app 已停止寫入。**
-   `issue_status` / `paid_amount` / `intro_card_received` / `handler` / `payment_status` 目前無 UI 觸發；對應 `updatePaymentBagLine` service function 和 `update-line` API action 已移除。DDL 已準備於 `supabase/migrations/202606190001_drop_payment_bag_line_payment_status_columns.sql`，但尚未套用 live DB；套用後需重新產生 types / snapshot。
+3. **`payment_bag_lines` 的 5 個付款狀態欄位已從 live DB DROP。**
+   `issue_status` / `paid_amount` / `intro_card_received` / `handler` / `payment_status` 已於 2026-06-19 透過 Supabase SQL Editor 套用 `supabase/migrations/202606190001_drop_payment_bag_line_payment_status_columns.sql`；app 的 service/API 寫入路徑、types、snapshot 皆已同步。
 
 4. **新增 `audit_log` 表 + `zz_audit` 觸發器。**
    掛在所有業務表上（after insert/update/delete），自動記錄 op / row_id / changed_columns / old_data / new_data / actor。

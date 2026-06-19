@@ -91,13 +91,8 @@
 ### 仍要注意
 
 - `lib/db/database.types.ts` 已移除 `default_attendance.source`，並補上 `class_tasks.default_attendance_id`。
-- `payment_bag_lines` 的 5 個付款欄位仍在 live DB / generated types / live snapshot，因為目前環境沒有 Supabase CLI、psql 或 DB URL 可直接套 DDL：
-  - `payment_bag_lines.issue_status`
-  - `payment_bag_lines.paid_amount`
-  - `payment_bag_lines.intro_card_received`
-  - `payment_bag_lines.handler`
-  - `payment_bag_lines.payment_status`
-- 套用 migration 後，需重新產生 `lib/db/database.types.ts` 與 `docs/supabase-live-snapshot.md`。
+- `payment_bag_lines` 的 5 個付款欄位已於 2026-06-19 透過 Supabase SQL Editor 從 live DB drop：`issue_status` / `paid_amount` / `intro_card_received` / `handler` / `payment_status`。
+- `lib/db/database.types.ts` 與 `docs/supabase-live-snapshot.md` 已同步為 drop 後狀態。
 
 ## 目前工作樹
 
