@@ -289,7 +289,7 @@ export default function DbMonitorPage() {
                             <button
                               onClick={() => setHiddenCols((prev) => new Set([...prev, c]))}
                               title={`隱藏 ${c}`}
-                              className="absolute right-4 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground/0 transition-colors group-hover/th:text-muted-foreground/40 hover:!text-muted-foreground"
+                              className="absolute right-4 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground/40 transition-colors hover:text-muted-foreground"
                             >
                               <Eye size={11} />
                             </button>
@@ -312,7 +312,7 @@ export default function DbMonitorPage() {
                                 <button
                                   onClick={() => void handleDelete(String(r['id']))}
                                   disabled={deletingId === String(r['id'])}
-                                  className="flex size-6 items-center justify-center rounded opacity-0 transition-opacity hover:bg-red-50 hover:text-red-600 group-hover:opacity-100 disabled:opacity-50 dark:hover:bg-red-500/15 dark:hover:text-red-400"
+                                  className="flex size-6 items-center justify-center rounded text-muted-foreground/40 transition-colors hover:bg-red-50 hover:text-red-600 disabled:opacity-50 dark:hover:bg-red-500/15 dark:hover:text-red-400"
                                 >
                                   {deletingId === String(r['id'])
                                     ? <Loader2 size={13} className="animate-spin" />

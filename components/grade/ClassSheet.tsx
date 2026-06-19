@@ -274,7 +274,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                             type="button"
                             onClick={() => setAttendanceTask(task)}
                             title="點名"
-                            className="mt-0.5 shrink-0 rounded p-1 text-sky-500/0 transition-colors group-hover:text-sky-500/70 hover:!text-sky-600"
+                            className="mt-0.5 shrink-0 rounded p-1 text-sky-500/70 transition-colors hover:text-sky-600"
                           >
                             <ClipboardCheck size={13} />
                           </button>
@@ -348,7 +348,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                             onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
                             disabled={deletingTaskId === task.id}
                             title="刪除任務"
-                            className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground/0 transition-colors group-hover:text-muted-foreground/50 hover:!text-red-500 disabled:opacity-50"
+                            className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground/50 transition-colors hover:text-red-500 disabled:opacity-50"
                           >
                             <Trash2 size={13} />
                           </button>

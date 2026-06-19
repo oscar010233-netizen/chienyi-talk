@@ -60,7 +60,7 @@ export function ClassList({ classes }: { classes: ClassWithCount[] }) {
             <button
               type="button"
               onClick={(e) => { e.preventDefault(); setEditingClass(c) }}
-              className="absolute right-10 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground opacity-0 transition-opacity hover:bg-muted hover:text-foreground group-hover:opacity-100"
+              className="absolute right-10 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title="班級設定"
             >
               <Settings2 size={15} />
