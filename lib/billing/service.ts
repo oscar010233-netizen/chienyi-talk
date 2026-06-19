@@ -535,7 +535,6 @@ async function buildAndStoreDefaultAttendance(
     default_date: entry.date,
     original_date: entry.originalDate,
     period_key: periodKey(season.season_code, season.start_date, entry.date),
-    source: 'generated',
     status: entry.shifted ? 'holiday_shifted' : 'scheduled',
     note: entry.shifted ? `${formatDateMd(entry.originalDate)} 假日順延` : null,
   }))
