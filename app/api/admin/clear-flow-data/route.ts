@@ -4,7 +4,6 @@ import { createServiceClient } from '@/lib/supabase/server'
 // Flow tables cleared in leaf-to-root FK order.
 // Structural tables (classes, students, billing_seasons, etc.) are NOT touched.
 const FLOW_TABLES = [
-  'audit_log',
   'student_task_records',
   'class_tasks',
   'payment_bag_line_sessions',
