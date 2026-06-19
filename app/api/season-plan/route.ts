@@ -17,82 +17,125 @@ export async function GET(request: NextRequest) {
 
   if (!cls) return NextResponse.json({ error: 'class not found' }, { status: 404 })
 
-  const { data: rawSessions } = await supabase
-    .from('default_attendance')
-    .select('id, season_id, session_index, default_date, original_date, period_key, status')
+  // Get the latest bag for this class
+  const { data: bag } = await supabase
+    .from('payment_bags')
+    .select('id, class_id')
     .eq('class_id', classId)
-    .order('default_date', { ascending: true })
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
-  if (!rawSessions || rawSessions.length === 0) {
+  if (!bag) {
     return NextResponse.json({ class: cls, sessions: [] })
   }
 
-  const sessionIds = rawSessions.map((s) => s.id)
+  // Get all line IDs for this bag
+  const { data: lineRows } = await supabase
+    .from('payment_bag_lines')
+    .select('id')
+    .eq('bag_id', bag.id)
+  const lineIds = (lineRows ?? []).map((r: { id: string }) => r.id)
+
+  if (lineIds.length === 0) {
+    return NextResponse.json({ class: cls, sessions: [] })
+  }
+
+  // Get unique sessions from payment_bag_line_sessions
+  const { data: sessionRows } = await supabase
+    .from('payment_bag_line_sessions')
+    .select('session_date, session_kind, slot_index')
+    .in('line_id', lineIds)
+    .not('session_date', 'is', null)
+    .order('slot_index')
+
+  // Deduplicate by (session_date, session_kind)
+  const seen = new Set<string>()
+  const uniqueSessions = (sessionRows ?? []).filter(
+    (s: { session_date: string | null; session_kind: string }) => {
+      const key = `${s.session_date}:${s.session_kind}`
+      if (seen.has(key)) return false
+      seen.add(key)
+      return true
+    }
+  )
+
+  if (uniqueSessions.length === 0) {
+    return NextResponse.json({ class: cls, sessions: [] })
+  }
+
+  // Get class_tasks for this class+bag
   const { data: tasks } = await supabase
     .from('class_tasks')
     .select('*')
     .eq('class_id', classId)
-    .in('default_attendance_id', sessionIds)
+    .eq('bag_id', bag.id)
 
+  // Group tasks by (session_date, session_kind)
   const tasksBySession = new Map<string, Record<string, unknown>[]>()
   for (const task of tasks ?? []) {
-    const id = task.default_attendance_id as string
-    const list = tasksBySession.get(id) ?? []
+    const key = `${task.session_date}:${task.session_kind}`
+    const list = tasksBySession.get(key) ?? []
     list.push(task)
-    tasksBySession.set(id, list)
+    tasksBySession.set(key, list)
   }
 
-  const sessions = rawSessions.map((s) => {
-    let sessionType: 'group' | 'intensive' | 'unknown' = 'unknown'
-    if (cls.weekday1 || cls.weekday2) {
-      // getUTCDay: 0=Sun,1=Mon,...,6=Sat → convert to 1=Mon,...,7=Sun
-      const raw = new Date(s.original_date + 'T00:00:00Z').getUTCDay()
-      const wd = raw === 0 ? 7 : raw
-      if (cls.weekday1 && wd === cls.weekday1) sessionType = 'group'
-      else if (cls.weekday2 && wd === cls.weekday2) sessionType = 'intensive'
-    }
-
-    const sessionTasks = tasksBySession.get(s.id) ?? []
+  // Build sessions array
+  const sessions = uniqueSessions.map((s: { session_date: string; session_kind: string }) => {
+    const key = `${s.session_date}:${s.session_kind}`
+    const sessionTasks = tasksBySession.get(key) ?? []
     const tasksByType: Partial<Record<TaskType, unknown>> = {}
     for (const t of sessionTasks) {
       tasksByType[t.task_type as TaskType] = t
     }
-
-    return { ...s, session_type: sessionType, tasks: tasksByType }
+    return {
+      session_date: s.session_date,
+      session_kind: s.session_kind,
+      tasks: tasksByType,
+    }
   })
 
-  return NextResponse.json({ class: cls, sessions })
+  return NextResponse.json({ class: cls, bag_id: bag.id, sessions })
 }
 
 // POST /api/season-plan
-// { class_id, default_attendance_id, task_type, task_name }
+// { class_id, bag_id, session_date, session_kind, task_type, task_name }
 export async function POST(request: NextRequest) {
   const body = await request.json() as {
     class_id?: string
-    default_attendance_id?: string
+    bag_id?: string
+    session_date?: string
+    session_kind?: string
     task_type?: string
     task_name?: string | null
   }
-  const { class_id, default_attendance_id, task_type, task_name } = body
+  const { class_id, bag_id, session_date, session_kind, task_type, task_name } = body
 
-  if (!class_id || !default_attendance_id || !task_type) {
-    return NextResponse.json({ error: 'class_id, default_attendance_id, task_type required' }, { status: 400 })
+  if (!class_id || !bag_id || !session_date || !session_kind || !task_type) {
+    return NextResponse.json(
+      { error: 'class_id, bag_id, session_date, session_kind, task_type required' },
+      { status: 400 }
+    )
   }
 
   const supabase = await createServiceClient()
 
-  const [{ data: cls }, { data: session }] = await Promise.all([
-    supabase.from('classes').select('tenant_id').eq('id', class_id).single(),
-    supabase.from('default_attendance').select('session_index, period_key').eq('id', default_attendance_id).single(),
-  ])
+  const { data: cls } = await supabase
+    .from('classes')
+    .select('tenant_id')
+    .eq('id', class_id)
+    .single()
 
-  if (!cls || !session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  if (!cls) return NextResponse.json({ error: 'class not found' }, { status: 404 })
 
+  // Look up existing task
   const { data: existing } = await supabase
     .from('class_tasks')
     .select('id')
     .eq('class_id', class_id)
-    .eq('default_attendance_id', default_attendance_id)
+    .eq('bag_id', bag_id)
+    .eq('session_date', session_date)
+    .eq('session_kind', session_kind)
     .eq('task_type', task_type)
     .maybeSingle()
 
@@ -111,19 +154,21 @@ export async function POST(request: NextRequest) {
     .from('class_tasks')
     .select('display_order')
     .eq('class_id', class_id)
-  const nextOrder = (siblings ?? []).reduce((max, r) => Math.max(max, (r.display_order as number) ?? 0), 0) + 1
+  const nextOrder = (siblings ?? []).reduce(
+    (max: number, r: { display_order: number | null }) => Math.max(max, r.display_order ?? 0),
+    0
+  ) + 1
 
-  const idx = session.session_index
   const { data: created, error } = await supabase
     .from('class_tasks')
     .insert({
       tenant_id: cls.tenant_id,
       class_id,
-      default_attendance_id,
+      bag_id,
+      session_date,
+      session_kind,
       task_type,
       task_name: task_name?.trim() || null,
-      week_label: session.period_key,
-      lesson_label: `S${String(idx).padStart(2, '0')}`,
       display_order: nextOrder,
     })
     .select()
@@ -139,7 +184,7 @@ export async function POST(request: NextRequest) {
 
   if (created && enrollments?.length) {
     await supabase.from('student_task_records').insert(
-      enrollments.map((e) => ({
+      enrollments.map((e: { student_id: string }) => ({
         tenant_id: cls.tenant_id,
         class_task_id: created.id,
         student_id: e.student_id,

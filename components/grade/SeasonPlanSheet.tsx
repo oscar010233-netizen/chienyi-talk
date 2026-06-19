@@ -41,23 +41,25 @@ const COL_FILLED: Record<ColKey, string> = {
   comment: 'border-teal-200 bg-teal-50/60 dark:border-teal-500/20 dark:bg-teal-500/[0.07]',
 }
 
-function isApplicable(col: ColKey, sessionType: SeasonSession['session_type']) {
+function isApplicable(col: ColKey, sessionKind: SeasonSession['session_kind']) {
   const cfg = COLS.find((c) => c.key === col)!
-  if (sessionType === 'group') return cfg.group
-  if (sessionType === 'intensive') return cfg.intensive
+  if (sessionKind === 'team') return cfg.group
+  if (sessionKind === 'intensive') return cfg.intensive
   return true
 }
 
 interface CellProps {
-  sessionId: string
+  bagId: string
+  sessionDate: string
+  sessionKind: string
   classId: string
   col: ColKey
   task: Task | undefined
   applicable: boolean
-  onSaved: (sessionId: string, col: ColKey, task: Task) => void
+  onSaved: (sessionDate: string, sessionKind: string, col: ColKey, task: Task) => void
 }
 
-function PlanCell({ sessionId, classId, col, task, applicable, onSaved }: CellProps) {
+function PlanCell({ bagId, sessionDate, sessionKind, classId, col, task, applicable, onSaved }: CellProps) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -82,20 +84,22 @@ function PlanCell({ sessionId, classId, col, task, applicable, onSaved }: CellPr
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           class_id: classId,
-          default_attendance_id: sessionId,
+          bag_id: bagId,
+          session_date: sessionDate,
+          session_kind: sessionKind,
           task_type: col,
           task_name: trimmed || null,
         }),
       })
       if (res.ok) {
         const data = await res.json()
-        onSaved(sessionId, col, data.task)
+        onSaved(sessionDate, sessionKind, col, data.task)
       }
     } finally {
       setSaving(false)
       setEditing(false)
     }
-  }, [task, classId, sessionId, col, onSaved])
+  }, [task, classId, bagId, sessionDate, sessionKind, col, onSaved])
 
   if (!applicable) {
     return <td className="border border-border bg-muted/30 p-0" />
@@ -154,38 +158,33 @@ interface Props {
 
 export function SeasonPlanSheet({ classId, cls }: Props) {
   const [sessions, setSessions] = useState<SeasonSession[]>([])
+  const [bagId, setBagId] = useState<string>('')
   const [loading, setLoading] = useState(true)
   const router = useRouter()
-
-  const displayedSessions = useMemo(() => {
-    const hasIntensiveSessions = sessions.some((session) => session.session_type === 'intensive')
-    if (cls.class_type !== 'intensive' || hasIntensiveSessions) return sessions
-
-    return sessions.flatMap((session) => {
-      if (session.session_type !== 'group') return [session]
-      return [session, { ...session, session_type: 'intensive' as const }]
-    })
-  }, [cls.class_type, sessions])
 
   useEffect(() => {
     fetch(`/api/season-plan?class_id=${classId}`)
       .then((r) => r.json())
       .then((data) => {
         setSessions(data.sessions ?? [])
+        setBagId(data.bag_id ?? '')
         setLoading(false)
       })
   }, [classId])
 
-  const handleSaved = useCallback((sessionId: string, col: ColKey, task: Task) => {
+  const handleSaved = useCallback((sessionDate: string, sessionKind: string, col: ColKey, task: Task) => {
     setSessions((prev) =>
       prev.map((s) =>
-        s.id === sessionId
+        s.session_date === sessionDate && s.session_kind === sessionKind
           ? { ...s, tasks: { ...s.tasks, [col]: task } }
           : s
       )
     )
     router.refresh()
   }, [router])
+
+  // displayedSessions: the API now returns correct team/intensive sessions from billing
+  const displayedSessions = useMemo(() => sessions, [sessions])
 
   const classSlug = encodeURIComponent(classId)
 
@@ -236,15 +235,14 @@ export function SeasonPlanSheet({ classId, cls }: Props) {
             </thead>
             <tbody>
               {displayedSessions.map((session, idx) => {
-                const { md, day } = fmtDate(session.default_date)
-                const isGroup = session.session_type === 'group'
-                const isIntensive = session.session_type === 'intensive'
+                const { md, day } = fmtDate(session.session_date)
+                const isTeam = session.session_kind === 'team'
+                const isIntensive = session.session_kind === 'intensive'
                 return (
-                  <tr key={`${session.id}-${session.session_type}`} className={cn(idx % 2 === 1 && 'bg-muted/20')}>
+                  <tr key={`${session.session_date}-${session.session_kind}`} className={cn(idx % 2 === 1 && 'bg-muted/20')}>
                     <td className="border border-border px-3 py-2 align-middle">
                       <div className="font-medium text-foreground">{md} {day}</div>
-                      <div className="text-[10px] text-muted-foreground">{session.period_key}</div>
-                      {isGroup && (
+                      {isTeam && (
                         <span className="mt-1 inline-flex items-center rounded-sm bg-indigo-100 px-1.5 py-px text-[10px] font-medium text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300">
                           團課
                         </span>
@@ -258,11 +256,13 @@ export function SeasonPlanSheet({ classId, cls }: Props) {
                     {COLS.map((col) => (
                       <PlanCell
                         key={col.key}
-                        sessionId={session.id}
+                        bagId={bagId}
+                        sessionDate={session.session_date}
+                        sessionKind={session.session_kind}
                         classId={classId}
                         col={col.key}
                         task={session.tasks[col.key]}
-                        applicable={isApplicable(col.key, session.session_type)}
+                        applicable={isApplicable(col.key, session.session_kind)}
                         onSaved={handleSaved}
                       />
                     ))}

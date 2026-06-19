@@ -7,11 +7,9 @@ import {
   compareDate,
   dateOnly,
   formatDateMd,
-  generateClassDates,
   parseSeasonCode,
   periodKey,
   quarterDates,
-  shiftHolidayDate,
   toNumber,
 } from './calendar'
 import type {
@@ -21,7 +19,6 @@ import type {
   BillingSeason,
   BillingState,
   BillingStudent,
-  DefaultAttendance,
   OpenBagInput,
   OpenBagStudentInput,
   PaymentBag,
@@ -238,7 +235,6 @@ export async function getBillingState(params: {
       selectedSeason,
       students: [],
       holidays: [],
-      defaultAttendance: [],
       actualAttendance: [],
       bags: [],
       activeBag: null,
@@ -246,11 +242,9 @@ export async function getBillingState(params: {
     }
   }
 
-  const defaults = await getDefaultAttendanceRows(supabase, selectedSeason.id, selectedClass.id)
-
   const [students, actuals, bags, activeBag] = await Promise.all([
     getStudentsForClass(supabase, selectedClass.id),
-    buildAttendanceView(supabase, selectedSeason, selectedClass.id, defaults),
+    buildAttendanceView(supabase, selectedSeason, selectedClass.id),
     getPaymentBags(supabase, selectedSeason.id, selectedClass.id),
     getActiveBag(supabase, selectedSeason.id, selectedClass.id),
   ])
@@ -271,7 +265,6 @@ export async function getBillingState(params: {
     selectedSeason,
     students,
     holidays,
-    defaultAttendance: defaults,
     actualAttendance: actuals,
     bags,
     activeBag,
@@ -280,22 +273,12 @@ export async function getBillingState(params: {
 }
 
 
-async function getDefaultAttendanceRows(supabase: Supabase, seasonId: string, classId: string): Promise<DefaultAttendance[]> {
-  const { data, error } = await supabase
-    .from('default_attendance')
-    .select('*')
-    .eq('season_id', seasonId)
-    .eq('class_id', classId)
-    .order('session_index')
-  if (error) throw new Error(error.message)
-  return (data ?? []) as DefaultAttendance[]
-}
-
 type AttendanceTaskRow = {
   id: string
   tenant_id: string
   lesson_label: string | null
   week_label: string | null
+  session_date: string | null
 }
 
 async function getAttendanceTasks(
@@ -305,7 +288,7 @@ async function getAttendanceTasks(
 ): Promise<AttendanceTaskRow[]> {
   const { data, error } = await supabase
     .from('class_tasks')
-    .select('id, tenant_id, lesson_label, week_label')
+    .select('id, tenant_id, lesson_label, week_label, session_date')
     .eq('class_id', classId)
     .eq('task_type', 'attendance')
     .like('week_label', `${seasonWeekPrefix(seasonCode)}%`)
@@ -318,7 +301,6 @@ async function buildAttendanceView(
   supabase: Supabase,
   season: BillingSeason,
   classId: string,
-  defaults: DefaultAttendance[],
 ): Promise<ActualAttendance[]> {
   const tasks = await getAttendanceTasks(supabase, classId, season.season_code)
   const taskIds = tasks.map((task) => task.id)
@@ -331,7 +313,6 @@ async function buildAttendanceView(
   if (error) throw new Error(error.message)
 
   const taskById = new Map(tasks.map((task) => [task.id, task]))
-  const defaultByLesson = new Map(defaults.map((row) => [sessionLabel(row.session_index), row]))
   const view: ActualAttendance[] = []
 
   for (const record of records ?? []) {
@@ -346,13 +327,11 @@ async function buildAttendanceView(
       view.push({
         id: record.id,
         tenant_id: task.tenant_id,
-        default_attendance_id: null,
         season_id: season.id,
         class_id: classId,
         student_id: record.student_id,
-        default_date: null,
+        session_date: null,
         actual_date: actualDate,
-        session_index: null,
         period_key: task.week_label,
         actual_status: isExtra ? 'extra' : 'makeup',
         reconciliation_status: isExtra ? 'extra' : 'makeup',
@@ -362,21 +341,18 @@ async function buildAttendanceView(
       continue
     }
 
-    const def = defaultByLesson.get(lesson)
-    if (!def) continue
     const status = taskToActual(record.status)
     if (!status) continue // pending / unrecorded
+    const sessionDate = task.session_date ?? null
     view.push({
       id: record.id,
-      tenant_id: def.tenant_id,
-      default_attendance_id: def.id,
+      tenant_id: task.tenant_id,
       season_id: season.id,
       class_id: classId,
       student_id: record.student_id,
-      default_date: def.default_date,
-      actual_date: def.default_date,
-      session_index: def.session_index,
-      period_key: def.period_key,
+      session_date: sessionDate,
+      actual_date: sessionDate ?? record.id,
+      period_key: task.week_label,
       actual_status: status,
       reconciliation_status: statusToReconciliation(status),
       source_task_record_id: record.id,
@@ -506,98 +482,84 @@ export async function replaceSeasonHolidays(input: {
   return { saved: uniqueDates.length }
 }
 
-async function buildAndStoreDefaultAttendance(
-  supabase: Supabase,
-  cls: BillingClass,
-  season: BillingSeason,
-  limit?: number,
-): Promise<DefaultAttendance[]> {
-  const { data: seasonData } = await supabase.from('billing_seasons').select('holiday_dates').eq('id', season.id).single()
-  const holidaySet = new Set<string>((seasonData?.holiday_dates ?? []) as string[])
-  const baseDates = generateClassDates({
-    startDate: season.start_date,
-    endDate: season.end_date,
-    weekday1: cls.weekday1,
-    weekday2: cls.weekday2,
-    classType: cls.class_type,
-    limit: limit ?? cls.system_sessions ?? MAX_BILLING_SESSIONS,
-  })
-  const shiftedDates = baseDates.map((originalDate) => {
-    const shifted = shiftHolidayDate(originalDate, holidaySet)
-    return { originalDate, date: shifted.date, shifted: shifted.shifted }
-  })
-  shiftedDates.sort((a, b) => compareDate(a.date, b.date))
-  const rows = shiftedDates.map((entry, index) => ({
-    tenant_id: cls.tenant_id,
-    season_id: season.id,
-    class_id: cls.id,
-    session_index: index + 1,
-    default_date: entry.date,
-    original_date: entry.originalDate,
-    period_key: periodKey(season.season_code, season.start_date, entry.date),
-    status: entry.shifted ? 'holiday_shifted' : 'scheduled',
-    note: entry.shifted ? `${formatDateMd(entry.originalDate)} 假日順延` : null,
-  }))
-  if (rows.length > 0) {
-    const { error } = await supabase
-      .from('default_attendance')
-      .upsert(rows, { onConflict: 'tenant_id,season_id,class_id,session_index' })
-    if (error) throw new Error(error.message)
-  }
-  const { data: defaults, error: defaultsError } = await supabase
-    .from('default_attendance')
-    .select('*')
-    .eq('season_id', season.id)
-    .eq('class_id', cls.id)
-    .order('session_index')
-  if (defaultsError) throw new Error(defaultsError.message)
-  return (defaults ?? []) as DefaultAttendance[]
-}
-
-export async function generateDefaultAttendance(input: {
+// generateDefaultAttendance is no longer needed (default_attendance table dropped),
+// but keep as a stub so any existing callers don't break at compile time.
+export async function generateDefaultAttendance(_input: {
   seasonId: string
   classId: string
   limit?: number
 }): Promise<{ generated: number; tasks: number; records: number }> {
-  const supabase = await createServiceClient()
-  const season = await getSeasonOrThrow(supabase, input.seasonId)
-  const cls = await getClassOrThrow(supabase, input.classId)
-  const students = await getStudentsForClass(supabase, cls.id)
-  const defaults = await buildAndStoreDefaultAttendance(supabase, cls, season, input.limit)
-  const taskStats = await ensureAttendanceTasks(supabase, cls, season, defaults, students)
-  return { generated: defaults.length, ...taskStats }
+  return { generated: 0, tasks: 0, records: 0 }
 }
 
 async function ensureAttendanceTasks(
   supabase: Supabase,
   cls: BillingClass,
-  season: BillingSeason,
-  defaults: DefaultAttendance[],
+  bag: PaymentBag,
   students: BillingStudent[],
 ): Promise<{ tasks: number; records: number }> {
   let tasks = 0
   let records = 0
+
+  // 1. Get all line IDs for this bag
+  const { data: lineRows } = await supabase
+    .from('payment_bag_lines')
+    .select('id')
+    .eq('bag_id', bag.id)
+  const lineIds = (lineRows ?? []).map((r: { id: string }) => r.id)
+
+  // 2. Get unique sessions from payment_bag_line_sessions
+  const { data: sessions } = lineIds.length > 0
+    ? await supabase
+        .from('payment_bag_line_sessions')
+        .select('session_date, session_kind, slot_index')
+        .in('line_id', lineIds)
+        .not('session_date', 'is', null)
+        .order('slot_index')
+    : { data: [] }
+
+  // Deduplicate by (session_date, session_kind)
+  const seen = new Set<string>()
+  const uniqueSessions = (sessions ?? []).filter((s: { session_date: string | null; session_kind: string }) => {
+    const key = `${s.session_date}:${s.session_kind}`
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  if (uniqueSessions.length === 0) return { tasks, records }
+
+  // 3. Get existing attendance tasks for this class+bag
   const { data: existingTasks, error } = await supabase
     .from('class_tasks')
-    .select('id, lesson_label, week_label')
+    .select('id, session_date, session_kind')
     .eq('class_id', cls.id)
+    .eq('bag_id', bag.id)
     .eq('task_type', 'attendance')
   if (error) throw new Error(error.message)
 
-  const taskByKey = new Map((existingTasks ?? []).map((task) => [`${task.week_label}:${task.lesson_label}`, task.id as string]))
+  const taskByKey = new Map(
+    (existingTasks ?? []).map((t: { id: string; session_date: string | null; session_kind: string | null }) =>
+      [`${t.session_date}:${t.session_kind}`, t.id as string]
+    )
+  )
 
-  for (const row of defaults) {
-    const lesson = sessionLabel(row.session_index)
-    const key = `${row.period_key}:${lesson}`
+  for (let idx = 0; idx < uniqueSessions.length; idx++) {
+    const s = uniqueSessions[idx] as { session_date: string; session_kind: string }
+    const key = `${s.session_date}:${s.session_kind}`
     let taskId = taskByKey.get(key)
+    const lessonLabel = `S${String(idx + 1).padStart(2, '0')}`
+    const taskName = `出席 ${formatDateMd(s.session_date)}${s.session_kind === 'intensive' ? ' 強化' : ''}`
     const payload = {
       tenant_id: cls.tenant_id,
       class_id: cls.id,
+      bag_id: bag.id,
       task_type: 'attendance',
-      week_label: row.period_key,
-      lesson_label: lesson,
-      task_name: `出席 ${row.session_index} ${formatDateMd(row.default_date)}`,
-      display_order: row.session_index,
+      session_date: s.session_date,
+      session_kind: s.session_kind,
+      lesson_label: lessonLabel,
+      task_name: taskName,
+      display_order: idx + 1,
       status: 'active',
     }
 
@@ -642,40 +604,51 @@ export async function syncActualAttendanceFromClassSheet(input: {
 }): Promise<{ synced: number }> {
   const supabase = await createServiceClient()
   const season = await getSeasonOrThrow(supabase, input.seasonId)
-  const defaults = await getDefaultAttendanceRows(supabase, season.id, input.classId)
-  const view = await buildAttendanceView(supabase, season, input.classId, defaults)
-  return { synced: view.filter((row) => row.default_attendance_id).length }
+  const view = await buildAttendanceView(supabase, season, input.classId)
+  return { synced: view.filter((row) => row.session_date).length }
 }
 
 export async function recordActualAttendance(input: {
-  defaultAttendanceId: string
+  classTaskId: string
   studentId: string
   status: ActualAttendanceStatus
-  actualDate?: string | null
   note?: string | null
 }): Promise<ActualAttendance> {
   const supabase = await createServiceClient()
-  const { data: row, error } = await supabase
-    .from('default_attendance')
-    .select('*')
-    .eq('id', input.defaultAttendanceId)
+  const { data: task, error } = await supabase
+    .from('class_tasks')
+    .select('id, tenant_id, class_id, session_date, week_label')
+    .eq('id', input.classTaskId)
     .single()
-  if (error || !row) throw new Error(error?.message ?? 'default attendance not found')
+  if (error || !task) throw new Error(error?.message ?? 'class task not found')
 
-  const def = row as DefaultAttendance
-  await mirrorActualToClassTask(supabase, def, input.studentId, input.status)
+  await mirrorActualToClassTask(supabase, input.classTaskId, task.tenant_id, input.studentId, input.status)
+
+  // We need season_id — look it up from the bag linked to this task
+  const { data: taskWithBag } = await supabase
+    .from('class_tasks')
+    .select('bag_id')
+    .eq('id', input.classTaskId)
+    .single()
+  let seasonId = ''
+  if (taskWithBag?.bag_id) {
+    const { data: bag } = await supabase
+      .from('payment_bags')
+      .select('season_id')
+      .eq('id', taskWithBag.bag_id)
+      .single()
+    seasonId = bag?.season_id ?? ''
+  }
 
   return {
-    id: `${def.id}:${input.studentId}`,
-    tenant_id: def.tenant_id,
-    default_attendance_id: def.id,
-    season_id: def.season_id,
-    class_id: def.class_id,
+    id: `${input.classTaskId}:${input.studentId}`,
+    tenant_id: task.tenant_id,
+    season_id: seasonId,
+    class_id: task.class_id,
     student_id: input.studentId,
-    default_date: def.default_date,
-    actual_date: input.actualDate || def.default_date,
-    session_index: def.session_index,
-    period_key: def.period_key,
+    session_date: task.session_date ?? null,
+    actual_date: task.session_date ?? new Date().toISOString().slice(0, 10),
+    period_key: task.week_label ?? null,
     actual_status: input.status,
     reconciliation_status: statusToReconciliation(input.status),
     source_task_record_id: null,
@@ -685,27 +658,17 @@ export async function recordActualAttendance(input: {
 
 async function mirrorActualToClassTask(
   supabase: Supabase,
-  def: DefaultAttendance,
+  classTaskId: string,
+  tenantId: string,
   studentId: string,
   actualStatus: ActualAttendanceStatus,
 ): Promise<void> {
-  const lesson = sessionLabel(def.session_index)
-  const { data: task } = await supabase
-    .from('class_tasks')
-    .select('id, tenant_id')
-    .eq('class_id', def.class_id)
-    .eq('task_type', 'attendance')
-    .eq('lesson_label', lesson)
-    .eq('week_label', def.period_key)
-    .maybeSingle()
-
-  if (!task) throw new Error('找不到對應的班級點名任務，請先「產生預設出席日」')
   const mapped = statusToTask(actualStatus)
   const { error } = await supabase
     .from('student_task_records')
     .upsert({
-      tenant_id: task.tenant_id,
-      class_task_id: task.id,
+      tenant_id: tenantId,
+      class_task_id: classTaskId,
       student_id: studentId,
       status: mapped.status,
     }, { onConflict: 'class_task_id,student_id' })
@@ -773,13 +736,11 @@ export async function recordExtraAttendance(input: {
   return {
     id: `${taskId}:${input.studentId}`,
     tenant_id: cls.tenant_id,
-    default_attendance_id: null,
     season_id: season.id,
     class_id: cls.id,
     student_id: input.studentId,
-    default_date: null,
+    session_date: null,
     actual_date: actualDate,
-    session_index: null,
     period_key: weekLabel,
     actual_status: input.status,
     reconciliation_status: input.status,
@@ -1049,11 +1010,7 @@ export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWit
   const season = await getSeasonOrThrow(supabase, input.seasonId)
   const cls = await getClassOrThrow(supabase, input.classId)
   const students = await getStudentsForClass(supabase, cls.id)
-  let defaults = await getDefaultAttendanceRows(supabase, season.id, cls.id)
-  if (defaults.length === 0) {
-    defaults = await buildAndStoreDefaultAttendance(supabase, cls, season)
-  }
-  const fallbackSessionCount = defaults.length || cls.system_sessions || 0
+  const fallbackSessionCount = cls.system_sessions || 0
   const tuitionAmount = toNumber(input.tuitionAmount)
   const hasStudentDrafts = Boolean(input.selectedStudents?.length)
   const studentDrafts = new Map((input.selectedStudents ?? []).map((row) => [row.studentId, row]))
@@ -1069,9 +1026,7 @@ export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWit
         studentIds: targetStudents.map((student) => student.student_id),
         rate: fallbackRate,
       })
-  const fallbackTeamDates = defaults
-    .map((row) => dateToLegacyMd(row.default_date))
-    .filter((value): value is string => Boolean(value))
+  const fallbackTeamDates: string[] = []
 
   const bagPayload = {
     tenant_id: cls.tenant_id,
@@ -1151,7 +1106,7 @@ export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWit
     }
   }
 
-  await ensureAttendanceTasks(supabase, cls, season, defaults, students)
+  await ensureAttendanceTasks(supabase, cls, bag as PaymentBag, students)
 
   const activeBag = await getActiveBag(supabase, season.id, cls.id)
   return requireValue(activeBag, 'payment bag not found after opening')

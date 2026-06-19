@@ -1,6 +1,6 @@
 # DB 現況與約定（給後續 AI agent / 開發者）
 
-> 最後更新：2026-06-19。本檔記錄「光看 schema 看不出來」的真相，動 DB 或寫程式前先讀。
+> 最後更新：2026-06-20。本檔記錄「光看 schema 看不出來」的真相，動 DB 或寫程式前先讀。
 > Schema 欄位清單的單一事實來源在 `lib/db/schema.ts`，並可在前端 `/db` 頁即時檢視。
 
 ## 近期已執行的變更
@@ -22,6 +22,13 @@
 5. **`default_attendance.source` 欄位已 DROP。**
    原意是記錄 session 由 weekday1 或 weekday2 產生，但實際值全為 `'generated'`，沒有區分意義。
    判斷 session 類型改用 `original_date` 的星期幾比對 `classes.weekday1`/`weekday2`（見 `app/api/season-plan/route.ts`）。
+
+6. **`default_attendance` 表已 DROP（2026-06-20）。**
+   `class_tasks` 現在改以 `bag_id + session_date + session_kind` 識別出席 session，不再依賴 `default_attendance_id`。
+   `class_tasks` 新增欄位：`bag_id UUID REFERENCES payment_bags(id)`、`session_date DATE`、`session_kind TEXT CHECK IN ('team','intensive')`；已移除 `default_attendance_id`。
+   教學側的 session 排程讀取來源改為 `payment_bag_line_sessions`。
+   `lib/billing/types.ts` 的 `DefaultAttendance` interface 已刪除；`ActualAttendance` 改用 `session_date` 代替 `default_date`，移除 `default_attendance_id`、`session_index`。
+   `lib/grade/types.ts` 的 `SeasonSession` 改為 `{ session_date, session_kind, tasks }`；`Task` 改為 `bag_id / session_date / session_kind`，移除 `default_attendance_id`。
 
 6. **`/api/task-records` PATCH 不再接受 `status` / `lamp`。**
    狀態變更一律走 `/api/reinforcement/tasks`（內含 `resolveTaskSubmission` 狀態機）。`/api/task-records` 只能改 latest_result / result_history / teacher_note / comment_text / comment_status。

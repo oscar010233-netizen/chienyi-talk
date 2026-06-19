@@ -28,34 +28,17 @@ export interface BillingStudent {
   grade: string | null
 }
 
-export interface DefaultAttendance {
-  id: string
-  tenant_id: string
-  season_id: string
-  class_id: string
-  session_index: number
-  default_date: string
-  original_date: string
-  period_key: string
-  source: string
-  status: 'scheduled' | 'holiday_shifted' | 'cancelled' | 'manual' | string
-  holiday_id: string | null
-  note: string | null
-}
-
 export type ActualAttendanceStatus = 'attended' | 'absent' | 'cancelled' | 'makeup' | 'extra'
 export type ReconciliationStatus = 'matched' | 'missed' | 'makeup' | 'extra' | 'cancelled'
 
 export interface ActualAttendance {
   id: string
   tenant_id: string
-  default_attendance_id: string | null
   season_id: string
   class_id: string
   student_id: string
-  default_date: string | null
+  session_date: string | null
   actual_date: string
-  session_index: number | null
   period_key: string | null
   actual_status: ActualAttendanceStatus | string
   reconciliation_status: ReconciliationStatus | string
@@ -141,7 +124,6 @@ export interface BillingState {
   selectedSeason: BillingSeason | null
   students: BillingStudent[]
   holidays: string[]
-  defaultAttendance: DefaultAttendance[]
   actualAttendance: ActualAttendance[]
   bags: PaymentBag[]
   activeBag: PaymentBagWithLines | null

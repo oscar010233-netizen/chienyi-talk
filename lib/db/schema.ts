@@ -17,7 +17,7 @@ export const DB_TABLES: TableMeta[] = [
   { name: 'classes', group: '班級', columns: ['id', 'tenant_id', 'class_name', 'class_code', 'department', 'level', 'class_type', 'weekday1', 'weekday2', 'system_sessions', 'status', 'created_at', 'updated_at'] },
   { name: 'students', group: '班級', columns: ['id', 'tenant_id', 'chinese_name', 'english_name', 'status', 'school', 'grade', 'note', 'parent_name', 'parent_phone', 'created_at', 'updated_at'] },
   { name: 'class_enrollments', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'student_id', 'status', 'slot_order', 'joined_at', 'left_at', 'created_at', 'updated_at'] },
-  { name: 'class_tasks', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'default_attendance_id', 'week_label', 'lesson_label', 'task_type', 'task_name', 'threshold_value', 'max_score', 'threshold_text', 'display_order', 'status', 'created_at', 'updated_at'] },
+  { name: 'class_tasks', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'bag_id', 'session_date', 'session_kind', 'week_label', 'lesson_label', 'task_type', 'task_name', 'threshold_value', 'max_score', 'threshold_text', 'display_order', 'status', 'created_at', 'updated_at'] },
   { name: 'student_task_records', group: '班級', columns: ['id', 'tenant_id', 'class_task_id', 'student_id', 'status', 'latest_result', 'result_history', 'teacher_note', 'comment_text', 'comment_status', 'created_at', 'updated_at'] },
 
   { name: 'rooms', group: '配課表', columns: ['id', 'tenant_id', 'name', 'room_type', 'display_order', 'status', 'created_at', 'updated_at'] },
@@ -27,7 +27,7 @@ export const DB_TABLES: TableMeta[] = [
   { name: 'day_entries', group: '配課表', note: '晚餐備註與待辦/晚餐拖曳排序已接 UI', columns: ['id', 'tenant_id', 'schedule_day_id', 'type', 'person', 'content', 'done', 'notes', 'sort_order', 'created_at'] },
 
   { name: 'billing_seasons', group: '帳務', columns: ['id', 'tenant_id', 'season_code', 'year', 'quarter', 'start_date', 'end_date', 'label', 'status', 'holiday_dates', 'created_at', 'updated_at'] },
-  { name: 'default_attendance', group: '帳務', columns: ['id', 'tenant_id', 'season_id', 'class_id', 'session_index', 'default_date', 'original_date', 'period_key', 'status', 'note', 'created_at', 'updated_at'] },
+  // default_attendance table DROPPED 2026-06-20
   { name: 'payment_bags', group: '帳務', columns: ['id', 'tenant_id', 'season_id', 'class_id', 'bag_code', 'issue_date', 'due_date', 'status', 'tuition_note', 'note', 'print_count', 'last_printed_at', 'created_at', 'updated_at'] },
   { name: 'payment_bag_lines', group: '帳務', note: 'payment-status columns dropped 2026-06-19; app stores billing line amounts only', columns: ['id', 'tenant_id', 'bag_id', 'student_id', 'student_order', 'session_count', 'rate_per_session', 'tuition_amount', 'book_name', 'book_fee', 'misc_label', 'misc_fee', 'discount_label', 'discount_amount', 'carryover_amount', 'carryover_note', 'adjustment_label', 'adjustment_amount', 'total_amount', 'note', 'created_at', 'updated_at'] },
   { name: 'payment_bag_line_sessions', group: '帳務', columns: ['id', 'tenant_id', 'line_id', 'student_id', 'slot_index', 'session_kind', 'session_order', 'session_date', 'legacy_mmdd', 'is_unscheduled', 'week_key', 'created_at', 'updated_at'] },

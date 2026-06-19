@@ -201,7 +201,9 @@ export type Database = {
           id: string
           tenant_id: string
           class_id: string
-          default_attendance_id: string | null
+          bag_id: string | null
+          session_date: string | null
+          session_kind: string | null
           week_label: string | null
           lesson_label: string | null
           task_type: string
@@ -218,7 +220,9 @@ export type Database = {
           id?: string
           tenant_id: string
           class_id: string
-          default_attendance_id?: string | null
+          bag_id?: string | null
+          session_date?: string | null
+          session_kind?: string | null
           week_label?: string | null
           lesson_label?: string | null
           task_type: string
@@ -235,7 +239,9 @@ export type Database = {
           id?: string
           tenant_id?: string
           class_id?: string
-          default_attendance_id?: string | null
+          bag_id?: string | null
+          session_date?: string | null
+          session_kind?: string | null
           week_label?: string | null
           lesson_label?: string | null
           task_type?: string
@@ -250,7 +256,7 @@ export type Database = {
         }
         Relationships: [
           { foreignKeyName: "class_tasks_class_id_fkey"; columns: ["class_id"]; referencedRelation: "classes"; referencedColumns: ["id"] },
-          { foreignKeyName: "class_tasks_default_attendance_id_fkey"; columns: ["default_attendance_id"]; referencedRelation: "default_attendance"; referencedColumns: ["id"] }
+          { foreignKeyName: "class_tasks_bag_id_fkey"; columns: ["bag_id"]; referencedRelation: "payment_bags"; referencedColumns: ["id"] }
         ]
       }
       student_task_records: {
@@ -545,54 +551,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
-      }
-      default_attendance: {
-        Row: {
-          id: string
-          tenant_id: string
-          season_id: string
-          class_id: string
-          session_index: number | null
-          default_date: string | null
-          original_date: string | null
-          period_key: string | null
-          status: string
-          note: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          tenant_id: string
-          season_id: string
-          class_id: string
-          session_index?: number | null
-          default_date?: string | null
-          original_date?: string | null
-          period_key?: string | null
-          status?: string
-          note?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          tenant_id?: string
-          season_id?: string
-          class_id?: string
-          session_index?: number | null
-          default_date?: string | null
-          original_date?: string | null
-          period_key?: string | null
-          status?: string
-          note?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Relationships: [
-          { foreignKeyName: "default_attendance_season_id_fkey"; columns: ["season_id"]; referencedRelation: "billing_seasons"; referencedColumns: ["id"] },
-          { foreignKeyName: "default_attendance_class_id_fkey"; columns: ["class_id"]; referencedRelation: "classes"; referencedColumns: ["id"] }
-        ]
       }
       payment_bags: {
         Row: {

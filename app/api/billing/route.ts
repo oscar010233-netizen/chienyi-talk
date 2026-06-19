@@ -102,17 +102,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'record-actual') {
-      const defaultAttendanceId = String(body.default_attendance_id ?? '')
+      const classTaskId = String(body.class_task_id ?? '')
       const studentId = String(body.student_id ?? '')
       const status = String(body.status ?? '') as ActualAttendanceStatus
-      if (!defaultAttendanceId || !studentId || !status) {
-        return jsonError('default_attendance_id, student_id and status required', 400)
+      if (!classTaskId || !studentId || !status) {
+        return jsonError('class_task_id, student_id and status required', 400)
       }
       const actual = await recordActualAttendance({
-        defaultAttendanceId,
+        classTaskId,
         studentId,
         status,
-        actualDate: typeof body.actual_date === 'string' ? body.actual_date : null,
         note: typeof body.note === 'string' ? body.note : null,
       })
       return NextResponse.json({ actual })
