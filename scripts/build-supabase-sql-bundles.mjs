@@ -56,6 +56,23 @@ const bundles = [
       "supabase/verification/202606130003_verify_grade_track_backfill.sql",
     ],
   },
+  {
+    name: "billing_attendance_closed_loop_apply.sql",
+    purpose:
+      "Write bundle for the billing/attendance closed loop: open-bag detail tables and attendance status values.",
+    files: [
+      "supabase/migrations/202606160001_billing_open_bag_appscript_parity.sql",
+      "supabase/migrations/202606180001_attendance_status_values.sql",
+    ],
+  },
+  {
+    name: "billing_attendance_closed_loop_verify.sql",
+    purpose:
+      "Read-only verification for billing/attendance closed-loop DB prerequisites.",
+    files: [
+      "supabase/verification/202606180001_verify_billing_attendance_closed_loop.sql",
+    ],
+  },
 ];
 
 function section(title) {

@@ -73,6 +73,7 @@ export default function DbMonitorPage() {
   const [colWidths, setColWidths] = useState<Record<string, number> | null>(null)
   const [hiddenCols, setHiddenCols] = useState<Set<string>>(new Set())
   const tableRef = useRef<HTMLTableElement>(null)
+  const rowsPanelRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<{ col: string; startX: number; startW: number } | null>(null)
 
   const loadSnapshot = useCallback(async () => {
@@ -238,7 +239,7 @@ export default function DbMonitorPage() {
         <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-6">
 
         {/* Rows panel */}
-        <div className="flex min-h-0 flex-[2] flex-col overflow-hidden rounded-lg border border-border bg-background/50">
+        <div ref={rowsPanelRef} className="flex min-h-0 flex-[2] flex-col overflow-hidden rounded-lg border border-border bg-background/50">
           {!selected ? (
             <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">← 點左側表格檢視內容</div>
           ) : (
@@ -360,7 +361,11 @@ export default function DbMonitorPage() {
                         <span className={['rounded px-1.5 py-0.5 text-[10px] font-semibold ring-1', OP_STYLE[e.op] ?? 'bg-muted text-muted-foreground ring-border'].join(' ')}>
                           {OP_LABEL[e.op] ?? e.op}
                         </span>
-                        <span className="font-mono font-medium text-foreground">{e.table_name}</span>
+                        <button
+                          type="button"
+                          onClick={() => { void loadRows(e.table_name); rowsPanelRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }) }}
+                          className="font-mono font-medium text-foreground underline-offset-2 hover:underline"
+                        >{e.table_name}</button>
                       </span>
                       <span className="shrink-0 tabular-nums text-[10px] text-muted-foreground">{fmtTime(e.created_at)}</span>
                     </div>

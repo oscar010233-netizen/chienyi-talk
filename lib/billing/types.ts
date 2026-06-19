@@ -153,25 +153,6 @@ export interface BillingState {
   generatedAt: string
 }
 
-export interface FeePresetRow {
-  note: string
-  amount: number
-}
-
-export interface FeePreset {
-  id: string
-  tenant_id: string
-  class_id: string | null
-  name: string
-  tuition_amount: number
-  book_rows: FeePresetRow[]
-  misc_rows: FeePresetRow[]
-  discount_rows: FeePresetRow[]
-  is_default: boolean
-  created_at: string
-  updated_at: string
-}
-
 export interface OpenBagInput {
   seasonId: string
   classId: string
