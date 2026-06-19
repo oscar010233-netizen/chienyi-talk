@@ -1,5 +1,5 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import type { ClassWithCount, ClassDetail, ClassEnrollment, Task, TaskRecord, ClassRow, RosterStudent } from './types'
+import type { ClassWithCount, ClassDetail, ClassEnrollment, Task, TaskRecord, ClassRow, RosterStudent, ClassSession } from './types'
 
 // School-wide student roster, each with the classes they're actively enrolled in.
 export async function getAllStudents(): Promise<RosterStudent[]> {
@@ -70,7 +70,7 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
 
   if (!classRow) return null
 
-  const [studentsResult, tasksResult] = await Promise.all([
+  const [studentsResult, tasksResult, bagResult] = await Promise.all([
     supabase
       .from('class_enrollments')
       .select('id, class_id, student_id, slot_order, status, student:students(id, chinese_name, english_name, status, school, grade)')
@@ -79,12 +79,52 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
       .order('slot_order'),
     supabase
       .from('class_tasks')
-      .select('id, tenant_id, class_id, week_label, lesson_label, task_type, task_name, threshold_value, max_score, threshold_text, display_order')
+      .select('id, tenant_id, class_id, bag_id, session_date, session_kind, week_label, lesson_label, task_type, task_name, threshold_value, max_score, threshold_text, display_order')
       .eq('class_id', classRow.id)
       .order('display_order'),
+    supabase
+      .from('payment_bags')
+      .select('id')
+      .eq('class_id', classRow.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ])
 
-  const taskIds = (tasksResult.data ?? []).map(t => t.id)
+  const bag = bagResult.data
+  let sessions: ClassSession[] = []
+
+  if (bag) {
+    const { data: lineRows } = await supabase
+      .from('payment_bag_lines')
+      .select('id')
+      .eq('bag_id', bag.id)
+    const lineIds = (lineRows ?? []).map((r: { id: string }) => r.id)
+
+    if (lineIds.length > 0) {
+      const { data: sessionRows } = await supabase
+        .from('payment_bag_line_sessions')
+        .select('session_date, session_kind, slot_index')
+        .in('line_id', lineIds)
+        .not('session_date', 'is', null)
+        .order('slot_index')
+
+      const seen = new Set<string>()
+      sessions = (sessionRows ?? [])
+        .filter((s: { session_date: string | null; session_kind: string; slot_index: number }) => {
+          const key = `${s.session_date}:${s.session_kind}`
+          if (seen.has(key)) return false
+          seen.add(key)
+          return true
+        })
+        .map((s: { session_date: string; session_kind: string }) => ({
+          session_date: s.session_date,
+          session_kind: s.session_kind as 'team' | 'intensive',
+        }))
+    }
+  }
+
+  const taskIds = (tasksResult.data ?? []).map((t: { id: string }) => t.id)
 
   const { data: recordsData } = taskIds.length > 0
     ? await supabase
@@ -98,5 +138,7 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
     students: (studentsResult.data ?? []) as unknown as ClassEnrollment[],
     tasks: (tasksResult.data ?? []) as Task[],
     records: (recordsData ?? []) as TaskRecord[],
+    sessions,
+    bag_id: bag?.id ?? null,
   }
 }

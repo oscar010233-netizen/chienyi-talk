@@ -70,11 +70,18 @@ export interface TaskRecord {
   updated_at: string
 }
 
+export interface ClassSession {
+  session_date: string
+  session_kind: 'team' | 'intensive'
+}
+
 export interface ClassDetail {
   class: ClassRow
   students: ClassEnrollment[]
   tasks: Task[]
   records: TaskRecord[]
+  sessions: ClassSession[]
+  bag_id: string | null
 }
 
 export interface ClassWithCount extends ClassRow {

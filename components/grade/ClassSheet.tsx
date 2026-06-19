@@ -96,10 +96,20 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     return map
   }, [records])
 
-  const [attendanceTasks, otherTasks] = useMemo(() => [
-    tasks.filter((t) => t.task_type === 'attendance'),
-    tasks.filter((t) => t.task_type !== 'attendance'),
-  ], [tasks])
+  const sessions = detail.sessions
+
+  // Map attendance class_tasks by session_date:session_kind for lookup (used by modal)
+  const attendanceTaskMap = useMemo(() => {
+    const map = new Map<string, Task>()
+    for (const t of tasks) {
+      if (t.task_type === 'attendance' && t.session_date && t.session_kind) {
+        map.set(`${t.session_date}:${t.session_kind}`, t)
+      }
+    }
+    return map
+  }, [tasks])
+
+  const otherTasks = useMemo(() => tasks.filter((t) => t.task_type !== 'attendance'), [tasks])
 
   const handleModalClose = (refresh?: boolean) => {
     setShowAddTask(false)
@@ -247,53 +257,65 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 </tr>
               </thead>
               <tbody>
-                {tasks.length === 0 && (
+                {sessions.length === 0 && otherTasks.length === 0 && (
                   <tr>
                     <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      還沒有任務，開袋後出席會自動建立
+                      還沒有課程資料，請先開袋
                     </td>
                   </tr>
                 )}
 
-                {/* 出席區 — 骨架，自動生成 */}
-                {attendanceTasks.map((task) => {
-                  const meta = taskMeta(task)
-                  const attBg = 'bg-sky-50/70 dark:bg-sky-500/[0.06] group-hover:bg-sky-100/70 dark:group-hover:bg-sky-500/[0.10]'
+                {/* 出席區 — 從 payment_bag_line_sessions 讀取，每個 session 一列 */}
+                {sessions.map((session) => {
+                  const sessionKey = `${session.session_date}:${session.session_kind}`
+                  const task = attendanceTaskMap.get(sessionKey) ?? null
+                  const isIntensive = session.session_kind === 'intensive'
+                  const attBg = isIntensive
+                    ? 'bg-violet-50/70 dark:bg-violet-500/[0.06] group-hover:bg-violet-100/70 dark:group-hover:bg-violet-500/[0.10]'
+                    : 'bg-sky-50/70 dark:bg-sky-500/[0.06] group-hover:bg-sky-100/70 dark:group-hover:bg-sky-500/[0.10]'
+                  const borderColor = isIntensive ? 'border-l-violet-400 dark:border-l-violet-500/70' : 'border-l-sky-400 dark:border-l-sky-500/70'
+                  const dateLabel = session.session_date.slice(5).replace('-', '/')
+                  const kindLabel = isIntensive ? '強' : '團'
                   return (
-                    <tr key={task.id} className="group">
-                      <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] border-l-sky-400 dark:border-l-sky-500/70 px-4 py-3.5 transition-colors', attBg)}>
+                    <tr key={sessionKey} className="group">
+                      <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] px-4 py-3.5 transition-colors', attBg, borderColor)}>
                         <div className="flex min-w-0 items-start gap-2">
-                          <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
-                            {TASK_SHORT[task.task_type]}
+                          <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP['attendance'])}>
+                            {kindLabel}
                           </span>
                           <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium text-foreground">{task.task_name ?? '出席'}</p>
-                            {meta && <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{meta}</p>}
+                            <p className="truncate font-medium text-foreground">{dateLabel}</p>
                           </div>
-                          <button
-                            type="button"
-                            onClick={() => setAttendanceTask(task)}
-                            title="點名"
-                            className="mt-0.5 shrink-0 rounded p-1 text-sky-500/70 transition-colors hover:text-sky-600"
-                          >
-                            <ClipboardCheck size={13} />
-                          </button>
+                          {task && (
+                            <button
+                              type="button"
+                              onClick={() => setAttendanceTask(task)}
+                              title="點名"
+                              className="mt-0.5 shrink-0 rounded p-1 text-sky-500/70 transition-colors hover:text-sky-600"
+                            >
+                              <ClipboardCheck size={13} />
+                            </button>
+                          )}
                         </div>
                       </td>
                       {students.map((student) => {
-                        const record = recordMap.get(`${student.student_id}:${task.id}`)
-                        const display = lampFor(record?.status, task.task_type)
+                        const record = task ? recordMap.get(`${student.student_id}:${task.id}`) : undefined
+                        const display = lampFor(record?.status, 'attendance')
                         return (
                           <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', attBg)}>
-                            <button
-                              type="button"
-                              onClick={() => handleCellClick(task, student)}
-                              className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-sky-200/50 dark:hover:bg-sky-500/20"
-                            >
-                              {record
-                                ? <LampBadge color={display.color} label={display.label} detail={null} />
-                                : <span className="text-gray-300 dark:text-white/20">未派發</span>}
-                            </button>
+                            {task ? (
+                              <button
+                                type="button"
+                                onClick={() => handleCellClick(task, student)}
+                                className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-sky-200/50 dark:hover:bg-sky-500/20"
+                              >
+                                {record
+                                  ? <LampBadge color={display.color} label={display.label} detail={null} />
+                                  : <span className="text-gray-300 dark:text-white/20">未派發</span>}
+                              </button>
+                            ) : (
+                              <span className="text-gray-200 dark:text-white/10">—</span>
+                            )}
                           </td>
                         )
                       })}
@@ -303,7 +325,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 })}
 
                 {/* 分隔線 */}
-                {attendanceTasks.length > 0 && (
+                {sessions.length > 0 && (
                   <tr>
                     <td
                       colSpan={students.length + 2}
@@ -315,7 +337,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 )}
 
                 {/* 教師任務區 */}
-                {otherTasks.length === 0 && attendanceTasks.length > 0 && (
+                {otherTasks.length === 0 && sessions.length > 0 && (
                   <tr>
                     <td colSpan={students.length + 2} className="px-4 py-6 text-center text-sm text-muted-foreground/60">
                       點「加任務」新增這季的考試、作業、練習
