@@ -1,5 +1,5 @@
 export type Lamp = 'red' | 'yellow' | 'green' | 'blue' | 'black' | 'white' | 'orange'
-export type TaskType = 'attendance' | 'homework' | 'practice' | 'quiz' | 'comment'
+export type TaskType = 'attendance' | 'homework' | 'practice' | 'quiz' | 'comment' | 'progress'
 
 export interface Student {
   id: string
@@ -45,6 +45,19 @@ export interface Task {
   max_score: number | null
   threshold_text: string | null
   display_order: number | null
+  default_attendance_id: string | null
+}
+
+export interface SeasonSession {
+  id: string
+  season_id: string
+  session_index: number
+  default_date: string
+  original_date: string
+  period_key: string
+  status: string
+  session_type: 'group' | 'intensive' | 'unknown'
+  tasks: Partial<Record<TaskType, Task>>
 }
 
 export interface TaskRecord {

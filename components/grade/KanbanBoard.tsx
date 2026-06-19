@@ -56,6 +56,7 @@ const TASK_TYPE_LABEL: Record<TaskType, string> = {
   practice: '練習',
   quiz: '測驗',
   comment: '評語',
+  progress: '進度',
 }
 
 const TASK_TYPE_SHORT: Record<TaskType, string> = {
@@ -64,6 +65,7 @@ const TASK_TYPE_SHORT: Record<TaskType, string> = {
   practice: '練',
   quiz: '測',
   comment: '評',
+  progress: '進',
 }
 
 const TASK_CHIP: Record<TaskType, string> = {
@@ -72,6 +74,7 @@ const TASK_CHIP: Record<TaskType, string> = {
   practice: 'bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-200',
   quiz: 'bg-rose-100 text-rose-700 dark:bg-rose-400/15 dark:text-rose-200',
   comment: 'bg-teal-100 text-teal-700 dark:bg-teal-400/15 dark:text-teal-200',
+  progress: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-200',
 }
 
 const LAMP_BORDER: Record<Lamp, string> = {

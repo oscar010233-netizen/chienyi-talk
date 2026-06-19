@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, ClipboardCheck, Kanban, Plus, ReceiptText, Send, Trash2, UserPlus } from 'lucide-react'
+import { ArrowLeft, CalendarDays, ClipboardCheck, Kanban, Plus, ReceiptText, Send, Trash2, UserPlus } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { AddTaskModal } from './AddTaskModal'
@@ -19,6 +19,7 @@ const TASK_SHORT: Record<TaskType, string> = {
   practice: '練習',
   quiz: '考試',
   comment: '評論',
+  progress: '進度',
 }
 
 const TASK_CHIP: Record<TaskType, string> = {
@@ -27,6 +28,7 @@ const TASK_CHIP: Record<TaskType, string> = {
   practice: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200',
   quiz: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200',
   comment: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-200',
+  progress: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-200',
 }
 
 const AVATAR_COLORS = [
@@ -199,6 +201,10 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         <Link href={`/billing?classId=${classSlug}`} className={toolButton}>
           <ReceiptText size={14} />
           開袋
+        </Link>
+        <Link href={`/classes/${classSlug}/plan`} className={toolButton}>
+          <CalendarDays size={14} />
+          整季計畫
         </Link>
         <Link href={`/classes/${classSlug}/kanban`} className={toolButton}>
           <Kanban size={14} />

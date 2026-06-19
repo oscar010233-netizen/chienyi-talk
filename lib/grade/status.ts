@@ -183,6 +183,7 @@ const OPTIONS_BY_TYPE: Record<TaskType, GradeStatus[]> = {
   practice: ['pending', 'correcting', 'completed', 'redo', 'missing', 'wont_do'],
   attendance: ['pending', 'completed', 'missing', 'wont_do'],
   comment: ['pending', 'completed'],
+  progress: ['pending', 'completed'],
 }
 
 export interface StatusOption {
