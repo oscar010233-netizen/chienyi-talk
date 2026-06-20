@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { RefreshCw, Play, Pause, Loader2, Info, Trash2, Eye, EyeOff, Flame } from 'lucide-react'
+import { COL_LABELS } from '@/lib/db/schema'
 
 interface TableInfo {
   name: string
@@ -360,7 +361,10 @@ export default function DbMonitorPage() {
                             style={colWidths ? { width: colWidths[c] ?? 140 } : undefined}
                             className="group/th relative whitespace-nowrap border-b border-border bg-muted/80 px-2.5 py-1.5 text-left font-medium text-muted-foreground backdrop-blur"
                           >
-                            <span className="block truncate pr-5">{c}</span>
+                            <span className="block truncate pr-5 leading-tight">{c}</span>
+                            {COL_LABELS[c] && (
+                              <span className="block truncate pr-5 text-[10px] font-normal leading-tight text-muted-foreground/50">{COL_LABELS[c]}</span>
+                            )}
                             <button
                               onClick={() => setHiddenCols((prev) => new Set([...prev, c]))}
                               title={`隱藏 ${c}`}
