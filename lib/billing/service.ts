@@ -988,6 +988,7 @@ function normalizeFeeCatalogItem(row: Record<string, unknown>): BillingFeeCatalo
     category: String(row.category) as BillingFeeCategory,
     label: String(row.label ?? ''),
     amount: toNumber(row.amount),
+    base_sessions: row.base_sessions != null ? Number(row.base_sessions) : null,
     status: String(row.status ?? 'active'),
     created_at: String(row.created_at ?? ''),
     updated_at: String(row.updated_at ?? ''),
@@ -1013,6 +1014,7 @@ export async function saveBillingFeeCatalogItem(input: {
   category: BillingFeeCategory
   label: string
   amount: number
+  base_sessions?: number | null
 }): Promise<BillingFeeCatalogItem> {
   const supabase = await createServiceClient()
   const tenantId = await getTenantId(supabase)
@@ -1024,6 +1026,7 @@ export async function saveBillingFeeCatalogItem(input: {
     category: input.category,
     label,
     amount: toNumber(input.amount),
+    base_sessions: input.category === 'tuition' ? (input.base_sessions ?? null) : null,
     status: 'active',
     updated_at: new Date().toISOString(),
   }

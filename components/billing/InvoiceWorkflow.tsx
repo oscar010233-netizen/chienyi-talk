@@ -80,10 +80,18 @@ const weekdays = [
 ]
 
 const feeCategoryLabels: Record<BillingFeeCategory, string> = {
-  tuition: '學費',
+  tuition: '學費費率',
   book: '教材費',
   misc: '雜費',
   discount: '折扣',
+}
+
+const FEE_CATALOG_TABS: BillingFeeCategory[] = ['tuition', 'book', 'discount', 'misc']
+
+function computeTuitionFromPreset(preset: BillingFeeCatalogItem, sessions: number): number {
+  if (!preset.base_sessions || preset.base_sessions <= 0) return preset.amount
+  const rate = Math.round(preset.amount / preset.base_sessions)
+  return Math.round(sessions * rate / 10) * 10
 }
 
 function todayDate() {
@@ -297,10 +305,11 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [feeTemplate, setFeeTemplate] = useState<FeeTemplateDraft>(emptyFeeTemplate)
   const [feeCatalog, setFeeCatalog] = useState<BillingFeeCatalogItem[]>([])
   const [feeCatalogBusy, setFeeCatalogBusy] = useState(false)
+  const [feeCatalogTab, setFeeCatalogTab] = useState<BillingFeeCategory>('tuition')
   const [editingFeeItemId, setEditingFeeItemId] = useState('')
-  const [feeItemCategory, setFeeItemCategory] = useState<BillingFeeCategory>('book')
   const [feeItemLabel, setFeeItemLabel] = useState('')
   const [feeItemAmount, setFeeItemAmount] = useState('0')
+  const [feeItemBaseSessions, setFeeItemBaseSessions] = useState('24')
   const [studentDrafts, setStudentDrafts] = useState<Record<string, StudentDraft>>({})
   const [currentStudentId, setCurrentStudentId] = useState(state.students[0]?.student_id ?? '')
   const [sessionMode, setSessionMode] = useState<'team' | 'intensive'>('team')
@@ -398,6 +407,21 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       cancelled = true
     }
   }, [])
+
+  const actualSessionCount = teamDates.size + (selectedClass?.class_type === 'intensive' ? intensiveWeeks.size : 0)
+
+  // Reactive tuition recalculation — single source: actualSessionCount (defined in render body).
+  // Deps include all variables that compose actualSessionCount; closure captures the latest value.
+  // Only fires when a valid rate preset is active; manual edits clear tuitionPresetId.
+  useEffect(() => {
+    if (!feeTemplate.tuitionPresetId) return
+    const preset = feeCatalog.find((item) => item.id === feeTemplate.tuitionPresetId)
+    if (!preset?.base_sessions) return
+    setFeeTemplate((prev) => ({
+      ...prev,
+      tuitionAmount: String(computeTuitionFromPreset(preset, actualSessionCount)),
+    }))
+  }, [actualSessionCount, teamDates, intensiveWeeks, selectedClass?.class_type, feeTemplate.tuitionPresetId, feeCatalog])
 
   function changeClassFilter(nextClassId: string) {
     setClassId(nextClassId)
@@ -524,11 +548,11 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     setFeeCatalog((data.items ?? []) as BillingFeeCatalogItem[])
   }
 
-  function beginNewFeeItem(category: BillingFeeCategory = feeItemCategory) {
+  function beginNewFeeItem() {
     setEditingFeeItemId('')
-    setFeeItemCategory(category)
     setFeeItemLabel('')
     setFeeItemAmount('0')
+    setFeeItemBaseSessions('24')
   }
 
   async function saveFeeItem() {
@@ -536,23 +560,36 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       setMessage({ tone: 'error', text: '請輸入費用名稱' })
       return
     }
+    if (feeCatalogTab === 'tuition') {
+      const sessions = numberInput(feeItemBaseSessions)
+      if (!Number.isInteger(sessions) || sessions <= 0) {
+        setMessage({ tone: 'error', text: '基準堂數必須為正整數（23.5、0、負數均不接受）' })
+        return
+      }
+      if (numberInput(feeItemAmount) <= 0) {
+        setMessage({ tone: 'error', text: '基準費用必須大於 0' })
+        return
+      }
+    }
     setFeeCatalogBusy(true)
     setMessage({ tone: 'idle', text: '' })
     try {
+      const baseSessions = feeCatalogTab === 'tuition' ? (numberInput(feeItemBaseSessions) || null) : null
       const response = await fetch('/api/billing/fee-items', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: editingFeeItemId || null,
-          category: feeItemCategory,
+          category: feeCatalogTab,
           label: feeItemLabel.trim(),
           amount: numberInput(feeItemAmount),
+          base_sessions: baseSessions,
         }),
       })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? '儲存費用項目失敗')
       await refreshFeeCatalog()
-      beginNewFeeItem(feeItemCategory)
+      beginNewFeeItem()
       setMessage({ tone: 'ok', text: editingFeeItemId ? '費用項目已更新' : '費用項目已加入資料庫' })
     } catch (error) {
       setMessage({ tone: 'error', text: error instanceof Error ? error.message : '儲存費用項目失敗' })
@@ -563,9 +600,10 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
   function editFeeItem(item: BillingFeeCatalogItem) {
     setEditingFeeItemId(item.id)
-    setFeeItemCategory(item.category)
     setFeeItemLabel(item.label)
     setFeeItemAmount(String(item.amount))
+    // null → empty string; do NOT guess 24 for legacy items
+    setFeeItemBaseSessions(item.base_sessions != null ? String(item.base_sessions) : '')
   }
 
   async function deleteFeeItem(item: BillingFeeCatalogItem) {
@@ -576,7 +614,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       const response = await fetch(`/api/billing/fee-items?id=${item.id}`, { method: 'DELETE' })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error ?? '刪除費用項目失敗')
-      if (editingFeeItemId === item.id) beginNewFeeItem(item.category)
+      if (editingFeeItemId === item.id) beginNewFeeItem()
       await refreshFeeCatalog()
       setMessage({ tone: 'ok', text: '費用項目已刪除' })
     } catch (error) {
@@ -867,76 +905,259 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       {tab === 'fees' && (
         <main className="grid gap-4 p-4 md:p-6">
           <section className="overflow-hidden rounded-lg border border-border bg-background">
+            {/* Header */}
             <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
               <div>
                 <h2 className="text-sm font-semibold">費用項目庫</h2>
-                <p className="mt-0.5 text-xs text-muted-foreground">集中管理開袋時可重複選用的學費、教材費、雜費與折扣。</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">集中管理開袋時可重複選用的費用項目。</p>
               </div>
               {feeCatalogBusy && <Loader2 size={15} className="animate-spin text-muted-foreground" />}
             </div>
 
-            <div className="border-b border-border bg-muted/20 p-4">
-              <div className="grid gap-2 md:grid-cols-[130px_minmax(180px,1fr)_140px_auto]">
-                <select value={feeItemCategory} onChange={(event) => setFeeItemCategory(event.target.value as BillingFeeCategory)} className={inputClass}>
-                  {(Object.entries(feeCategoryLabels) as Array<[BillingFeeCategory, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-                <input
-                  value={feeItemLabel}
-                  onChange={(event) => setFeeItemLabel(event.target.value)}
-                  placeholder="費用名稱，例如：課本、講義、兄弟折扣"
-                  className={inputClass}
-                />
-                <input value={feeItemAmount} onChange={(event) => setFeeItemAmount(event.target.value)} inputMode="numeric" placeholder="預設金額" className={inputClass} />
-                <div className="flex items-center gap-1.5">
-                  {editingFeeItemId && <button type="button" onClick={() => beginNewFeeItem()} className={buttonBase} disabled={feeCatalogBusy}>取消編輯</button>}
-                  <button type="button" onClick={saveFeeItem} className={primaryButton} disabled={feeCatalogBusy || !feeItemLabel.trim()}>
-                    <Save size={13} />
-                    {editingFeeItemId ? '更新' : '新增項目'}
+            {/* Sub-tabs */}
+            <div className="flex overflow-x-auto border-b border-border">
+              {FEE_CATALOG_TABS.map((cat) => {
+                const count = feeCatalog.filter((item) => item.category === cat).length
+                const isActive = feeCatalogTab === cat
+                return (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => { setFeeCatalogTab(cat); beginNewFeeItem() }}
+                    className={`flex shrink-0 items-center gap-1.5 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+                      isActive ? 'border-foreground text-foreground' : 'border-transparent text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {feeCategoryLabels[cat]}
+                    {count > 0 && (
+                      <span className={`inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1 text-xs ${
+                        isActive ? 'bg-foreground/10 text-foreground' : 'bg-muted text-muted-foreground'
+                      }`}>
+                        {count}
+                      </span>
+                    )}
                   </button>
-                </div>
-              </div>
+                )
+              })}
             </div>
 
-            {feeCatalog.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-[620px] w-full border-separate border-spacing-0 text-sm">
-                  <thead>
-                    <tr className="text-xs text-muted-foreground">
-                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">分類</th>
-                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">名稱</th>
-                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">預設金額</th>
-                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {feeCatalog.map((item) => (
-                      <tr key={item.id} className="transition-colors hover:bg-muted/30">
-                        <td className="border-b border-border px-4 py-3 text-xs text-muted-foreground">{feeCategoryLabels[item.category]}</td>
-                        <td className="border-b border-border px-4 py-3 font-medium">{item.label}</td>
-                        <td className="border-b border-border px-4 py-3 text-right tabular-nums">{formatMoney(item.amount)}</td>
-                        <td className="border-b border-border px-4 py-3">
-                          <div className="flex justify-end gap-1.5">
+            {/* Add / Edit form */}
+            <div className="border-b border-border bg-muted/20 p-4">
+              {feeCatalogTab === 'tuition' ? (
+                <div className="grid gap-3">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-[minmax(140px,1fr)_96px_130px_80px]">
+                    <div className="col-span-2 md:col-span-1">
+                      <span className={labelClass}>級別名稱</span>
+                      <input
+                        value={feeItemLabel}
+                        onChange={(event) => setFeeItemLabel(event.target.value)}
+                        placeholder="例：初級、中級A"
+                        className={`${inputClass} w-full`}
+                      />
+                    </div>
+                    <div>
+                      <span className={labelClass}>基準堂數</span>
+                      <input
+                        value={feeItemBaseSessions}
+                        onChange={(event) => setFeeItemBaseSessions(event.target.value)}
+                        inputMode="numeric"
+                        placeholder={editingFeeItemId && feeItemBaseSessions === '' ? '請輸入真實基準堂數' : '例：24'}
+                        className={`${inputClass} w-full`}
+                      />
+                    </div>
+                    <div>
+                      <span className={labelClass}>基準費用</span>
+                      <input
+                        value={feeItemAmount}
+                        onChange={(event) => setFeeItemAmount(event.target.value)}
+                        inputMode="numeric"
+                        placeholder="10000"
+                        className={`${inputClass} w-full`}
+                      />
+                    </div>
+                    <div>
+                      <span className={labelClass}>單堂費</span>
+                      <div className="flex h-9 items-center text-sm tabular-nums text-muted-foreground">
+                        {numberInput(feeItemBaseSessions) > 0
+                          ? `${formatMoney(Math.round(numberInput(feeItemAmount) / numberInput(feeItemBaseSessions)))} 元`
+                          : '—'}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex gap-1.5">
+                    {editingFeeItemId && (
+                      <button type="button" onClick={beginNewFeeItem} className={buttonBase} disabled={feeCatalogBusy}>取消</button>
+                    )}
+                    <button type="button" onClick={saveFeeItem} className={primaryButton} disabled={feeCatalogBusy || !feeItemLabel.trim()}>
+                      <Save size={13} />
+                      {editingFeeItemId ? '更新費率' : '新增費率'}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-2 md:grid-cols-[minmax(180px,1fr)_140px_auto]">
+                  <input
+                    value={feeItemLabel}
+                    onChange={(event) => setFeeItemLabel(event.target.value)}
+                    placeholder={`${feeCategoryLabels[feeCatalogTab]}名稱`}
+                    className={inputClass}
+                  />
+                  <input
+                    value={feeItemAmount}
+                    onChange={(event) => setFeeItemAmount(event.target.value)}
+                    inputMode="numeric"
+                    placeholder="金額"
+                    className={inputClass}
+                  />
+                  <div className="flex items-center gap-1.5">
+                    {editingFeeItemId && (
+                      <button type="button" onClick={beginNewFeeItem} className={buttonBase} disabled={feeCatalogBusy}>取消</button>
+                    )}
+                    <button type="button" onClick={saveFeeItem} className={primaryButton} disabled={feeCatalogBusy || !feeItemLabel.trim()}>
+                      <Save size={13} />
+                      {editingFeeItemId ? '更新' : '新增項目'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Legacy tuition warning banner */}
+            {feeCatalogTab === 'tuition' && (() => {
+              const legacy = feeCatalog.filter((item) => item.category === 'tuition' && !item.base_sessions)
+              if (legacy.length === 0) return null
+              return (
+                <div className="border-b border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-xs font-medium text-amber-700">
+                    以下 {legacy.length} 筆學費資料尚未設定基準堂數，無法在開袋時套用費率計算，請編輯補設定：
+                  </p>
+                  <ul className="mt-1 list-inside list-disc text-xs text-amber-600">
+                    {legacy.map((item) => <li key={item.id}>{item.label}（{formatMoney(item.amount)} 元）</li>)}
+                  </ul>
+                </div>
+              )
+            })()}
+
+            {/* Item list */}
+            {(() => {
+              const items = feeCatalog.filter((item) => item.category === feeCatalogTab)
+              if (items.length === 0 && !feeCatalogBusy) {
+                return (
+                  <div className="grid min-h-48 place-items-center px-4 py-8 text-center">
+                    <div>
+                      <Database size={22} className="mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">目前沒有{feeCategoryLabels[feeCatalogTab]}項目</p>
+                      <p className="mt-1 text-xs text-muted-foreground">使用上方表單建立第一筆。</p>
+                    </div>
+                  </div>
+                )
+              }
+              return (
+                <>
+                  {/* Desktop table */}
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="w-full border-separate border-spacing-0 text-sm">
+                      <thead>
+                        <tr className="text-xs text-muted-foreground">
+                          {feeCatalogTab === 'tuition' ? (
+                            <>
+                              <th className="border-b border-border px-4 py-2.5 text-left font-medium">級別名稱</th>
+                              <th className="border-b border-border px-4 py-2.5 text-right font-medium">基準堂數</th>
+                              <th className="border-b border-border px-4 py-2.5 text-right font-medium">基準費用</th>
+                              <th className="border-b border-border px-4 py-2.5 text-right font-medium">單堂費</th>
+                            </>
+                          ) : (
+                            <>
+                              <th className="border-b border-border px-4 py-2.5 text-left font-medium">名稱</th>
+                              <th className="border-b border-border px-4 py-2.5 text-right font-medium">金額</th>
+                            </>
+                          )}
+                          <th className="border-b border-border px-4 py-2.5 text-right font-medium">操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {items.map((item) => (
+                          <tr key={item.id} className="transition-colors hover:bg-muted/30">
+                            {feeCatalogTab === 'tuition' ? (
+                              <>
+                                <td className="border-b border-border px-4 py-3">
+                                  <span className="font-medium">{item.label}</span>
+                                  {!item.base_sessions && (
+                                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">尚未設定基準堂數</span>
+                                  )}
+                                </td>
+                                <td className="border-b border-border px-4 py-3 text-right tabular-nums">{item.base_sessions ?? <span className="text-amber-500">—</span>}</td>
+                                <td className="border-b border-border px-4 py-3 text-right tabular-nums">{formatMoney(item.amount)}</td>
+                                <td className="border-b border-border px-4 py-3 text-right tabular-nums text-muted-foreground">
+                                  {item.base_sessions ? formatMoney(Math.round(item.amount / item.base_sessions)) : <span className="text-amber-500">—</span>}
+                                </td>
+                              </>
+                            ) : (
+                              <>
+                                <td className="border-b border-border px-4 py-3 font-medium">{item.label}</td>
+                                <td className="border-b border-border px-4 py-3 text-right tabular-nums">{formatMoney(item.amount)}</td>
+                              </>
+                            )}
+                            <td className="border-b border-border px-4 py-3">
+                              <div className="flex justify-end gap-1.5">
+                                <button type="button" onClick={() => editFeeItem(item)} className={buttonBase} disabled={feeCatalogBusy}>編輯</button>
+                                <button
+                                  type="button"
+                                  onClick={() => deleteFeeItem(item)}
+                                  className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:pointer-events-none disabled:opacity-50"
+                                  disabled={feeCatalogBusy}
+                                >
+                                  <Trash2 size={12} />
+                                  刪除
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile cards */}
+                  <div className="divide-y divide-border md:hidden">
+                    {items.map((item) => (
+                      <div key={item.id} className="p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <p className="truncate text-sm font-medium">{item.label}</p>
+                              {feeCatalogTab === 'tuition' && !item.base_sessions && (
+                                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">尚未設定基準堂數</span>
+                              )}
+                            </div>
+                            {feeCatalogTab === 'tuition' ? (
+                              <p className="mt-0.5 text-xs text-muted-foreground">
+                                {item.base_sessions
+                                  ? `${item.base_sessions}堂 / 基準 ${formatMoney(item.amount)} 元 → ${formatMoney(Math.round(item.amount / item.base_sessions))} 元/堂`
+                                  : `基準費用 ${formatMoney(item.amount)} 元（需補設定堂數）`}
+                              </p>
+                            ) : (
+                              <p className="mt-0.5 tabular-nums text-xs text-muted-foreground">{formatMoney(item.amount)}</p>
+                            )}
+                          </div>
+                          <div className="flex shrink-0 gap-1.5">
                             <button type="button" onClick={() => editFeeItem(item)} className={buttonBase} disabled={feeCatalogBusy}>編輯</button>
-                            <button type="button" onClick={() => deleteFeeItem(item)} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:pointer-events-none disabled:opacity-50" disabled={feeCatalogBusy}>
+                            <button
+                              type="button"
+                              onClick={() => deleteFeeItem(item)}
+                              className="inline-flex h-9 items-center justify-center rounded-md border border-border bg-background px-2.5 text-xs text-muted-foreground transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:pointer-events-none disabled:opacity-50"
+                              disabled={feeCatalogBusy}
+                            >
                               <Trash2 size={12} />
-                              刪除
                             </button>
                           </div>
-                        </td>
-                      </tr>
+                        </div>
+                      </div>
                     ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : !feeCatalogBusy && (
-              <div className="grid min-h-48 place-items-center px-4 py-8 text-center">
-                <div>
-                  <Database size={22} className="mx-auto mb-2 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">目前沒有費用項目</p>
-                  <p className="mt-1 text-xs text-muted-foreground">使用上方表單建立第一筆項目。</p>
-                </div>
-              </div>
-            )}
+                  </div>
+                </>
+              )
+            })()}
           </section>
         </main>
       )}
@@ -1150,14 +1371,15 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                 </section>
                 <section className="grid gap-4">
                   <label>
-                    <span className={labelClass}>學費</span>
+                    <span className={labelClass}>學費費率</span>
                     <div className="grid grid-cols-[1fr_130px] gap-2">
                       <select
                         value={feeTemplate.tuitionPresetId}
                         onChange={(event) => {
                           const item = feeCatalog.find((entry) => entry.id === event.target.value)
                           if (item) {
-                            setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: item.id, tuitionPresetLabel: item.label, tuitionAmount: String(item.amount) }))
+                            // Amount will be computed by the reactive useEffect above
+                            setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: item.id, tuitionPresetLabel: item.label }))
                           } else {
                             setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: '', tuitionPresetLabel: '' }))
                           }
@@ -1165,7 +1387,11 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                         className={inputClass}
                       >
                         <option value="">從費用資料庫選擇…</option>
-                        {feeCatalog.filter((item) => item.category === 'tuition').map((item) => <option key={item.id} value={item.id}>{item.label} · {formatMoney(item.amount)}</option>)}
+                        {feeCatalog.filter((item) => item.category === 'tuition' && item.base_sessions && item.base_sessions > 0).map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.label} · {item.base_sessions}堂/{formatMoney(item.amount)}元
+                          </option>
+                        ))}
                       </select>
                       <input
                         value={feeTemplate.tuitionAmount}
@@ -1174,6 +1400,24 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                         className={`${inputClass} w-full`}
                       />
                     </div>
+                    {(() => {
+                      const preset = feeCatalog.find((i) => i.id === feeTemplate.tuitionPresetId)
+                      if (!preset?.base_sessions) return null
+                      const rate = Math.round(preset.amount / preset.base_sessions)
+                      const raw = actualSessionCount * rate
+                      return (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {preset.label}：{preset.base_sessions}堂/{formatMoney(preset.amount)}元
+                          {' → '}單堂費 {formatMoney(rate)}元 × {actualSessionCount}堂 = {formatMoney(raw)}
+                          {' → '}四捨五入至十位：{formatMoney(Math.round(raw / 10) * 10)}
+                        </p>
+                      )
+                    })()}
+                    {feeCatalog.some((i) => i.category === 'tuition' && !i.base_sessions) && (
+                      <p className="mt-1 text-xs text-amber-600">
+                        有舊學費項目尚未設定基準堂數，請至「費用項目庫 → 學費費率」補設定後才可使用。
+                      </p>
+                    )}
                   </label>
                   <FeeRowsEditor title="教材費" category="book" catalog={feeCatalog} rows={feeTemplate.bookRows} onChange={(bookRows) => setFeeTemplate((prev) => ({ ...prev, bookRows }))} />
                   <FeeRowsEditor title="雜費" category="misc" catalog={feeCatalog} rows={feeTemplate.miscRows} onChange={(miscRows) => setFeeTemplate((prev) => ({ ...prev, miscRows }))} />
@@ -1246,7 +1490,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                 </section>
                 <aside className="grid gap-4">
                   <label>
-                    <span className={labelClass}>學費</span>
+                    <span className={labelClass}>學費費率</span>
                     <input
                       value={currentDraft.tuitionAmount}
                       onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, tuitionAmount: event.target.value, tuitionPresetId: '', tuitionPresetLabel: '' }))}

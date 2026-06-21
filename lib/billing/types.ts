@@ -36,6 +36,7 @@ export interface BillingFeeCatalogItem {
   category: BillingFeeCategory
   label: string
   amount: number
+  base_sessions: number | null
   status: string
   created_at: string
   updated_at: string
