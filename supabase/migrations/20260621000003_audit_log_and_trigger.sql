@@ -30,6 +30,7 @@ CREATE OR REPLACE FUNCTION public.audit_trigger()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 declare
   changed text[];
@@ -72,6 +73,8 @@ DECLARE
     'classes',
     'day_entries',
     'invoice_fee_presets',
+    'payment_bag_line_items',
+    'payment_bag_line_sessions',
     'payment_bag_lines',
     'payment_bags',
     'profiles',

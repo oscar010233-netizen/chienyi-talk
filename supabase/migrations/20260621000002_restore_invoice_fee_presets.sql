@@ -56,11 +56,7 @@ BEGIN
 END;
 $$;
 
--- zz_audit trigger (applied separately on 2026-06-21 after confirming function name).
--- Audit function confirmed as: EXECUTE FUNCTION audit_trigger()
-DROP TRIGGER IF EXISTS zz_audit ON public.invoice_fee_presets;
-CREATE TRIGGER zz_audit
-  AFTER INSERT OR UPDATE OR DELETE ON public.invoice_fee_presets
-  FOR EACH ROW EXECUTE FUNCTION audit_trigger();
+-- zz_audit trigger is created by 20260621000003_audit_log_and_trigger.sql,
+-- which owns all audit trigger definitions.
 
 COMMIT;
