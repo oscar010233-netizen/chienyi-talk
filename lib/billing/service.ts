@@ -6,9 +6,9 @@ import {
   buildSeasonCode,
   compareDate,
   dateOnly,
-  formatDateMd,
+
   parseSeasonCode,
-  periodKey,
+
   quarterDates,
   toNumber,
 } from './calendar'
@@ -16,6 +16,8 @@ import type {
   ActualAttendance,
   ActualAttendanceStatus,
   BillingClass,
+  BillingFeeCatalogItem,
+  BillingFeeCategory,
   BillingSeason,
   BillingState,
   BillingStudent,
@@ -34,18 +36,11 @@ type Supabase = Awaited<ReturnType<typeof createServiceClient>>
 // ---------------------------------------------------------------------------
 // Attendance model note
 // ---------------------------------------------------------------------------
-// There is intentionally NO `actual_attendance` table. The class roll-call
-// (`class_tasks` with task_type='attendance' + `student_task_records`) is the
-// single source of truth for who actually attended. The `ActualAttendance`
-// objects below are a *view model* synthesized live from that roll-call:
-//   - regular sessions map to default_attendance via lesson_label = S## and
-//     week_label = period_key
-//   - makeup / extra sessions have no default row; they are stored as ad-hoc
-//     attendance tasks with lesson_label `MK<date>` / `EX<date>`
+// payment_bag_line_sessions is the single source of truth for both billing
+// schedule AND attendance. attendance_status / absence_resolution columns are
+// written directly onto these rows; class_tasks / student_task_records are
+// no longer used for attendance.
 // ---------------------------------------------------------------------------
-
-const EXTRA_PREFIX = 'EX'
-const MAKEUP_PREFIX = 'MK'
 
 function requireValue<T>(value: T | null | undefined, message: string): T {
   if (value == null) throw new Error(message)
@@ -60,34 +55,6 @@ function statusToReconciliation(status: ActualAttendanceStatus): ReconciliationS
   return 'extra'
 }
 
-function statusToTask(status: ActualAttendanceStatus): { status: string } {
-  if (status === 'attended' || status === 'makeup' || status === 'extra') {
-    return { status: 'present' }
-  }
-  if (status === 'absent') return { status: 'absent_makeup' }
-  return { status: 'absent_refund' }
-}
-
-function taskToActual(status: string | null | undefined): ActualAttendanceStatus | null {
-  // new status values
-  if (status === 'present' || status === 'late') return 'attended'
-  if (status === 'absent_makeup') return 'absent'
-  if (status === 'absent_refund') return 'cancelled'
-  // legacy values kept for backward-compat
-  if (status === 'completed') return 'attended'
-  if (status === 'missing') return 'absent'
-  if (status === 'wont_do') return 'cancelled'
-  return null
-}
-
-function sessionLabel(index: number): string {
-  return `S${String(index).padStart(2, '0')}`
-}
-
-// All attendance tasks of a season share this week_label prefix, e.g. `2026Q1W`.
-function seasonWeekPrefix(seasonCode: string): string {
-  return `${seasonCode.replace('-', '')}W`
-}
 
 function isMissingTable(error: unknown): boolean {
   const maybe = error as { code?: string; message?: string } | null | undefined
@@ -285,94 +252,74 @@ export async function getBillingState(params: {
 }
 
 
-type AttendanceTaskRow = {
-  id: string
-  tenant_id: string
-  lesson_label: string | null
-  week_label: string | null
-  session_date: string | null
-}
-
-async function getAttendanceTasks(
-  supabase: Supabase,
-  classId: string,
-  seasonCode: string,
-): Promise<AttendanceTaskRow[]> {
-  const { data, error } = await supabase
-    .from('class_tasks')
-    .select('id, tenant_id, lesson_label, week_label, session_date')
-    .eq('class_id', classId)
-    .eq('task_type', 'attendance')
-    .like('week_label', `${seasonWeekPrefix(seasonCode)}%`)
-  if (error) throw new Error(error.message)
-  return (data ?? []) as AttendanceTaskRow[]
-}
-
-// Synthesize the ActualAttendance view from the existing roll-call records.
+// Synthesize the ActualAttendance view from payment_bag_line_sessions.
 async function buildAttendanceView(
   supabase: Supabase,
   season: BillingSeason,
   classId: string,
 ): Promise<ActualAttendance[]> {
-  const tasks = await getAttendanceTasks(supabase, classId, season.season_code)
-  const taskIds = tasks.map((task) => task.id)
-  if (taskIds.length === 0) return []
+  const { data: bag } = await supabase
+    .from('payment_bags')
+    .select('id')
+    .eq('season_id', season.id)
+    .eq('class_id', classId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (!bag) return []
 
-  const { data: records, error } = await supabase
-    .from('student_task_records')
-    .select('id, student_id, class_task_id, status')
-    .in('class_task_id', taskIds)
+  const { data: lines } = await supabase
+    .from('payment_bag_lines')
+    .select('id')
+    .eq('bag_id', bag.id)
+  const lineIds = (lines ?? []).map((l: { id: string }) => l.id)
+  if (lineIds.length === 0) return []
+
+  const { data: sessions, error } = await supabase
+    .from('payment_bag_line_sessions')
+    .select('id, student_id, session_date, session_kind, is_billable, attendance_status, absence_resolution')
+    .in('line_id', lineIds)
+    .not('attendance_status', 'is', null)
   if (error) throw new Error(error.message)
 
-  const taskById = new Map(tasks.map((task) => [task.id, task]))
   const view: ActualAttendance[] = []
-
-  for (const record of records ?? []) {
-    const task = taskById.get(record.class_task_id)
-    const lesson = task?.lesson_label
-    if (!task || !lesson) continue
-
-    if (lesson.startsWith(EXTRA_PREFIX) || lesson.startsWith(MAKEUP_PREFIX)) {
-      if (record.status !== 'completed') continue
-      const isExtra = lesson.startsWith(EXTRA_PREFIX)
-      const actualDate = lesson.slice(2)
-      view.push({
-        id: record.id,
-        tenant_id: task.tenant_id,
-        season_id: season.id,
-        class_id: classId,
-        student_id: record.student_id,
-        session_date: null,
-        actual_date: actualDate,
-        period_key: task.week_label,
-        actual_status: isExtra ? 'extra' : 'makeup',
-        reconciliation_status: isExtra ? 'extra' : 'makeup',
-        source_task_record_id: record.id,
-        note: null,
-      })
-      continue
-    }
-
-    const status = taskToActual(record.status)
-    if (!status) continue // pending / unrecorded
-    const sessionDate = task.session_date ?? null
+  for (const s of sessions ?? []) {
+    const status = sessionToActualStatus(
+      s.attendance_status as string | null,
+      s.absence_resolution as string | null,
+    )
+    if (!status) continue
+    const sessionDate = s.session_date as string | null
     view.push({
-      id: record.id,
-      tenant_id: task.tenant_id,
+      id: s.id,
+      tenant_id: season.tenant_id,
       season_id: season.id,
       class_id: classId,
-      student_id: record.student_id,
+      student_id: s.student_id,
       session_date: sessionDate,
-      actual_date: sessionDate ?? record.id,
-      period_key: task.week_label,
+      actual_date: sessionDate ?? s.id,
+      period_key: null,
       actual_status: status,
       reconciliation_status: statusToReconciliation(status),
-      source_task_record_id: record.id,
+      source_task_record_id: null,
       note: null,
     })
   }
-
   return view
+}
+
+function sessionToActualStatus(
+  status: string | null,
+  resolution: string | null,
+): ActualAttendanceStatus | null {
+  if (status === 'present' || status === 'late') return 'attended'
+  if (status === 'cancelled') return 'cancelled'
+  if (status === 'absent') {
+    if (resolution === 'makeup_done') return 'makeup'
+    if (resolution === 'refund') return 'cancelled'
+    return 'absent'
+  }
+  return null
 }
 
 async function getPaymentBags(supabase: Supabase, seasonId: string, classId: string): Promise<PaymentBag[]> {
@@ -494,275 +441,8 @@ export async function replaceSeasonHolidays(input: {
   return { saved: uniqueDates.length }
 }
 
-// generateDefaultAttendance is no longer needed (default_attendance table dropped),
-// but keep as a stub so any existing callers don't break at compile time.
-export async function generateDefaultAttendance(_input: {
-  seasonId: string
-  classId: string
-  limit?: number
-}): Promise<{ generated: number; tasks: number; records: number }> {
-  return { generated: 0, tasks: 0, records: 0 }
-}
-
-async function ensureAttendanceTasks(
-  supabase: Supabase,
-  cls: BillingClass,
-  bag: PaymentBag,
-  students: BillingStudent[],
-): Promise<{ tasks: number; records: number }> {
-  let tasks = 0
-  let records = 0
-
-  // 1. Get all line IDs for this bag
-  const { data: lineRows } = await supabase
-    .from('payment_bag_lines')
-    .select('id')
-    .eq('bag_id', bag.id)
-  const lineIds = (lineRows ?? []).map((r: { id: string }) => r.id)
-
-  // 2. Get unique sessions from payment_bag_line_sessions
-  const { data: sessions } = lineIds.length > 0
-    ? await supabase
-        .from('payment_bag_line_sessions')
-        .select('session_date, session_kind, slot_index')
-        .in('line_id', lineIds)
-        .not('session_date', 'is', null)
-        .order('slot_index')
-    : { data: [] }
-
-  // Deduplicate by (session_date, session_kind)
-  const seen = new Set<string>()
-  const uniqueSessions = (sessions ?? []).filter((s: { session_date: string | null; session_kind: string }) => {
-    const key = `${s.session_date}:${s.session_kind}`
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
-
-  if (uniqueSessions.length === 0) return { tasks, records }
-
-  // 3. Get existing attendance tasks for this class+bag
-  const { data: existingTasks, error } = await supabase
-    .from('class_tasks')
-    .select('id, session_date, session_kind')
-    .eq('class_id', cls.id)
-    .eq('bag_id', bag.id)
-    .eq('task_type', 'attendance')
-  if (error) throw new Error(error.message)
-
-  const taskByKey = new Map(
-    (existingTasks ?? []).map((t: { id: string; session_date: string | null; session_kind: string | null }) =>
-      [`${t.session_date}:${t.session_kind}`, t.id as string]
-    )
-  )
-
-  for (let idx = 0; idx < uniqueSessions.length; idx++) {
-    const s = uniqueSessions[idx] as { session_date: string; session_kind: string }
-    const key = `${s.session_date}:${s.session_kind}`
-    let taskId = taskByKey.get(key)
-    const lessonLabel = `S${String(idx + 1).padStart(2, '0')}`
-    const taskName = `出席 ${formatDateMd(s.session_date)}${s.session_kind === 'intensive' ? ' 強化' : ''}`
-    const payload = {
-      tenant_id: cls.tenant_id,
-      class_id: cls.id,
-      bag_id: bag.id,
-      task_type: 'attendance',
-      session_date: s.session_date,
-      session_kind: s.session_kind,
-      lesson_label: lessonLabel,
-      task_name: taskName,
-      display_order: idx + 1,
-      status: 'active',
-    }
-
-    if (taskId) {
-      const { error: updateError } = await supabase.from('class_tasks').update(payload).eq('id', taskId)
-      if (updateError) throw new Error(updateError.message)
-    } else {
-      const { data: inserted, error: insertError } = await supabase
-        .from('class_tasks')
-        .insert(payload)
-        .select('id')
-        .single()
-      if (insertError) throw new Error(insertError.message)
-      taskId = inserted.id as string
-      taskByKey.set(key, taskId)
-      tasks += 1
-    }
-
-    if (students.length > 0) {
-      const recordRows = students.map((student) => ({
-        tenant_id: cls.tenant_id,
-        class_task_id: taskId,
-        student_id: student.student_id,
-        status: 'pending',
-      }))
-      const { error: recordError } = await supabase
-        .from('student_task_records')
-        .upsert(recordRows, { onConflict: 'class_task_id,student_id', ignoreDuplicates: true })
-      if (recordError) throw new Error(recordError.message)
-      records += recordRows.length
-    }
-  }
-
-  return { tasks, records }
-}
-
-// The roll-call IS the source of truth now, so "sync" is just a refresh that
-// reports how many regular sessions currently have a recorded result.
-export async function syncActualAttendanceFromClassSheet(input: {
-  seasonId: string
-  classId: string
-}): Promise<{ synced: number }> {
-  const supabase = await createServiceClient()
-  const season = await getSeasonOrThrow(supabase, input.seasonId)
-  const view = await buildAttendanceView(supabase, season, input.classId)
-  return { synced: view.filter((row) => row.session_date).length }
-}
-
-export async function recordActualAttendance(input: {
-  classTaskId: string
-  studentId: string
-  status: ActualAttendanceStatus
-  note?: string | null
-}): Promise<ActualAttendance> {
-  const supabase = await createServiceClient()
-  const { data: task, error } = await supabase
-    .from('class_tasks')
-    .select('id, tenant_id, class_id, session_date, week_label')
-    .eq('id', input.classTaskId)
-    .single()
-  if (error || !task) throw new Error(error?.message ?? 'class task not found')
-
-  await mirrorActualToClassTask(supabase, input.classTaskId, task.tenant_id, input.studentId, input.status)
-
-  // We need season_id — look it up from the bag linked to this task
-  const { data: taskWithBag } = await supabase
-    .from('class_tasks')
-    .select('bag_id')
-    .eq('id', input.classTaskId)
-    .single()
-  let seasonId = ''
-  if (taskWithBag?.bag_id) {
-    const { data: bag } = await supabase
-      .from('payment_bags')
-      .select('season_id')
-      .eq('id', taskWithBag.bag_id)
-      .single()
-    seasonId = bag?.season_id ?? ''
-  }
-
-  return {
-    id: `${input.classTaskId}:${input.studentId}`,
-    tenant_id: task.tenant_id,
-    season_id: seasonId,
-    class_id: task.class_id,
-    student_id: input.studentId,
-    session_date: task.session_date ?? null,
-    actual_date: task.session_date ?? new Date().toISOString().slice(0, 10),
-    period_key: task.week_label ?? null,
-    actual_status: input.status,
-    reconciliation_status: statusToReconciliation(input.status),
-    source_task_record_id: null,
-    note: input.note?.trim() || null,
-  }
-}
-
-async function mirrorActualToClassTask(
-  supabase: Supabase,
-  classTaskId: string,
-  tenantId: string,
-  studentId: string,
-  actualStatus: ActualAttendanceStatus,
-): Promise<void> {
-  const mapped = statusToTask(actualStatus)
-  const { error } = await supabase
-    .from('student_task_records')
-    .upsert({
-      tenant_id: tenantId,
-      class_task_id: classTaskId,
-      student_id: studentId,
-      status: mapped.status,
-    }, { onConflict: 'class_task_id,student_id' })
-  if (error) throw new Error(error.message)
-}
-
-// Makeup / extra sessions are stored as ad-hoc attendance tasks (lesson_label
-// MK<date> / EX<date>) so they live in the same roll-call as everything else.
-export async function recordExtraAttendance(input: {
-  seasonId: string
-  classId: string
-  studentId: string
-  actualDate: string
-  status: 'makeup' | 'extra'
-  note?: string | null
-}): Promise<ActualAttendance> {
-  const supabase = await createServiceClient()
-  const cls = await getClassOrThrow(supabase, input.classId)
-  const season = await getSeasonOrThrow(supabase, input.seasonId)
-  const actualDate = dateOnly(input.actualDate)
-  const prefix = input.status === 'extra' ? EXTRA_PREFIX : MAKEUP_PREFIX
-  const lesson = `${prefix}${actualDate}`
-  const weekLabel = periodKey(season.season_code, season.start_date, actualDate)
-
-  const { data: existing } = await supabase
-    .from('class_tasks')
-    .select('id, tenant_id')
-    .eq('class_id', cls.id)
-    .eq('task_type', 'attendance')
-    .eq('lesson_label', lesson)
-    .eq('week_label', weekLabel)
-    .maybeSingle()
-
-  let taskId = existing?.id as string | undefined
-  if (!taskId) {
-    const { data: inserted, error: insertError } = await supabase
-      .from('class_tasks')
-      .insert({
-        tenant_id: cls.tenant_id,
-        class_id: cls.id,
-        task_type: 'attendance',
-        week_label: weekLabel,
-        lesson_label: lesson,
-        task_name: `${input.status === 'extra' ? '多上' : '補課'} ${formatDateMd(actualDate)}`,
-        display_order: 900,
-        status: 'active',
-      })
-      .select('id')
-      .single()
-    if (insertError) throw new Error(insertError.message)
-    taskId = inserted.id as string
-  }
-
-  const { error: recordError } = await supabase
-    .from('student_task_records')
-    .upsert({
-      tenant_id: cls.tenant_id,
-      class_task_id: taskId,
-      student_id: input.studentId,
-      status: 'completed',
-      teacher_note: input.note?.trim() || null,
-    }, { onConflict: 'class_task_id,student_id' })
-  if (recordError) throw new Error(recordError.message)
-
-  return {
-    id: `${taskId}:${input.studentId}`,
-    tenant_id: cls.tenant_id,
-    season_id: season.id,
-    class_id: cls.id,
-    student_id: input.studentId,
-    session_date: null,
-    actual_date: actualDate,
-    period_key: weekLabel,
-    actual_status: input.status,
-    reconciliation_status: input.status,
-    source_task_record_id: null,
-    note: input.note?.trim() || null,
-  }
-}
-
-// Carry forward the previous season's missed / extra sessions onto the new bag.
-// Source of truth is the previous season's roll-call (class_tasks records).
+// Carry forward the previous season's refund sessions onto the new bag.
+// Reads from payment_bag_line_sessions (absence_resolution='refund').
 async function computeCarryovers(
   supabase: Supabase,
   params: { season: BillingSeason; classId: string; studentIds: string[]; rate: number },
@@ -781,50 +461,45 @@ async function computeCarryovers(
   const prev = (previousSeasons ?? [])[0] as { id: string; season_code: string } | undefined
   if (!prev) return new Map()
 
-  const tasks = await getAttendanceTasks(supabase, params.classId, prev.season_code)
-  const taskIds = tasks.map((task) => task.id)
-  if (taskIds.length === 0) return new Map()
+  const { data: prevBag } = await supabase
+    .from('payment_bags')
+    .select('id')
+    .eq('season_id', prev.id)
+    .eq('class_id', params.classId)
+    .limit(1)
+    .maybeSingle()
+  if (!prevBag) return new Map()
 
-  const { data: rows, error } = await supabase
-    .from('student_task_records')
-    .select('student_id, class_task_id, status')
-    .in('class_task_id', taskIds)
+  const { data: prevLines } = await supabase
+    .from('payment_bag_lines')
+    .select('id')
+    .eq('bag_id', prevBag.id)
     .in('student_id', params.studentIds)
+  const prevLineIds = (prevLines ?? []).map((l: { id: string }) => l.id)
+  if (prevLineIds.length === 0) return new Map()
+
+  const { data: sessions, error } = await supabase
+    .from('payment_bag_line_sessions')
+    .select('student_id')
+    .in('line_id', prevLineIds)
+    .eq('attendance_status', 'absent')
+    .eq('absence_resolution', 'refund')
   if (error) throw new Error(error.message)
 
-  const lessonByTask = new Map(tasks.map((task) => [task.id, task.lesson_label ?? '']))
-  const counts = new Map<string, { directRefund: number; missed: number; makeup: number; extra: number }>()
-  for (const row of rows ?? []) {
-    const lesson = lessonByTask.get(row.class_task_id) ?? ''
-    const item = counts.get(row.student_id) ?? { directRefund: 0, missed: 0, makeup: 0, extra: 0 }
-    if (lesson.startsWith(EXTRA_PREFIX)) {
-      if (row.status === 'completed' || row.status === 'present') item.extra += 1
-    } else if (lesson.startsWith(MAKEUP_PREFIX)) {
-      if (row.status === 'completed' || row.status === 'present') item.makeup += 1
-    } else if (row.status === 'absent_refund') {
-      item.directRefund += 1                    // new model: explicit refund decision
-    } else if (row.status === 'missing') {
-      item.missed += 1                          // legacy: check against makeup
-    }
-    counts.set(row.student_id, item)
+  const refundCounts = new Map<string, number>()
+  for (const s of sessions ?? []) {
+    const sid = s.student_id as string
+    refundCounts.set(sid, (refundCounts.get(sid) ?? 0) + 1)
   }
 
-  // Business rule:
-  //   absent_refund (new) → direct per-session refund, no makeup subtraction
-  //   missing (legacy)    → refund only the sessions not covered by makeup
-  //   extra               → extra charge
   const result = new Map<string, { amount: number; note: string }>()
-  for (const [studentId, item] of counts) {
-    const unpaidMissed = Math.max(0, item.missed - item.makeup)
-    const totalRefund = item.directRefund + unpaidMissed
-    if (!totalRefund && !item.extra) continue
-    const amount = Math.round((item.extra - totalRefund) * params.rate)
-    const parts: string[] = []
-    if (item.directRefund) parts.push(`缺席退費 ${item.directRefund} 堂`)
-    if (unpaidMissed) parts.push(`欠課折抵 ${unpaidMissed} 堂`)
-    if (item.extra) parts.push(`多上 ${item.extra} 堂`)
-    if (item.makeup) parts.push(`補課 ${item.makeup} 堂`)
-    result.set(studentId, { amount, note: `前期 ${parts.join('、')}` })
+  for (const [studentId, count] of refundCounts) {
+    if (!count) continue
+    const amount = Math.round(-count * params.rate)
+    result.set(studentId, {
+      amount,
+      note: `前期 ${prev.season_code} 缺席退費 ${count} 堂`,
+    })
   }
   return result
 }
@@ -850,6 +525,7 @@ function normalizeOpenBagDate(value: string | null | undefined, year: number): s
 async function writeOpenBagLineDetails(
   supabase: Supabase,
   params: {
+    bagId: string
     tenantId: string
     seasonYear: number
     classType: string | null
@@ -860,14 +536,8 @@ async function writeOpenBagLineDetails(
   const lineIds = params.lines.map((line) => line.id)
   if (lineIds.length === 0) return
 
-  const { error: deleteSessionError } = await supabase
-    .from('payment_bag_line_sessions')
-    .delete()
-    .in('line_id', lineIds)
-  if (deleteSessionError) {
-    throw new Error(deleteSessionError.message)
-  }
-
+  // Build sessions payload for fn_reopen_bag RPC
+  // (preserves attendance data on existing rows; only upserts schedule)
   const sessionRows: Array<Record<string, unknown>> = []
   for (const line of params.lines) {
     const draft = params.drafts.get(line.student_id)
@@ -929,9 +599,22 @@ async function writeOpenBagLineDetails(
     }
   }
 
-  if (sessionRows.length > 0) {
-    const { error } = await supabase.from('payment_bag_line_sessions').insert(sessionRows)
-    if (error) throw new Error(error.message)
+  // Always call fn_reopen_bag, even when sessionRows is empty.
+  // An empty array tells the RPC to delete all unattended rows.
+  // Direct DELETE from service code is wrong because it bypasses conflict detection.
+  {
+    const { data: rpcResult, error: rpcError } = await supabase.rpc('fn_reopen_bag', {
+      p_bag_id: params.bagId,
+      p_sessions: sessionRows,
+    })
+    if (rpcError) throw new Error(rpcError.message)
+    const result = rpcResult as { ok: boolean; conflicts?: unknown[] } | null
+    if (!result?.ok) {
+      const conflictCount = result?.conflicts?.length ?? 0
+      throw new Error(
+        `無法更新課程：${conflictCount} 筆已點名記錄的日期有衝突。請先處理出席記錄再重開袋。`
+      )
+    }
   }
 
   const { error: deleteItemError } = await supabase
@@ -951,10 +634,10 @@ async function writeOpenBagLineDetails(
       tenant_id: params.tenantId,
       line_id: line.id,
       item_type: 'tuition',
-      label: '學費',
+      label: draft.tuitionLabel?.trim() || '學費',
       amount: line.tuition_amount,
       sort_order: order,
-      preset_key: null,
+      preset_key: draft.tuitionPresetKey?.trim() || null,
     })
     order += 1
     const pushRows = (
@@ -1111,6 +794,7 @@ export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWit
     if (lineError) throw new Error(lineError.message)
     if (hasStudentDrafts) {
       await writeOpenBagLineDetails(supabase, {
+        bagId: bag.id,
         tenantId: cls.tenant_id,
         seasonYear: season.year,
         classType: cls.class_type,
@@ -1119,8 +803,6 @@ export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWit
       })
     }
   }
-
-  await ensureAttendanceTasks(supabase, cls, bag as PaymentBag, students)
 
   const activeBag = await getActiveBag(supabase, season.id, cls.id)
   return requireValue(activeBag, 'payment bag not found after opening')
@@ -1196,45 +878,47 @@ export async function getPreviousSeasonRefunds(input: {
     .limit(1)
     .maybeSingle()
 
+  if (!prevBag) return []
+
+  const { data: prevLinesAll } = await supabase
+    .from('payment_bag_lines')
+    .select('id, student_id, rate_per_session')
+    .eq('bag_id', prevBag.id as string)
+
   const rateMap = new Map<string, number>()
-  if (prevBag) {
-    const { data: prevLines } = await supabase
-      .from('payment_bag_lines')
-      .select('student_id, rate_per_session')
-      .eq('bag_id', prevBag.id as string)
-    for (const line of prevLines ?? []) {
-      rateMap.set(line.student_id as string, Number(line.rate_per_session ?? 0))
-    }
+  for (const line of prevLinesAll ?? []) {
+    rateMap.set(line.student_id as string, Number(line.rate_per_session ?? 0))
   }
 
-  const tasks = await getAttendanceTasks(supabase, input.classId, prev.season_code)
-  if (tasks.length === 0) return []
+  const prevLineIds = (prevLinesAll ?? []).map((l: { id: string }) => l.id)
+  if (prevLineIds.length === 0) return []
 
-  const { data: records, error: recordsError } = await supabase
-    .from('student_task_records')
+  const { data: sessions, error: sessionsError } = await supabase
+    .from('payment_bag_line_sessions')
     .select('student_id')
-    .in('class_task_id', tasks.map((t) => t.id))
-    .eq('status', 'absent_refund')
-  if (recordsError) throw new Error(recordsError.message)
+    .in('line_id', prevLineIds)
+    .eq('attendance_status', 'absent')
+    .eq('absence_resolution', 'refund')
+  if (sessionsError) throw new Error(sessionsError.message)
 
   const refundCounts = new Map<string, number>()
-  for (const rec of records ?? []) {
-    const sid = rec.student_id as string
+  for (const s of sessions ?? []) {
+    const sid = s.student_id as string
     refundCounts.set(sid, (refundCounts.get(sid) ?? 0) + 1)
   }
 
   const result: PrevSeasonRefund[] = []
-  for (const [studentId, sessions] of refundCounts) {
+  for (const [studentId, count] of refundCounts) {
     const rate = rateMap.get(studentId) ?? 0
-    const refund_amount = sessions * rate
-    if (refund_amount <= 0) continue          // skip if no rate or nothing to refund
+    const refund_amount = count * rate
+    if (refund_amount <= 0) continue
     result.push({
       student_id: studentId,
       prev_season_code: prev.season_code,
-      refund_sessions: sessions,
+      refund_sessions: count,
       rate_per_session: rate,
       refund_amount,
-      carryover_note: `${prev.season_code} 缺席退費 ${sessions} 堂`,
+      carryover_note: `${prev.season_code} 缺席退費 ${count} 堂`,
     })
   }
   return result
@@ -1252,20 +936,6 @@ export interface AttendanceRefundLine {
 export async function computeAttendanceRefunds(bagId: string): Promise<AttendanceRefundLine[]> {
   const supabase = await createServiceClient()
 
-  const { data: bag } = await supabase
-    .from('payment_bags')
-    .select('class_id, season_id')
-    .eq('id', bagId)
-    .single()
-  if (!bag) throw new Error('bag not found')
-
-  const { data: season } = await supabase
-    .from('billing_seasons')
-    .select('season_code')
-    .eq('id', bag.season_id)
-    .single()
-  if (!season) throw new Error('season not found')
-
   const { data: lines, error: linesError } = await supabase
     .from('payment_bag_lines')
     .select('id, student_id, rate_per_session, student:students(chinese_name, english_name)')
@@ -1273,34 +943,29 @@ export async function computeAttendanceRefunds(bagId: string): Promise<Attendanc
     .order('student_order')
   if (linesError) throw new Error(linesError.message)
 
-  const weekPrefix = seasonWeekPrefix(season.season_code)
-  const { data: tasks, error: tasksError } = await supabase
-    .from('class_tasks')
-    .select('id')
-    .eq('class_id', bag.class_id)
-    .eq('task_type', 'attendance')
-    .like('week_label', `${weekPrefix}%`)
-  if (tasksError) throw new Error(tasksError.message)
-  if (!tasks || tasks.length === 0) return []
+  const lineIds = (lines ?? []).map((l: { id: string }) => l.id)
+  if (lineIds.length === 0) return []
 
-  const { data: records, error: recordsError } = await supabase
-    .from('student_task_records')
+  const { data: sessions, error: sessionsError } = await supabase
+    .from('payment_bag_line_sessions')
     .select('student_id')
-    .in('class_task_id', tasks.map(t => t.id))
-    .eq('status', 'absent_refund')
-  if (recordsError) throw new Error(recordsError.message)
+    .in('line_id', lineIds)
+    .eq('attendance_status', 'absent')
+    .eq('absence_resolution', 'refund')
+  if (sessionsError) throw new Error(sessionsError.message)
 
   const refundCounts = new Map<string, number>()
-  for (const rec of records ?? []) {
-    refundCounts.set(rec.student_id, (refundCounts.get(rec.student_id) ?? 0) + 1)
+  for (const s of sessions ?? []) {
+    const sid = s.student_id as string
+    refundCounts.set(sid, (refundCounts.get(sid) ?? 0) + 1)
   }
 
   return (lines ?? [])
     .map(line => {
       const s = line.student as unknown as { chinese_name: string | null; english_name: string | null } | null
       const name = s?.chinese_name ?? s?.english_name ?? '—'
-      const refund_sessions = refundCounts.get(line.student_id) ?? 0
-      const rate = line.rate_per_session ?? 0
+      const refund_sessions = refundCounts.get(line.student_id as string) ?? 0
+      const rate = Number(line.rate_per_session ?? 0)
       return {
         line_id: line.id as string,
         student_id: line.student_id as string,
@@ -1316,11 +981,70 @@ export async function computeAttendanceRefunds(bagId: string): Promise<Attendanc
 
 // ─── Fee Presets ────────────────────────────────────────────────────────────
 
-async function getFirstTenantId(supabase: Supabase): Promise<string> {
-  const { data } = await supabase.from('tenants').select('id').limit(1)
-  const id = (data ?? [])[0]?.id as string | undefined
-  if (!id) throw new Error('tenant not found')
-  return id
+function normalizeFeeCatalogItem(row: Record<string, unknown>): BillingFeeCatalogItem {
+  return {
+    id: String(row.id),
+    tenant_id: String(row.tenant_id),
+    category: String(row.category) as BillingFeeCategory,
+    label: String(row.label ?? ''),
+    amount: toNumber(row.amount),
+    status: String(row.status ?? 'active'),
+    created_at: String(row.created_at ?? ''),
+    updated_at: String(row.updated_at ?? ''),
+  }
+}
+
+export async function listBillingFeeCatalog(): Promise<BillingFeeCatalogItem[]> {
+  const supabase = await createServiceClient()
+  const tenantId = await getTenantId(supabase)
+  const { data, error } = await supabase
+    .from('invoice_fee_presets')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .eq('status', 'active')
+    .order('category')
+    .order('label')
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((row) => normalizeFeeCatalogItem(row as Record<string, unknown>))
+}
+
+export async function saveBillingFeeCatalogItem(input: {
+  id?: string | null
+  category: BillingFeeCategory
+  label: string
+  amount: number
+}): Promise<BillingFeeCatalogItem> {
+  const supabase = await createServiceClient()
+  const tenantId = await getTenantId(supabase)
+  const label = input.label.trim()
+  if (!label) throw new Error('費用名稱不可空白')
+
+  const payload = {
+    tenant_id: tenantId,
+    category: input.category,
+    label,
+    amount: toNumber(input.amount),
+    status: 'active',
+    updated_at: new Date().toISOString(),
+  }
+
+  const query = input.id
+    ? supabase.from('invoice_fee_presets').update(payload).eq('id', input.id).eq('tenant_id', tenantId)
+    : supabase.from('invoice_fee_presets').upsert(payload, { onConflict: 'tenant_id,category,label' })
+  const { data, error } = await query.select().single()
+  if (error) throw new Error(error.message)
+  return normalizeFeeCatalogItem(data as Record<string, unknown>)
+}
+
+export async function deleteBillingFeeCatalogItem(id: string): Promise<void> {
+  const supabase = await createServiceClient()
+  const tenantId = await getTenantId(supabase)
+  const { error } = await supabase
+    .from('invoice_fee_presets')
+    .delete()
+    .eq('id', id)
+    .eq('tenant_id', tenantId)
+  if (error) throw new Error(error.message)
 }
 
 export function normalizeSeasonDraft(raw: { year?: unknown; quarter?: unknown; startDate?: unknown; endDate?: unknown }) {

@@ -28,6 +28,19 @@ export interface BillingStudent {
   grade: string | null
 }
 
+export type BillingFeeCategory = 'tuition' | 'book' | 'misc' | 'discount'
+
+export interface BillingFeeCatalogItem {
+  id: string
+  tenant_id: string
+  category: BillingFeeCategory
+  label: string
+  amount: number
+  status: string
+  created_at: string
+  updated_at: string
+}
+
 export type ActualAttendanceStatus = 'attended' | 'absent' | 'cancelled' | 'makeup' | 'extra'
 export type ReconciliationStatus = 'matched' | 'missed' | 'makeup' | 'extra' | 'cancelled'
 
@@ -163,6 +176,8 @@ export interface OpenBagStudentInput {
   intensiveDates?: string[]
   intensiveUnscheduled?: number
   tuitionAmount?: number | null
+  tuitionPresetKey?: string | null   // catalog item id when selected from dropdown
+  tuitionLabel?: string | null       // catalog label; null means use default '學費'
   bookRows?: OpenBagFeeRowInput[]
   miscRows?: OpenBagFeeRowInput[]
   discountRows?: OpenBagFeeRowInput[]

@@ -24,7 +24,7 @@
 | `default_attendance` | 預設出席 | 定義 | 開袋 | 每班每期應上幾堂、哪些日期 |
 | `payment_bags` | 繳費袋 | 資料 | 開袋 | 一個班級一個期間的帳單（會印出來） |
 | `payment_bag_lines` | 帳單明細 | 資料 | 開袋 | 袋子裡每個學生的學費、書費、折扣、補繳 |
-| `billing_fee_presets` | 費用範本 | 定義 | 開袋 | 可重複使用的學費/書費/折扣組合 |
+| `invoice_fee_presets` | 費用項目庫 | 定義 | 開袋 | 可重複使用的逐項費用（category + label + amount） |
 | `audit_log` | 變更紀錄 | 系統輔助 | DB 監看 | DB 觸發器自動寫入每筆新增/更改/刪除 |
 
 ---
@@ -251,7 +251,7 @@
 - `default_attendance` — 預設課次
 - `class_tasks` + `student_task_records`（task_type=attendance）— 實際出席
 - `payment_bags` + `payment_bag_lines` — 帳單
-- `billing_fee_presets` — 費用範本
+- `invoice_fee_presets` — 費用項目庫（逐項：category / label / amount）
 
 **操作清單：**
 
@@ -266,7 +266,7 @@
 | 開袋（產生帳單）| `POST /api/billing/bags` | `payment_bags` + `payment_bag_lines` |
 | 編輯帳單明細 | `PATCH /api/billing/bags` | `payment_bag_lines`（學費/書費/折扣等）|
 | 計算退費 | `POST /api/billing/attendance-refund` | `payment_bag_lines` |
-| 新增費用範本 | `POST /api/billing/fee-presets` | `billing_fee_presets` |
+| 管理費用項目庫 | `GET/POST/DELETE /api/billing/fee-items` | `invoice_fee_presets` |
 | 記錄列印 | `POST /api/billing {action:'record-print'}` | `payment_bags.print_count` |
 
 ---

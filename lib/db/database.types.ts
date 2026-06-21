@@ -684,49 +684,38 @@ export type Database = {
           { foreignKeyName: "payment_bag_lines_student_id_fkey"; columns: ["student_id"]; referencedRelation: "students"; referencedColumns: ["id"] }
         ]
       }
-      billing_fee_presets: {
+      invoice_fee_presets: {
         Row: {
           id: string
           tenant_id: string
-          class_id: string | null
-          name: string
-          tuition_amount: number | null
-          book_rows: Json | null
-          misc_rows: Json | null
-          discount_rows: Json | null
-          is_default: boolean | null
+          category: string
+          label: string
+          amount: number
+          status: string
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           tenant_id: string
-          class_id?: string | null
-          name: string
-          tuition_amount?: number | null
-          book_rows?: Json | null
-          misc_rows?: Json | null
-          discount_rows?: Json | null
-          is_default?: boolean | null
+          category: string
+          label: string
+          amount?: number
+          status?: string
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           tenant_id?: string
-          class_id?: string | null
-          name?: string
-          tuition_amount?: number | null
-          book_rows?: Json | null
-          misc_rows?: Json | null
-          discount_rows?: Json | null
-          is_default?: boolean | null
+          category?: string
+          label?: string
+          amount?: number
+          status?: string
           created_at?: string
           updated_at?: string
         }
-        Relationships: [
-          { foreignKeyName: "billing_fee_presets_class_id_fkey"; columns: ["class_id"]; referencedRelation: "classes"; referencedColumns: ["id"] }
-        ]
+        Relationships: []
       }
       audit_log: {
         Row: {

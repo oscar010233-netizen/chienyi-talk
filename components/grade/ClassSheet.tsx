@@ -9,9 +9,10 @@ import { AddTaskModal } from './AddTaskModal'
 import { AttendanceModal } from './AttendanceModal'
 import { EnrollStudentModal } from './EnrollStudentModal'
 import { LampBadge } from './LampBadge'
+import { MakeupMarkModal } from './MakeupMarkModal'
 import { TaskUpdateDrawer } from './TaskUpdateDrawer'
 import { commentLamp, lampFor } from '@/lib/grade/status'
-import type { ClassDetail, ClassEnrollment, Task, TaskRecord, TaskType } from '@/lib/grade/types'
+import type { ClassDetail, ClassEnrollment, ClassSessionRow, Lamp, Task, TaskRecord, TaskType } from '@/lib/grade/types'
 
 const TASK_SHORT: Record<TaskType, string> = {
   attendance: '出席',
@@ -74,6 +75,28 @@ function thresholdText(task: Task) {
   return task.threshold_text ?? ''
 }
 
+// Attendance status → display label + color
+function attDisplay(row: ClassSessionRow | undefined): { label: string; color: Lamp } {
+  if (!row || !row.attendance_status) return { label: '—', color: 'white' }
+  if (row.attendance_status === 'present') return { label: '出', color: 'green' }
+  if (row.attendance_status === 'late') return { label: '遲', color: 'yellow' }
+  if (row.attendance_status === 'cancelled') return { label: '取', color: 'white' }
+  if (row.attendance_status === 'absent') {
+    if (row.absence_resolution === 'makeup_pending') return { label: '缺補', color: 'orange' }
+    if (row.absence_resolution === 'makeup_done') return { label: '補✓', color: 'blue' }
+    if (row.absence_resolution === 'refund') return { label: '缺退', color: 'black' }
+    return { label: '缺', color: 'red' }
+  }
+  return { label: '—', color: 'white' }
+}
+
+type AttSessionGroup = {
+  session_date: string
+  session_kind: 'team' | 'intensive'
+  byStudent: Map<string, ClassSessionRow>
+  makeupsByStudent: Map<string, ClassSessionRow[]>
+}
+
 export function ClassSheet({ detail }: { detail: ClassDetail }) {
   const { class: cls, students, tasks, records } = detail
   const [selected, setSelected] = useState<SelectedCell | null>(null)
@@ -82,7 +105,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   const [showAddTask, setShowAddTask] = useState(false)
   const [showEnroll, setShowEnroll] = useState(false)
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
-  const [attendanceTask, setAttendanceTask] = useState<Task | null>(null)
+  const [attendanceGroup, setAttendanceGroup] = useState<AttSessionGroup | null>(null)
+  const [selectedMakeupRow, setSelectedMakeupRow] = useState<{ row: ClassSessionRow; studentName: string } | null>(null)
   const router = useRouter()
 
   const classSlug = encodeURIComponent(cls.id)
@@ -96,18 +120,45 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     return map
   }, [records])
 
-  const sessions = detail.sessions
+  // Build session groups from sessionRows for attendance display
+  const sessionGroups = useMemo((): AttSessionGroup[] => {
+    const groups = new Map<string, AttSessionGroup>()
+    const rowById = new Map<string, ClassSessionRow>()
 
-  // Map attendance class_tasks by session_date:session_kind for lookup (used by modal)
-  const attendanceTaskMap = useMemo(() => {
-    const map = new Map<string, Task>()
-    for (const t of tasks) {
-      if (t.task_type === 'attendance' && t.session_date && t.session_kind) {
-        map.set(`${t.session_date}:${t.session_kind}`, t)
+    for (const row of detail.sessionRows) {
+      rowById.set(row.id, row)
+      if (row.session_kind === 'makeup' || !row.session_date) continue
+      const key = `${row.session_date}:${row.session_kind}`
+      if (!groups.has(key)) {
+        groups.set(key, {
+          session_date: row.session_date,
+          session_kind: row.session_kind as 'team' | 'intensive',
+          byStudent: new Map(),
+          makeupsByStudent: new Map(),
+        })
       }
+      groups.get(key)!.byStudent.set(row.student_id, row)
     }
-    return map
-  }, [tasks])
+
+    // Attach makeup rows to their parent group
+    for (const row of detail.sessionRows) {
+      if (row.session_kind !== 'makeup' || !row.makeup_for_session_id) continue
+      const parent = rowById.get(row.makeup_for_session_id)
+      if (!parent || !parent.session_date) continue
+      const key = `${parent.session_date}:${parent.session_kind}`
+      const group = groups.get(key)
+      if (!group) continue
+      const list = group.makeupsByStudent.get(row.student_id) ?? []
+      list.push(row)
+      group.makeupsByStudent.set(row.student_id, list)
+    }
+
+    return Array.from(groups.values()).sort((a, b) => {
+      const cmp = a.session_date.localeCompare(b.session_date)
+      if (cmp !== 0) return cmp
+      return a.session_kind === 'intensive' ? 1 : -1
+    })
+  }, [detail.sessionRows])
 
   const otherTasks = useMemo(() => tasks.filter((t) => t.task_type !== 'attendance'), [tasks])
 
@@ -257,7 +308,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 </tr>
               </thead>
               <tbody>
-                {sessions.length === 0 && otherTasks.length === 0 && (
+                {sessionGroups.length === 0 && otherTasks.length === 0 && (
                   <tr>
                     <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
                       還沒有課程資料，請先開袋
@@ -265,67 +316,105 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                   </tr>
                 )}
 
-                {/* 出席區 — 從 payment_bag_line_sessions 讀取，每個 session 一列 */}
-                {sessions.map((session) => {
-                  const sessionKey = `${session.session_date}:${session.session_kind}`
-                  const task = attendanceTaskMap.get(sessionKey) ?? null
-                  const isIntensive = session.session_kind === 'intensive'
+                {/* 出席區 — 直接從 payment_bag_line_sessions 讀取 */}
+                {sessionGroups.map((group) => {
+                  const sessionKey = `${group.session_date}:${group.session_kind}`
+                  const isIntensive = group.session_kind === 'intensive'
                   const attBg = isIntensive
                     ? 'bg-violet-50/70 dark:bg-violet-500/[0.06] group-hover:bg-violet-100/70 dark:group-hover:bg-violet-500/[0.10]'
                     : 'bg-sky-50/70 dark:bg-sky-500/[0.06] group-hover:bg-sky-100/70 dark:group-hover:bg-sky-500/[0.10]'
                   const borderColor = isIntensive ? 'border-l-violet-400 dark:border-l-violet-500/70' : 'border-l-sky-400 dark:border-l-sky-500/70'
-                  const dateLabel = session.session_date.slice(5).replace('-', '/')
+                  const dateLabel = group.session_date.slice(5).replace('-', '/')
                   const kindLabel = isIntensive ? '強' : '團'
+                  const hasMakeups = group.makeupsByStudent.size > 0
                   return (
-                    <tr key={sessionKey} className="group">
-                      <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] px-4 py-3.5 transition-colors', attBg, borderColor)}>
-                        <div className="flex min-w-0 items-start gap-2">
-                          <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP['attendance'])}>
-                            {kindLabel}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate font-medium text-foreground">{dateLabel}</p>
-                          </div>
-                          {task && (
+                    <>
+                      <tr key={sessionKey} className="group">
+                        <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] px-4 py-3.5 transition-colors', attBg, borderColor)}>
+                          <div className="flex min-w-0 items-start gap-2">
+                            <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP['attendance'])}>
+                              {kindLabel}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate font-medium text-foreground">{dateLabel}</p>
+                            </div>
                             <button
                               type="button"
-                              onClick={() => setAttendanceTask(task)}
+                              onClick={() => setAttendanceGroup(group)}
                               title="點名"
                               className="mt-0.5 shrink-0 rounded p-1 text-sky-500/70 transition-colors hover:text-sky-600"
                             >
                               <ClipboardCheck size={13} />
                             </button>
-                          )}
-                        </div>
-                      </td>
-                      {students.map((student) => {
-                        const record = task ? recordMap.get(`${student.student_id}:${task.id}`) : undefined
-                        const display = lampFor(record?.status, 'attendance')
-                        return (
-                          <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', attBg)}>
-                            {task ? (
-                              <button
-                                type="button"
-                                onClick={() => handleCellClick(task, student)}
-                                className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-sky-200/50 dark:hover:bg-sky-500/20"
-                              >
-                                {record
-                                  ? <LampBadge color={display.color} label={display.label} detail={null} />
-                                  : <span className="text-gray-300 dark:text-white/20">未派發</span>}
-                              </button>
-                            ) : (
-                              <span className="text-gray-200 dark:text-white/10">—</span>
-                            )}
-                          </td>
-                        )
-                      })}
-                      <td aria-hidden className={cn('border-b border-border transition-colors', attBg)} />
-                    </tr>
+                          </div>
+                        </td>
+                        {students.map((student) => {
+                          const row = group.byStudent.get(student.student_id)
+                          const display = attDisplay(row)
+                          return (
+                            <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', attBg)}>
+                              {row ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setAttendanceGroup(group)}
+                                  className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-sky-200/50 dark:hover:bg-sky-500/20"
+                                >
+                                  <LampBadge color={display.color} label={display.label} detail={null} />
+                                </button>
+                              ) : (
+                                <span className="text-gray-200 dark:text-white/10">—</span>
+                              )}
+                            </td>
+                          )
+                        })}
+                        <td aria-hidden className={cn('border-b border-border transition-colors', attBg)} />
+                      </tr>
+
+                      {/* 補課子列 */}
+                      {hasMakeups && Array.from(group.makeupsByStudent.entries()).flatMap(([studentId, makeupRows]) =>
+                        makeupRows.map((mkRow) => {
+                          const mkDate = mkRow.session_date ? mkRow.session_date.slice(5).replace('-', '/') : '待定'
+                          const mkDisplay = attDisplay(mkRow)
+                          const mkStudent = students.find(s => s.student_id === studentId)
+                          const mkStudentName = mkStudent
+                            ? `${mkStudent.student.chinese_name}${mkStudent.student.english_name ? ` ${mkStudent.student.english_name}` : ''}`
+                            : studentId
+                          return (
+                            <tr key={mkRow.id} className="group">
+                              <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] px-4 py-2.5 transition-colors', attBg, borderColor)}>
+                                <div className="flex min-w-0 items-start gap-2 pl-4">
+                                  <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
+                                  <span className="mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補</span>
+                                  <p className="truncate text-sm text-muted-foreground">{mkDate}</p>
+                                </div>
+                              </td>
+                              {students.map((student) => (
+                                <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', attBg)}>
+                                  {student.student_id === studentId ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => setSelectedMakeupRow({ row: mkRow, studentName: mkStudentName })}
+                                      className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-teal-200/50 dark:hover:bg-teal-500/20"
+                                      title="點名補課"
+                                    >
+                                      <LampBadge color={mkDisplay.color} label={mkDisplay.label} detail={null} />
+                                    </button>
+                                  ) : (
+                                    <span className="text-gray-200 dark:text-white/10">—</span>
+                                  )}
+                                </td>
+                              ))}
+                              <td aria-hidden className={cn('border-b border-border transition-colors', attBg)} />
+                            </tr>
+                          )
+                        })
+                      )}
+                    </>
                   )
                 })}
 
                 {/* 分隔線 */}
-                {sessions.length > 0 && (
+                {sessionGroups.length > 0 && (
                   <tr>
                     <td
                       colSpan={students.length + 2}
@@ -337,7 +426,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 )}
 
                 {/* 教師任務區 */}
-                {otherTasks.length === 0 && sessions.length > 0 && (
+                {otherTasks.length === 0 && sessionGroups.length > 0 && (
                   <tr>
                     <td colSpan={students.length + 2} className="px-4 py-6 text-center text-sm text-muted-foreground/60">
                       點「加任務」新增這季的考試、作業、練習
@@ -409,12 +498,24 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         </div>
       )}
 
-      {attendanceTask && (
+      {attendanceGroup && detail.bag_id && (
         <AttendanceModal
-          task={attendanceTask}
+          sessionDate={attendanceGroup.session_date}
+          sessionKind={attendanceGroup.session_kind}
+          rows={Array.from(attendanceGroup.byStudent.values())}
+          makeupsByStudent={attendanceGroup.makeupsByStudent}
+          bagId={detail.bag_id}
           students={students}
-          recordMap={recordMap}
-          onClose={(refresh) => { setAttendanceTask(null); if (refresh) router.refresh() }}
+          onClose={(refresh) => { setAttendanceGroup(null); if (refresh) router.refresh() }}
+        />
+      )}
+
+      {selectedMakeupRow && detail.bag_id && (
+        <MakeupMarkModal
+          makeupRow={selectedMakeupRow.row}
+          studentName={selectedMakeupRow.studentName}
+          bagId={detail.bag_id}
+          onClose={(refresh) => { setSelectedMakeupRow(null); if (refresh) router.refresh() }}
         />
       )}
 

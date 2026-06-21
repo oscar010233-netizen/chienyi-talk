@@ -1,6 +1,6 @@
 # DB 現況與約定（給後續 AI agent / 開發者）
 
-> 最後更新：2026-06-20。本檔記錄「光看 schema 看不出來」的真相，動 DB 或寫程式前先讀。
+> 最後更新：2026-06-21。本檔記錄「光看 schema 看不出來」的真相，動 DB 或寫程式前先讀。
 > Schema 欄位清單的單一事實來源在 `lib/db/schema.ts`，並可在前端 `/db` 頁即時檢視。
 
 ## 近期已執行的變更
@@ -37,6 +37,24 @@
 
 - **`profiles`**：RLS policy（`tenant members can manage`）靠它判斷 tenant 歸屬，是整個權限體系的根。app 程式碼不直接讀寫它（用 service role 繞過 RLS）≠ 沒用。**不可刪。**
 - **`schedule_event_teachers`**：被 `/api/schedule/events` GET 的 `teachers:schedule_event_teachers(*)` join 著，配課表新增/編輯時段可寫入授課老師。直接 DROP 會讓配課表查詢爆掉——要砍必須先移除該 join 與 UI。
+
+7. **出席重構：`payment_bag_line_sessions` 成為點名單一事實來源（2026-06-21）。**
+   Migration `supabase/migrations/20260621000001_attendance_redesign.sql` 需手動套用：
+   - `slot_index` 改為可 NULL（補課行無 slot）；partial unique index `uix_line_slot`。
+   - 新欄位：`is_billable BOOLEAN NOT NULL DEFAULT TRUE`、`makeup_for_session_id UUID`、`attendance_status TEXT`、`absence_resolution TEXT`、`attendance_note TEXT`、`attendance_updated_at TIMESTAMPTZ`。
+   - `session_kind` CHECK 擴充含 `'makeup'`。
+   - 5 個 RPC：`fn_reopen_bag`、`fn_bulk_mark_attendance`、`fn_create_makeup_session`、`fn_mark_makeup_attendance`、`fn_change_absence_resolution`。
+   - **開袋不再建立 `class_tasks + student_task_records` 出席記錄**；點名直接寫 `payment_bag_line_sessions`。
+   - 點名 API：`POST /api/attendance/bulk`（重寫）、`POST/PATCH /api/attendance/makeup`（新建）、`PATCH /api/attendance/resolution`（新建）。
+   - `class_tasks` 出席型任務（`task_type='attendance'`）的歷史資料不需刪除，但 app 不再建立新的。
+
+8. **費用項目庫：`invoice_fee_presets` 取代 `billing_fee_presets`（2026-06-21）。**
+   Migration `supabase/migrations/20260621000002_restore_invoice_fee_presets.sql` 已套用（2026-06-21）：
+   - DROP `billing_fee_presets`（舊捆包範本模型，0 筆資料）；建立 `invoice_fee_presets`。
+   - 欄位：`id UUID PK`、`tenant_id UUID FK tenants`、`category TEXT CHECK IN ('tuition','book','misc','discount')`、`label TEXT`、`amount NUMERIC DEFAULT 0`、`status TEXT DEFAULT 'active'`。
+   - UNIQUE `(tenant_id, category, label)`；RLS policy 允許 `authenticated` 依 `profiles.tenant_id` 管理自己 tenant 的資料。
+   - 前端 Step 2 費用資料庫 CRUD：`GET/POST/DELETE /api/billing/fee-items`（`lib/billing/service.ts` 中 `listBillingFeeCatalog` / `saveBillingFeeCatalogItem` / `deleteBillingFeeCatalogItem`）。
+   - **待補**：尚未加 `zz_audit` trigger。需在 SQL Editor 執行（見 migration 檔案底部的注解步驟）。
 
 ## 已知缺口 / 殭屍欄位（不是 bug，是待補）
 

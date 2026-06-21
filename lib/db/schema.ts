@@ -29,9 +29,9 @@ export const DB_TABLES: TableMeta[] = [
   // default_attendance：未在 live DB 建立（帳務 migration 尚未跑）
   { name: 'payment_bags', group: '帳務', columns: ['id', 'tenant_id', 'season_id', 'class_id', 'bag_code', 'issue_date', 'due_date', 'status', 'tuition_note', 'note', 'print_count', 'last_printed_at', 'created_at', 'updated_at'] },
   { name: 'payment_bag_lines', group: '帳務', columns: ['id', 'tenant_id', 'bag_id', 'student_id', 'student_order', 'session_count', 'rate_per_session', 'tuition_amount', 'book_name', 'book_fee', 'misc_label', 'misc_fee', 'discount_label', 'discount_amount', 'carryover_amount', 'carryover_note', 'adjustment_label', 'adjustment_amount', 'total_amount', 'note', 'created_at', 'updated_at'] },
-  { name: 'payment_bag_line_sessions', group: '帳務', columns: ['id', 'tenant_id', 'line_id', 'student_id', 'slot_index', 'session_kind', 'session_order', 'session_date', 'legacy_mmdd', 'is_unscheduled', 'week_key', 'created_at', 'updated_at'] },
+  { name: 'payment_bag_line_sessions', group: '帳務', columns: ['id', 'tenant_id', 'line_id', 'student_id', 'slot_index', 'session_kind', 'session_order', 'session_date', 'legacy_mmdd', 'is_unscheduled', 'week_key', 'is_billable', 'makeup_for_session_id', 'attendance_status', 'absence_resolution', 'attendance_note', 'attendance_updated_at', 'created_at', 'updated_at'] },
   { name: 'payment_bag_line_items', group: '帳務', columns: ['id', 'tenant_id', 'line_id', 'item_type', 'label', 'amount', 'sort_order', 'preset_key', 'created_at', 'updated_at'] },
-  { name: 'billing_fee_presets', group: '帳務', columns: ['id', 'tenant_id', 'class_id', 'name', 'tuition_amount', 'book_rows', 'misc_rows', 'discount_rows', 'is_default', 'created_at', 'updated_at'] },
+  { name: 'invoice_fee_presets', group: '帳務', columns: ['id', 'tenant_id', 'category', 'label', 'amount', 'status', 'created_at', 'updated_at'] },
 
   { name: 'audit_log', group: '系統', columns: ['id', 'table_name', 'op', 'row_id', 'changed_columns', 'old_data', 'new_data', 'actor', 'created_at'] },
 ]
@@ -167,17 +167,20 @@ export const COL_LABELS: Record<string, string> = {
   legacy_mmdd: '舊月日',
   is_unscheduled: '未排課',
   week_key: '週鍵',
+  is_billable: '計費',
+  makeup_for_session_id: '補課原課',
+  attendance_status: '出席狀態',
+  absence_resolution: '缺席處理',
+  attendance_note: '出席備注',
+  attendance_updated_at: '出席更新時間',
 
   // payment_bag_line_items
   item_type: '項目類型',
   amount: '金額',
   preset_key: '預設鍵',
 
-  // billing_fee_presets
-  book_rows: '書費列',
-  misc_rows: '雜費列',
-  discount_rows: '折扣列',
-  is_default: '預設',
+  // invoice_fee_presets
+  category: '費用類型',
 
   // audit_log
   table_name: '表名',

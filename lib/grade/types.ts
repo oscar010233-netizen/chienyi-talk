@@ -75,12 +75,30 @@ export interface ClassSession {
   session_kind: 'team' | 'intensive'
 }
 
+export type AttendanceStatus = 'present' | 'late' | 'absent' | 'cancelled'
+export type AbsenceResolution = 'makeup_pending' | 'makeup_done' | 'refund'
+
+export interface ClassSessionRow {
+  id: string
+  line_id: string
+  student_id: string
+  slot_index: number | null
+  session_kind: 'team' | 'intensive' | 'makeup'
+  session_date: string | null
+  is_billable: boolean
+  attendance_status: AttendanceStatus | null
+  absence_resolution: AbsenceResolution | null
+  attendance_note: string | null
+  makeup_for_session_id: string | null
+}
+
 export interface ClassDetail {
   class: ClassRow
   students: ClassEnrollment[]
   tasks: Task[]
   records: TaskRecord[]
   sessions: ClassSession[]
+  sessionRows: ClassSessionRow[]
   bag_id: string | null
 }
 

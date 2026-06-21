@@ -13,6 +13,7 @@ import {
   ReceiptText,
   RefreshCw,
   Save,
+  Trash2,
 } from 'lucide-react'
 import {
   buildSeasonCode,
@@ -24,7 +25,14 @@ import {
   quarterDates,
 } from '@/lib/billing/calendar'
 import type { BillingQuarter } from '@/lib/billing/calendar'
-import type { BillingClass, BillingState, BillingStudent, OpenBagStudentInput } from '@/lib/billing/types'
+import type {
+  BillingClass,
+  BillingFeeCatalogItem,
+  BillingFeeCategory,
+  BillingState,
+  BillingStudent,
+  OpenBagStudentInput,
+} from '@/lib/billing/types'
 
 type TabKey = 'holidays' | 'open'
 type Message = { tone: 'ok' | 'error' | 'idle'; text: string }
@@ -35,6 +43,8 @@ type StudentDraft = {
   intensiveDates: string[]
   intensiveUnscheduled: string
   tuitionAmount: string
+  tuitionPresetId: string     // '' when manually entered
+  tuitionPresetLabel: string  // '' when manually entered
   bookRows: FeeRowDraft[]
   miscRows: FeeRowDraft[]
   discountRows: FeeRowDraft[]
@@ -67,6 +77,13 @@ const weekdays = [
   { value: 6, label: '週六' },
   { value: 7, label: '週日' },
 ]
+
+const feeCategoryLabels: Record<BillingFeeCategory, string> = {
+  tuition: '學費',
+  book: '教材費',
+  misc: '雜費',
+  discount: '折扣',
+}
 
 function todayDate() {
   return new Date().toISOString().slice(0, 10)
@@ -166,6 +183,17 @@ function emptyFeeRow(): FeeRowDraft {
   return { preset: 'custom', note: '', amount: '0' }
 }
 
+function emptyFeeTemplate(): FeeTemplateDraft {
+  return {
+    tuitionAmount: '0',
+    tuitionPresetId: '',
+    tuitionPresetLabel: '',
+    bookRows: [emptyFeeRow()],
+    miscRows: [emptyFeeRow()],
+    discountRows: [emptyFeeRow()],
+  }
+}
+
 function cloneRows(rows: FeeRowDraft[]) {
   return rows.map((row) => ({ ...row }))
 }
@@ -192,6 +220,8 @@ function studentDraftFromTemplate(teamDates: string[], intensiveSessions: number
     intensiveDates: [],
     intensiveUnscheduled: String(intensiveSessions),
     tuitionAmount: template.tuitionAmount,
+    tuitionPresetId: template.tuitionPresetId,
+    tuitionPresetLabel: template.tuitionPresetLabel,
     bookRows: cloneRows(template.bookRows),
     miscRows: cloneRows(template.miscRows),
     discountRows: cloneRows(template.discountRows),
@@ -203,6 +233,8 @@ function studentDraftFromTemplate(teamDates: string[], intensiveSessions: number
 
 type FeeTemplateDraft = {
   tuitionAmount: string
+  tuitionPresetId: string     // catalog item id; '' if manually entered or not yet selected
+  tuitionPresetLabel: string  // catalog label when preset selected; '' if manual
   bookRows: FeeRowDraft[]
   miscRows: FeeRowDraft[]
   discountRows: FeeRowDraft[]
@@ -261,12 +293,13 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [teamDates, setTeamDates] = useState<Set<string>>(new Set())
   const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set(state.students.map((student) => student.student_id)))
   const [intensiveWeeks, setIntensiveWeeks] = useState<Set<string>>(new Set())
-  const [feeTemplate, setFeeTemplate] = useState<FeeTemplateDraft>({
-    tuitionAmount: '0',
-    bookRows: [emptyFeeRow()],
-    miscRows: [emptyFeeRow()],
-    discountRows: [emptyFeeRow()],
-  })
+  const [feeTemplate, setFeeTemplate] = useState<FeeTemplateDraft>(emptyFeeTemplate)
+  const [feeCatalog, setFeeCatalog] = useState<BillingFeeCatalogItem[]>([])
+  const [feeCatalogBusy, setFeeCatalogBusy] = useState(false)
+  const [editingFeeItemId, setEditingFeeItemId] = useState('')
+  const [feeItemCategory, setFeeItemCategory] = useState<BillingFeeCategory>('book')
+  const [feeItemLabel, setFeeItemLabel] = useState('')
+  const [feeItemAmount, setFeeItemAmount] = useState('0')
   const [studentDrafts, setStudentDrafts] = useState<Record<string, StudentDraft>>({})
   const [currentStudentId, setCurrentStudentId] = useState(state.students[0]?.student_id ?? '')
   const [sessionMode, setSessionMode] = useState<'team' | 'intensive'>('team')
@@ -343,6 +376,27 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     setStudentDrafts({})
     setOpenStep(1)
   }, [selectedClass, selectedSeason, globalHolidayDates, state.students])
+
+  useEffect(() => {
+    let cancelled = false
+    setFeeCatalogBusy(true)
+    fetch('/api/billing/fee-items', { cache: 'no-store' })
+      .then((response) => response.json().then((data) => ({ response, data })))
+      .then(({ response, data }) => {
+        if (!response.ok) throw new Error(data.error ?? '讀取費用資料庫失敗')
+        if (cancelled) return
+        setFeeCatalog((data.items ?? []) as BillingFeeCatalogItem[])
+      })
+      .catch((error) => {
+        if (!cancelled) setMessage({ tone: 'error', text: error instanceof Error ? error.message : '讀取費用資料庫失敗' })
+      })
+      .finally(() => {
+        if (!cancelled) setFeeCatalogBusy(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   function changeClassFilter(nextClassId: string) {
     setClassId(nextClassId)
@@ -462,6 +516,75 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     })
   }
 
+  async function refreshFeeCatalog() {
+    const response = await fetch('/api/billing/fee-items', { cache: 'no-store' })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error ?? '讀取費用資料庫失敗')
+    setFeeCatalog((data.items ?? []) as BillingFeeCatalogItem[])
+  }
+
+  function beginNewFeeItem(category: BillingFeeCategory = feeItemCategory) {
+    setEditingFeeItemId('')
+    setFeeItemCategory(category)
+    setFeeItemLabel('')
+    setFeeItemAmount('0')
+  }
+
+  async function saveFeeItem() {
+    if (!feeItemLabel.trim()) {
+      setMessage({ tone: 'error', text: '請輸入費用名稱' })
+      return
+    }
+    setFeeCatalogBusy(true)
+    setMessage({ tone: 'idle', text: '' })
+    try {
+      const response = await fetch('/api/billing/fee-items', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: editingFeeItemId || null,
+          category: feeItemCategory,
+          label: feeItemLabel.trim(),
+          amount: numberInput(feeItemAmount),
+        }),
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error ?? '儲存費用項目失敗')
+      await refreshFeeCatalog()
+      beginNewFeeItem(feeItemCategory)
+      setMessage({ tone: 'ok', text: editingFeeItemId ? '費用項目已更新' : '費用項目已加入資料庫' })
+    } catch (error) {
+      setMessage({ tone: 'error', text: error instanceof Error ? error.message : '儲存費用項目失敗' })
+    } finally {
+      setFeeCatalogBusy(false)
+    }
+  }
+
+  function editFeeItem(item: BillingFeeCatalogItem) {
+    setEditingFeeItemId(item.id)
+    setFeeItemCategory(item.category)
+    setFeeItemLabel(item.label)
+    setFeeItemAmount(String(item.amount))
+  }
+
+  async function deleteFeeItem(item: BillingFeeCatalogItem) {
+    if (!window.confirm(`確定從費用資料庫刪除「${item.label}」？`)) return
+    setFeeCatalogBusy(true)
+    setMessage({ tone: 'idle', text: '' })
+    try {
+      const response = await fetch(`/api/billing/fee-items?id=${item.id}`, { method: 'DELETE' })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error ?? '刪除費用項目失敗')
+      if (editingFeeItemId === item.id) beginNewFeeItem(item.category)
+      await refreshFeeCatalog()
+      setMessage({ tone: 'ok', text: '費用項目已刪除' })
+    } catch (error) {
+      setMessage({ tone: 'error', text: error instanceof Error ? error.message : '刪除費用項目失敗' })
+    } finally {
+      setFeeCatalogBusy(false)
+    }
+  }
+
   function goFees() {
     if (!selectedStudents.size || !selectedClass || !selectedSeason) return
     setOpenStep(2)
@@ -550,6 +673,8 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
           intensiveDates: draft.intensiveDates,
           intensiveUnscheduled: numberInput(draft.intensiveUnscheduled),
           tuitionAmount: numberInput(draft.tuitionAmount),
+          tuitionPresetKey: draft.tuitionPresetId || null,
+          tuitionLabel: draft.tuitionPresetLabel || null,
           bookRows: normalizeRows(draft.bookRows),
           miscRows: normalizeRows(draft.miscRows),
           discountRows: normalizeRows(draft.discountRows),
@@ -914,6 +1039,47 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
             {openStep === 2 && (
               <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+                <section className="rounded-lg border border-border bg-background p-4 lg:col-span-2">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold">費用資料庫</h3>
+                      <p className="mt-0.5 text-xs text-muted-foreground">每筆只記一種費用；下方各費用列可自行從對應的下拉選單帶入。</p>
+                    </div>
+                    {feeCatalogBusy && <Loader2 size={15} className="animate-spin text-muted-foreground" />}
+                  </div>
+                  <div className="grid gap-2 md:grid-cols-[130px_minmax(180px,1fr)_120px_auto]">
+                    <select value={feeItemCategory} onChange={(event) => setFeeItemCategory(event.target.value as BillingFeeCategory)} className={inputClass}>
+                      {(Object.entries(feeCategoryLabels) as Array<[BillingFeeCategory, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    </select>
+                    <input
+                      value={feeItemLabel}
+                      onChange={(event) => setFeeItemLabel(event.target.value)}
+                      placeholder="費用名稱，例如：課本、講義、兄弟折扣"
+                      className={inputClass}
+                    />
+                    <input value={feeItemAmount} onChange={(event) => setFeeItemAmount(event.target.value)} inputMode="numeric" placeholder="預設金額" className={inputClass} />
+                    <div className="flex items-center gap-1.5">
+                      {editingFeeItemId && <button type="button" onClick={() => beginNewFeeItem()} className={buttonBase} disabled={feeCatalogBusy}>取消編輯</button>}
+                      <button type="button" onClick={saveFeeItem} className={primaryButton} disabled={feeCatalogBusy || !feeItemLabel.trim()}>
+                        <Save size={13} />
+                        {editingFeeItemId ? '更新' : '加入資料庫'}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {feeCatalog.map((item) => (
+                      <div key={item.id} className="inline-flex items-center overflow-hidden rounded-md border border-border bg-muted/20 text-xs">
+                        <button type="button" onClick={() => editFeeItem(item)} className="px-2 py-1.5 hover:bg-muted">
+                          <span className="text-muted-foreground">{feeCategoryLabels[item.category]}</span>　{item.label}　{formatMoney(item.amount)}
+                        </button>
+                        <button type="button" onClick={() => deleteFeeItem(item)} className="border-l border-border px-1.5 py-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-600" title="刪除">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                    ))}
+                    {!feeCatalogBusy && feeCatalog.length === 0 && <span className="text-xs text-muted-foreground">資料庫目前沒有費用項目</span>}
+                  </div>
+                </section>
                 <section className="rounded-lg border border-border bg-muted/20 p-4">
                   <div className="grid gap-2 text-sm">
                     <SummaryLine label="團課" value={`${teamDates.size} 堂`} />
@@ -946,11 +1112,33 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                 <section className="grid gap-4">
                   <label>
                     <span className={labelClass}>學費</span>
-                    <input value={feeTemplate.tuitionAmount} onChange={(event) => setFeeTemplate((prev) => ({ ...prev, tuitionAmount: event.target.value }))} className={`${inputClass} w-full`} />
+                    <div className="grid grid-cols-[1fr_130px] gap-2">
+                      <select
+                        value={feeTemplate.tuitionPresetId}
+                        onChange={(event) => {
+                          const item = feeCatalog.find((entry) => entry.id === event.target.value)
+                          if (item) {
+                            setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: item.id, tuitionPresetLabel: item.label, tuitionAmount: String(item.amount) }))
+                          } else {
+                            setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: '', tuitionPresetLabel: '' }))
+                          }
+                        }}
+                        className={inputClass}
+                      >
+                        <option value="">從費用資料庫選擇…</option>
+                        {feeCatalog.filter((item) => item.category === 'tuition').map((item) => <option key={item.id} value={item.id}>{item.label} · {formatMoney(item.amount)}</option>)}
+                      </select>
+                      <input
+                        value={feeTemplate.tuitionAmount}
+                        onChange={(event) => setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: '', tuitionPresetLabel: '', tuitionAmount: event.target.value }))}
+                        inputMode="numeric"
+                        className={`${inputClass} w-full`}
+                      />
+                    </div>
                   </label>
-                  <FeeRowsEditor title="教材費" rows={feeTemplate.bookRows} onChange={(bookRows) => setFeeTemplate((prev) => ({ ...prev, bookRows }))} />
-                  <FeeRowsEditor title="雜費" rows={feeTemplate.miscRows} onChange={(miscRows) => setFeeTemplate((prev) => ({ ...prev, miscRows }))} />
-                  <FeeRowsEditor title="折扣" rows={feeTemplate.discountRows} onChange={(discountRows) => setFeeTemplate((prev) => ({ ...prev, discountRows }))} />
+                  <FeeRowsEditor title="教材費" category="book" catalog={feeCatalog} rows={feeTemplate.bookRows} onChange={(bookRows) => setFeeTemplate((prev) => ({ ...prev, bookRows }))} />
+                  <FeeRowsEditor title="雜費" category="misc" catalog={feeCatalog} rows={feeTemplate.miscRows} onChange={(miscRows) => setFeeTemplate((prev) => ({ ...prev, miscRows }))} />
+                  <FeeRowsEditor title="折扣" category="discount" catalog={feeCatalog} rows={feeTemplate.discountRows} onChange={(discountRows) => setFeeTemplate((prev) => ({ ...prev, discountRows }))} />
                 </section>
                 <div className="lg:col-span-2 flex justify-between">
                   <button type="button" onClick={() => setOpenStep(1)} className={buttonBase}>
@@ -1020,11 +1208,15 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                 <aside className="grid gap-4">
                   <label>
                     <span className={labelClass}>學費</span>
-                    <input value={currentDraft.tuitionAmount} onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, tuitionAmount: event.target.value }))} className={`${inputClass} w-full`} />
+                    <input
+                      value={currentDraft.tuitionAmount}
+                      onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, tuitionAmount: event.target.value, tuitionPresetId: '', tuitionPresetLabel: '' }))}
+                      className={`${inputClass} w-full`}
+                    />
                   </label>
-                  <FeeRowsEditor title="教材費" rows={currentDraft.bookRows} onChange={(bookRows) => updateCurrentDraft((draft) => ({ ...draft, bookRows }))} compact />
-                  <FeeRowsEditor title="雜費" rows={currentDraft.miscRows} onChange={(miscRows) => updateCurrentDraft((draft) => ({ ...draft, miscRows }))} compact />
-                  <FeeRowsEditor title="折扣" rows={currentDraft.discountRows} onChange={(discountRows) => updateCurrentDraft((draft) => ({ ...draft, discountRows }))} compact />
+                  <FeeRowsEditor title="教材費" category="book" catalog={feeCatalog} rows={currentDraft.bookRows} onChange={(bookRows) => updateCurrentDraft((draft) => ({ ...draft, bookRows }))} compact />
+                  <FeeRowsEditor title="雜費" category="misc" catalog={feeCatalog} rows={currentDraft.miscRows} onChange={(miscRows) => updateCurrentDraft((draft) => ({ ...draft, miscRows }))} compact />
+                  <FeeRowsEditor title="折扣" category="discount" catalog={feeCatalog} rows={currentDraft.discountRows} onChange={(discountRows) => updateCurrentDraft((draft) => ({ ...draft, discountRows }))} compact />
                   <div className="grid grid-cols-[100px_1fr] gap-2">
                     <label>
                       <span className={labelClass}>結轉</span>
@@ -1278,12 +1470,15 @@ function QuarterCalendar({
   )
 }
 
-function FeeRowsEditor({ title, rows, onChange, compact }: {
+function FeeRowsEditor({ title, category, catalog, rows, onChange, compact }: {
   title: string
+  category: BillingFeeCategory
+  catalog: BillingFeeCatalogItem[]
   rows: FeeRowDraft[]
   onChange: (rows: FeeRowDraft[]) => void
   compact?: boolean
 }) {
+  const choices = catalog.filter((item) => item.category === category)
   function update(index: number, patch: Partial<FeeRowDraft>) {
     onChange(rows.map((row, i) => i === index ? { ...row, ...patch } : row))
   }
@@ -1295,9 +1490,22 @@ function FeeRowsEditor({ title, rows, onChange, compact }: {
       </div>
       <div className="grid gap-2">
         {rows.map((row, index) => (
-          <div key={index} className={`grid gap-2 ${compact ? 'grid-cols-[1fr_82px_28px]' : 'grid-cols-[1fr_120px_32px]'}`}>
-            <input value={row.note} onChange={(event) => update(index, { note: event.target.value })} className={inputClass} />
-            <input value={row.amount} onChange={(event) => update(index, { amount: event.target.value })} className={inputClass} />
+          <div key={index} className={`grid gap-2 ${compact ? 'grid-cols-[1fr_82px_28px]' : 'grid-cols-[minmax(160px,1fr)_minmax(160px,1fr)_120px_32px]'}`}>
+            <select
+              value={choices.some((item) => item.id === row.preset) ? row.preset : ''}
+              onChange={(event) => {
+                const item = choices.find((entry) => entry.id === event.target.value)
+                update(index, item
+                  ? { preset: item.id, note: item.label, amount: String(item.amount) }
+                  : { preset: 'custom' })
+              }}
+              className={`${inputClass} ${compact ? 'col-span-3' : ''}`}
+            >
+              <option value="">從費用資料庫選擇…</option>
+              {choices.map((item) => <option key={item.id} value={item.id}>{item.label} · {formatMoney(item.amount)}</option>)}
+            </select>
+            <input value={row.note} onChange={(event) => update(index, { preset: 'custom', note: event.target.value })} placeholder="名稱" className={inputClass} />
+            <input value={row.amount} onChange={(event) => update(index, { preset: 'custom', amount: event.target.value })} inputMode="numeric" placeholder="金額" className={inputClass} />
             <button type="button" onClick={() => onChange(rows.length > 1 ? rows.filter((_, i) => i !== index) : [emptyFeeRow()])} className="h-9 rounded-md border border-border text-muted-foreground hover:bg-muted">×</button>
           </div>
         ))}

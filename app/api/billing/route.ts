@@ -1,19 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import {
   createBillingSeason,
-  generateDefaultAttendance,
   getBillingState,
   normalizeSeasonDraft,
   openPaymentBag,
-  recordActualAttendance,
-  recordExtraAttendance,
   recordPaymentBagPrint,
   replaceSeasonHolidays,
   saveBillingClassConfig,
-  syncActualAttendanceFromClassSheet,
 } from '@/lib/billing/service'
 import { toNumber } from '@/lib/billing/calendar'
-import type { ActualAttendanceStatus, OpenBagStudentInput } from '@/lib/billing/types'
+import type { OpenBagStudentInput } from '@/lib/billing/types'
 
 function jsonError(error: unknown, status = 500) {
   const message = error instanceof Error ? error.message : String(error)
@@ -79,62 +75,6 @@ export async function POST(request: NextRequest) {
         : []
       const result = await replaceSeasonHolidays({ seasonId, holidayDates })
       return NextResponse.json(result)
-    }
-
-    if (action === 'generate-attendance') {
-      const seasonId = String(body.season_id ?? '')
-      const classId = String(body.class_id ?? '')
-      if (!seasonId || !classId) return jsonError('season_id and class_id required', 400)
-      const result = await generateDefaultAttendance({
-        seasonId,
-        classId,
-        limit: body.limit ? toNumber(body.limit) : undefined,
-      })
-      return NextResponse.json(result)
-    }
-
-    if (action === 'sync-actual') {
-      const seasonId = String(body.season_id ?? '')
-      const classId = String(body.class_id ?? '')
-      if (!seasonId || !classId) return jsonError('season_id and class_id required', 400)
-      const result = await syncActualAttendanceFromClassSheet({ seasonId, classId })
-      return NextResponse.json(result)
-    }
-
-    if (action === 'record-actual') {
-      const classTaskId = String(body.class_task_id ?? '')
-      const studentId = String(body.student_id ?? '')
-      const status = String(body.status ?? '') as ActualAttendanceStatus
-      if (!classTaskId || !studentId || !status) {
-        return jsonError('class_task_id, student_id and status required', 400)
-      }
-      const actual = await recordActualAttendance({
-        classTaskId,
-        studentId,
-        status,
-        note: typeof body.note === 'string' ? body.note : null,
-      })
-      return NextResponse.json({ actual })
-    }
-
-    if (action === 'extra-attendance') {
-      const seasonId = String(body.season_id ?? '')
-      const classId = String(body.class_id ?? '')
-      const studentId = String(body.student_id ?? '')
-      const actualDate = String(body.actual_date ?? '')
-      const status = body.status === 'extra' ? 'extra' : 'makeup'
-      if (!seasonId || !classId || !studentId || !actualDate) {
-        return jsonError('season_id, class_id, student_id and actual_date required', 400)
-      }
-      const actual = await recordExtraAttendance({
-        seasonId,
-        classId,
-        studentId,
-        actualDate,
-        status,
-        note: typeof body.note === 'string' ? body.note : null,
-      })
-      return NextResponse.json({ actual })
     }
 
     if (action === 'open-bag') {
