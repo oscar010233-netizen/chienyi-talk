@@ -56,17 +56,11 @@ BEGIN
 END;
 $$;
 
--- NOTE: zz_audit trigger is a post-migration manual step (no DDL access via service key).
--- After applying this migration, run in SQL Editor:
---
---   Step 1 — find the audit function used by other tables:
---   SELECT action_statement FROM information_schema.triggers
---   WHERE trigger_name = 'zz_audit' AND event_object_schema = 'public' LIMIT 1;
---
---   Step 2 — create the trigger (replace <action_statement> with result above):
---   DROP TRIGGER IF EXISTS zz_audit ON public.invoice_fee_presets;
---   CREATE TRIGGER zz_audit
---     AFTER INSERT OR UPDATE OR DELETE ON public.invoice_fee_presets
---     FOR EACH ROW <action_statement>;
+-- zz_audit trigger (applied separately on 2026-06-21 after confirming function name).
+-- Audit function confirmed as: EXECUTE FUNCTION audit_trigger()
+DROP TRIGGER IF EXISTS zz_audit ON public.invoice_fee_presets;
+CREATE TRIGGER zz_audit
+  AFTER INSERT OR UPDATE OR DELETE ON public.invoice_fee_presets
+  FOR EACH ROW EXECUTE FUNCTION audit_trigger();
 
 COMMIT;

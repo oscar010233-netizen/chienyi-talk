@@ -39,7 +39,7 @@
 - **`schedule_event_teachers`**：被 `/api/schedule/events` GET 的 `teachers:schedule_event_teachers(*)` join 著，配課表新增/編輯時段可寫入授課老師。直接 DROP 會讓配課表查詢爆掉——要砍必須先移除該 join 與 UI。
 
 7. **出席重構：`payment_bag_line_sessions` 成為點名單一事實來源（2026-06-21）。**
-   Migration `supabase/migrations/20260621000001_attendance_redesign.sql` 需手動套用：
+   Migration `supabase/migrations/20260621000001_attendance_redesign.sql` 已套用（2026-06-21）：
    - `slot_index` 改為可 NULL（補課行無 slot）；partial unique index `uix_line_slot`。
    - 新欄位：`is_billable BOOLEAN NOT NULL DEFAULT TRUE`、`makeup_for_session_id UUID`、`attendance_status TEXT`、`absence_resolution TEXT`、`attendance_note TEXT`、`attendance_updated_at TIMESTAMPTZ`。
    - `session_kind` CHECK 擴充含 `'makeup'`。
@@ -54,7 +54,7 @@
    - 欄位：`id UUID PK`、`tenant_id UUID FK tenants`、`category TEXT CHECK IN ('tuition','book','misc','discount')`、`label TEXT`、`amount NUMERIC DEFAULT 0`、`status TEXT DEFAULT 'active'`。
    - UNIQUE `(tenant_id, category, label)`；RLS policy 允許 `authenticated` 依 `profiles.tenant_id` 管理自己 tenant 的資料。
    - 前端 Step 2 費用資料庫 CRUD：`GET/POST/DELETE /api/billing/fee-items`（`lib/billing/service.ts` 中 `listBillingFeeCatalog` / `saveBillingFeeCatalogItem` / `deleteBillingFeeCatalogItem`）。
-   - **待補**：尚未加 `zz_audit` trigger。需在 SQL Editor 執行（見 migration 檔案底部的注解步驟）。
+   - `zz_audit` trigger 已補掛（`EXECUTE FUNCTION audit_trigger()`，2026-06-21）。
 
 ## 已知缺口 / 殭屍欄位（不是 bug，是待補）
 
