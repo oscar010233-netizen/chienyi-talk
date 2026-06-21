@@ -9,6 +9,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  Database,
   Loader2,
   ReceiptText,
   RefreshCw,
@@ -34,7 +35,7 @@ import type {
   OpenBagStudentInput,
 } from '@/lib/billing/types'
 
-type TabKey = 'holidays' | 'open'
+type TabKey = 'holidays' | 'open' | 'fees'
 type Message = { tone: 'ok' | 'error' | 'idle'; text: string }
 type FeeRowDraft = { preset?: string; note: string; amount: string }
 type AdjustmentDraft = { name: string; amount: string }
@@ -712,11 +713,12 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   return (
     <div className="flex h-full flex-col overflow-y-auto">
       <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-3 md:px-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold tracking-tight text-foreground">帳務</h1>
-          <div className="flex items-center gap-1.5">
+          <div className="flex flex-wrap items-center justify-end gap-1.5">
             <TabButton active={tab === 'holidays'} onClick={() => setTab('holidays')} icon={<CalendarDays size={14} />}>季度放假</TabButton>
             <TabButton active={tab === 'open'} onClick={() => setTab('open')} icon={<ReceiptText size={14} />}>開袋</TabButton>
+            <TabButton active={tab === 'fees'} onClick={() => setTab('fees')} icon={<Database size={14} />}>費用項目庫</TabButton>
           </div>
         </div>
         {message.text && (
@@ -858,6 +860,84 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
               </section>
             )
           })()}
+        </main>
+      )}
+
+
+      {tab === 'fees' && (
+        <main className="grid gap-4 p-4 md:p-6">
+          <section className="overflow-hidden rounded-lg border border-border bg-background">
+            <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <div>
+                <h2 className="text-sm font-semibold">費用項目庫</h2>
+                <p className="mt-0.5 text-xs text-muted-foreground">集中管理開袋時可重複選用的學費、教材費、雜費與折扣。</p>
+              </div>
+              {feeCatalogBusy && <Loader2 size={15} className="animate-spin text-muted-foreground" />}
+            </div>
+
+            <div className="border-b border-border bg-muted/20 p-4">
+              <div className="grid gap-2 md:grid-cols-[130px_minmax(180px,1fr)_140px_auto]">
+                <select value={feeItemCategory} onChange={(event) => setFeeItemCategory(event.target.value as BillingFeeCategory)} className={inputClass}>
+                  {(Object.entries(feeCategoryLabels) as Array<[BillingFeeCategory, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+                <input
+                  value={feeItemLabel}
+                  onChange={(event) => setFeeItemLabel(event.target.value)}
+                  placeholder="費用名稱，例如：課本、講義、兄弟折扣"
+                  className={inputClass}
+                />
+                <input value={feeItemAmount} onChange={(event) => setFeeItemAmount(event.target.value)} inputMode="numeric" placeholder="預設金額" className={inputClass} />
+                <div className="flex items-center gap-1.5">
+                  {editingFeeItemId && <button type="button" onClick={() => beginNewFeeItem()} className={buttonBase} disabled={feeCatalogBusy}>取消編輯</button>}
+                  <button type="button" onClick={saveFeeItem} className={primaryButton} disabled={feeCatalogBusy || !feeItemLabel.trim()}>
+                    <Save size={13} />
+                    {editingFeeItemId ? '更新' : '新增項目'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {feeCatalog.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-[620px] w-full border-separate border-spacing-0 text-sm">
+                  <thead>
+                    <tr className="text-xs text-muted-foreground">
+                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">分類</th>
+                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">名稱</th>
+                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">預設金額</th>
+                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {feeCatalog.map((item) => (
+                      <tr key={item.id} className="transition-colors hover:bg-muted/30">
+                        <td className="border-b border-border px-4 py-3 text-xs text-muted-foreground">{feeCategoryLabels[item.category]}</td>
+                        <td className="border-b border-border px-4 py-3 font-medium">{item.label}</td>
+                        <td className="border-b border-border px-4 py-3 text-right tabular-nums">{formatMoney(item.amount)}</td>
+                        <td className="border-b border-border px-4 py-3">
+                          <div className="flex justify-end gap-1.5">
+                            <button type="button" onClick={() => editFeeItem(item)} className={buttonBase} disabled={feeCatalogBusy}>編輯</button>
+                            <button type="button" onClick={() => deleteFeeItem(item)} className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-muted-foreground transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-600 disabled:pointer-events-none disabled:opacity-50" disabled={feeCatalogBusy}>
+                              <Trash2 size={12} />
+                              刪除
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : !feeCatalogBusy && (
+              <div className="grid min-h-48 place-items-center px-4 py-8 text-center">
+                <div>
+                  <Database size={22} className="mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">目前沒有費用項目</p>
+                  <p className="mt-1 text-xs text-muted-foreground">使用上方表單建立第一筆項目。</p>
+                </div>
+              </div>
+            )}
+          </section>
         </main>
       )}
 
@@ -1039,47 +1119,6 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
             {openStep === 2 && (
               <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
-                <section className="rounded-lg border border-border bg-background p-4 lg:col-span-2">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="text-sm font-semibold">費用資料庫</h3>
-                      <p className="mt-0.5 text-xs text-muted-foreground">每筆只記一種費用；下方各費用列可自行從對應的下拉選單帶入。</p>
-                    </div>
-                    {feeCatalogBusy && <Loader2 size={15} className="animate-spin text-muted-foreground" />}
-                  </div>
-                  <div className="grid gap-2 md:grid-cols-[130px_minmax(180px,1fr)_120px_auto]">
-                    <select value={feeItemCategory} onChange={(event) => setFeeItemCategory(event.target.value as BillingFeeCategory)} className={inputClass}>
-                      {(Object.entries(feeCategoryLabels) as Array<[BillingFeeCategory, string]>).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                    </select>
-                    <input
-                      value={feeItemLabel}
-                      onChange={(event) => setFeeItemLabel(event.target.value)}
-                      placeholder="費用名稱，例如：課本、講義、兄弟折扣"
-                      className={inputClass}
-                    />
-                    <input value={feeItemAmount} onChange={(event) => setFeeItemAmount(event.target.value)} inputMode="numeric" placeholder="預設金額" className={inputClass} />
-                    <div className="flex items-center gap-1.5">
-                      {editingFeeItemId && <button type="button" onClick={() => beginNewFeeItem()} className={buttonBase} disabled={feeCatalogBusy}>取消編輯</button>}
-                      <button type="button" onClick={saveFeeItem} className={primaryButton} disabled={feeCatalogBusy || !feeItemLabel.trim()}>
-                        <Save size={13} />
-                        {editingFeeItemId ? '更新' : '加入資料庫'}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {feeCatalog.map((item) => (
-                      <div key={item.id} className="inline-flex items-center overflow-hidden rounded-md border border-border bg-muted/20 text-xs">
-                        <button type="button" onClick={() => editFeeItem(item)} className="px-2 py-1.5 hover:bg-muted">
-                          <span className="text-muted-foreground">{feeCategoryLabels[item.category]}</span>　{item.label}　{formatMoney(item.amount)}
-                        </button>
-                        <button type="button" onClick={() => deleteFeeItem(item)} className="border-l border-border px-1.5 py-1.5 text-muted-foreground hover:bg-red-50 hover:text-red-600" title="刪除">
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
-                    {!feeCatalogBusy && feeCatalog.length === 0 && <span className="text-xs text-muted-foreground">資料庫目前沒有費用項目</span>}
-                  </div>
-                </section>
                 <section className="rounded-lg border border-border bg-muted/20 p-4">
                   <div className="grid gap-2 text-sm">
                     <SummaryLine label="團課" value={`${teamDates.size} 堂`} />
