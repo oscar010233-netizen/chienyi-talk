@@ -168,9 +168,6 @@ function MobileSlotCard({
           className="min-w-0 flex-1 text-left"
         >
           <span className="block truncate font-medium text-foreground">{lessonTitle}</span>
-          {slot.lessonConflict && (
-            <span className="block text-[10px] font-semibold text-amber-600 dark:text-amber-400">⚠ 課數衝突</span>
-          )}
           {billabilityNote && (
             <span className="block text-[10px] text-muted-foreground/60">{billabilityNote}</span>
           )}
@@ -346,17 +343,23 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   /**
    * 依課數模式使用的排列。
-   * withLesson: 有明確/計算課數的場次，依 lessonNumber asc 排序。
+   * lessonGroups: 有明確/計算課數的場次，依 lessonNumber 分組後排序。
    * withoutLesson: 不計費或帳務未知場次（無法推算課數），放在未編課區。
    * sessionSlots 本身保持日期排序供 by-date 模式使用。
    */
-  const { lessonSlots, unlessoned } = useMemo(() => {
-    const lessonSlots = sessionSlots
-      .filter((s) => s.lessonNumber !== null)
-      .slice()
-      .sort((a, b) => (a.lessonNumber ?? 0) - (b.lessonNumber ?? 0))
+  const { lessonGroups, unlessoned } = useMemo(() => {
+    const groupMap = new Map<number, { lessonNumber: number; lesson_label: string | null; slots: SessionSlot[] }>()
+    for (const slot of sessionSlots) {
+      if (slot.lessonNumber !== null) {
+        if (!groupMap.has(slot.lessonNumber)) {
+          groupMap.set(slot.lessonNumber, { lessonNumber: slot.lessonNumber, lesson_label: slot.lesson_label, slots: [] })
+        }
+        groupMap.get(slot.lessonNumber)!.slots.push(slot)
+      }
+    }
+    const lessonGroups = Array.from(groupMap.values()).sort((a, b) => a.lessonNumber - b.lessonNumber)
     const unlessoned = sessionSlots.filter((s) => s.lessonNumber === null)
-    return { lessonSlots, unlessoned }
+    return { lessonGroups, unlessoned }
   }, [sessionSlots])
 
   const handleModalClose = (refresh?: boolean) => {
@@ -698,7 +701,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     )
   }
 
-  // ── By-lesson mode (sorted by lessonNumber, unlessoned grouped at bottom) ─
+  // ── By-lesson mode (grouped by lessonNumber, unlessoned grouped at bottom) ─
 
   function renderByLesson() {
     const renderLessonSlot = (slot: SessionSlot) => {
@@ -708,12 +711,10 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         : 'border-l-sky-300 dark:border-l-sky-500/50'
       const dateLabel = slot.session_date.slice(5).replace('-', '/')
       const kindLabel = isIntensive ? '強' : '團'
-      const lessonTitle = slot.lesson_label ?? `第 ${slot.lessonNumber} 課`
       const hasAtt = slot.attendanceByStudent.size > 0
 
       return (
         <Fragment key={slot.sessionKey}>
-          {/* Lesson header — attendance is secondary */}
           <tr className="group">
             <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] bg-muted/40 px-4 py-2.5 transition-colors group-hover:bg-muted/60', borderColor)}>
               <div className="flex min-w-0 items-center gap-2">
@@ -721,17 +722,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                   {kindLabel}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-center gap-1.5">
-                    <p className="truncate font-semibold text-foreground">{lessonTitle}</p>
-                    {slot.lessonConflict && (
-                      <span className="shrink-0 rounded bg-amber-100 px-1 py-0.5 text-[10px] font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-400">
-                        ⚠ 衝突
-                      </span>
-                    )}
-                  </div>
+                  <p className="truncate font-semibold text-foreground">{dateLabel}</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {dateLabel}
-                    {slot.lessonConflict && ' · 課數衝突，請修正 lesson_label'}
                     {slot.isBillable === null && ' · 尚未開袋'}
                     {slot.isBillable === false && ' · 不計費'}
                   </p>
@@ -792,7 +784,19 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
     return (
       <>
-        {lessonSlots.map(renderLessonSlot)}
+        {lessonGroups.map((group) => (
+          <Fragment key={group.lessonNumber}>
+            <tr>
+              <td
+                colSpan={students.length + 2}
+                className="border-b border-border bg-muted/50 px-4 py-1.5 text-xs font-semibold text-foreground"
+              >
+                {group.lesson_label ?? `第 ${group.lessonNumber} 課`}
+              </td>
+            </tr>
+            {group.slots.map(renderLessonSlot)}
+          </Fragment>
+        ))}
 
         {/* Unlessoned: non-billable or billing-unknown slots */}
         {unlessoned.length > 0 && (
@@ -968,7 +972,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
               <p className="py-10 text-center text-sm text-muted-foreground">還沒有課程資料，請先開袋</p>
             ) : (
               <>
-                {(viewMode === 'by-date' ? sessionSlots : [...lessonSlots, ...unlessoned]).map((slot) => (
+                {(viewMode === 'by-date' ? sessionSlots : [...lessonGroups.flatMap((group) => group.slots), ...unlessoned]).map((slot) => (
                   <MobileSlotCard
                     key={slot.sessionKey}
                     slot={slot}

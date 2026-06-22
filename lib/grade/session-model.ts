@@ -14,11 +14,6 @@ export interface SessionSlot {
   /** task.lesson_label 原始字串 */
   lesson_label: string | null
   /**
-   * 同一個明確課數被兩個以上場次共用時為 true。
-   * UI 應顯示衝突提示，不可靜默改為 null。
-   */
-  lessonConflict: boolean
-  /**
    * true  = 有出席紀錄且至少一位學生 is_billable
    * false = 有出席紀錄但全部不計費（停課等）
    * null  = 無出席紀錄（僅來自 class_tasks），帳務狀態未知
@@ -157,7 +152,7 @@ export function buildSessionSlots(
     return a.session_kind === 'intensive' ? 1 : -1
   })
 
-  // ── Lesson number assignment — three phases ──────────────────────────────
+  // ── Lesson number assignment — two phases ────────────────────────────────
   //
   // Phase 1 — Pre-scan: collect all explicit lesson numbers as reserved set.
   //   Prevents fallback from occupying a number that belongs to an explicit slot
@@ -175,11 +170,6 @@ export function buildSessionSlots(
   //      → No lesson number (lessonNumber = null).
   //      → Task-only slots WITH explicit label are handled by case (a).
   //
-  // Phase 3 — Conflict detection (post-pass):
-  //   If two or more slots share the same explicit lesson number, all of them
-  //   get lessonConflict = true. The number is preserved on all; only the UI
-  //   adds a warning — nothing is silently discarded.
-
   // Phase 1
   const reservedNumbers = new Set<number>()
   for (const s of raw) {
@@ -234,23 +224,12 @@ export function buildSessionSlots(
     return { ...s, lessonNumber, lesson_label, isExplicit }
   })
 
-  // Phase 3: mark conflicts on ALL slots sharing the same explicit number
-  const explicitCount = new Map<number, number>()
-  for (const s of intermediate) {
-    if (s.isExplicit && s.lessonNumber !== null) {
-      explicitCount.set(s.lessonNumber, (explicitCount.get(s.lessonNumber) ?? 0) + 1)
-    }
-  }
-
   const slots: SessionSlot[] = intermediate.map((s) => ({
     sessionKey: s.sessionKey,
     session_date: s.session_date,
     session_kind: s.session_kind,
     lessonNumber: s.lessonNumber,
     lesson_label: s.lesson_label,
-    lessonConflict: s.isExplicit && s.lessonNumber !== null
-      ? (explicitCount.get(s.lessonNumber) ?? 0) > 1
-      : false,
     isBillable: s.isBillable,
     attendanceByStudent: s.attendanceByStudent,
     makeupsByStudent: s.makeupsByStudent,

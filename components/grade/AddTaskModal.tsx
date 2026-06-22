@@ -10,6 +10,7 @@ interface TaskRow {
   task_type: TaskType
   task_name: string
   threshold: string
+  lesson: string
 }
 
 interface Props {
@@ -65,6 +66,7 @@ export function AddTaskModal({ classId, onClose }: Props) {
       task_type: type,
       task_name: defaultName(type, prev),
       threshold: '',
+      lesson: '',
     }])
   }
 
@@ -90,6 +92,7 @@ export function AddTaskModal({ classId, onClose }: Props) {
             task_type: r.task_type,
             task_name: r.task_name.trim() || TYPE_LABEL[r.task_type],
             threshold: r.task_type === 'quiz' ? r.threshold : null,
+            ...(r.lesson ? { lesson_label: `L${r.lesson}` } : {}),
           })),
         }),
       })
@@ -162,6 +165,13 @@ export function AddTaskModal({ classId, onClose }: Props) {
                     value={row.task_name}
                     onChange={e => update(row.id, { task_name: e.target.value })}
                     className="h-8 min-w-0 flex-1 rounded-md border border-border px-2 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15 dark:bg-transparent"
+                  />
+                  <input
+                    type="number"
+                    value={row.lesson}
+                    onChange={e => update(row.id, { lesson: e.target.value })}
+                    placeholder="Lesson"
+                    className="h-8 w-16 shrink-0 rounded-md border border-border px-2 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15 dark:bg-transparent"
                   />
                   {row.task_type === 'quiz' && (
                     <input

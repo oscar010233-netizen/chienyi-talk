@@ -29,8 +29,10 @@ export function MakeupMarkModal({ makeupRow, studentName, bagId, onClose }: Prop
   const [selected, setSelected] = useState<MakeupStatus | undefined>(
     currentStatus === null ? undefined : currentStatus
   )
+  const [nextMakeupDate, setNextMakeupDate] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const [warning, setWarning] = useState('')
 
   const makeupDate = makeupRow.session_date
     ? makeupRow.session_date.slice(5).replace('-', '/')
@@ -38,13 +40,15 @@ export function MakeupMarkModal({ makeupRow, studentName, bagId, onClose }: Prop
 
   // selected === undefined means user hasn't picked anything yet
   const hasPick = selected !== undefined
+  const shouldShowNextMakeupDate = selected === 'absent' || selected === 'cancelled'
 
   async function handleSave() {
     if (!hasPick) return
     setSaving(true)
     setError('')
+    setWarning('')
     try {
-      const res = await fetch('/api/attendance/makeup', {
+      const patchRes = await fetch('/api/attendance/makeup', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -53,10 +57,32 @@ export function MakeupMarkModal({ makeupRow, studentName, bagId, onClose }: Prop
           bag_id: bagId,
         }),
       })
-      if (!res.ok) {
-        const data = await res.json() as { error?: string }
+      if (!patchRes.ok) {
+        const data = await patchRes.json() as { error?: string }
         throw new Error(data.error ?? '儲存失敗')
       }
+      if (nextMakeupDate) {
+        if (!makeupRow.makeup_for_session_id) {
+          setWarning('此筆補課沒有對應原課程，已略過下次補課日期安排。')
+          onClose(true)
+          return
+        }
+
+        const postRes = await fetch('/api/attendance/makeup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            original_row_id: makeupRow.makeup_for_session_id,
+            makeup_date: nextMakeupDate,
+            bag_id: bagId,
+          }),
+        })
+        if (!postRes.ok) {
+          const data = await postRes.json() as { error?: string }
+          throw new Error(data.error ?? '安排下次補課日期失敗')
+        }
+      }
+
       onClose(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : '儲存失敗')
@@ -93,7 +119,10 @@ export function MakeupMarkModal({ makeupRow, studentName, bagId, onClose }: Prop
               <button
                 key={String(opt.value)}
                 type="button"
-                onClick={() => setSelected(opt.value)}
+                onClick={() => {
+                  setSelected(opt.value)
+                  setWarning('')
+                }}
                 className={cn(
                   'h-10 flex-1 min-w-[4rem] rounded-md text-sm font-semibold transition-colors',
                   isActive ? opt.active : opt.inactive,
@@ -106,6 +135,23 @@ export function MakeupMarkModal({ makeupRow, studentName, bagId, onClose }: Prop
         </div>
 
         <div className="border-t border-border px-4 py-3">
+          {shouldShowNextMakeupDate && (
+            <div className="mb-3">
+              <p className="mb-1.5 text-xs text-muted-foreground">
+                標記為未到/取消後，可安排下次補課日期（選填）
+              </p>
+              <input
+                type="date"
+                value={nextMakeupDate}
+                onChange={e => {
+                  setNextMakeupDate(e.target.value)
+                  setWarning('')
+                }}
+                className="h-9 w-full rounded border border-orange-200 bg-orange-50 px-2 text-sm text-orange-900 dark:border-orange-800 dark:bg-orange-950/40 dark:text-orange-100"
+              />
+            </div>
+          )}
+          {warning && <p className="mb-2 text-xs text-amber-600 dark:text-amber-400">{warning}</p>}
           {error && <p className="mb-2 text-xs text-red-500">{error}</p>}
           <div className="flex justify-end gap-2">
             <button
