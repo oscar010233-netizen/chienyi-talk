@@ -124,7 +124,7 @@ export function TaskUpdateDrawer({ task, student, record, classDepartment, onClo
               <span className="ml-1.5 text-sm font-normal text-muted-foreground">{student.english_name}</span>
             </p>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">
-              {[task.week_label, task.lesson_label, task.task_name].filter(Boolean).join(' · ') || '未命名任務'}
+              {[task.lesson_label, task.task_name].filter(Boolean).join(' · ') || '未命名任務'}
             </p>
           </div>
           <button type="button" onClick={() => onClose()} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">

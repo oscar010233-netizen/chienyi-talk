@@ -16,7 +16,8 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith('/api/rooms') ||
       pathname.startsWith('/api/schedule') ||
       pathname.startsWith('/api/classes') ||
-      pathname.startsWith('/api/season-plan') ||
+      pathname.startsWith('/api/tasks') ||
+      pathname.startsWith('/api/task-templates') ||
       pathname.startsWith('/api/profiles') ||
       pathname.startsWith('/api/day-entries')
     )

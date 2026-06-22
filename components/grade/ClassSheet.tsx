@@ -4,11 +4,10 @@ import { Fragment, useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, CalendarDays, ChevronDown, ChevronUp,
-  ClipboardCheck, Kanban, Plus, ReceiptText, Send, Trash2, UserPlus,
+  ClipboardCheck, Kanban, ReceiptText, Send, Trash2, UserPlus,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
-import { AddTaskModal } from './AddTaskModal'
 import { AttendanceModal } from './AttendanceModal'
 import { EnrollStudentModal } from './EnrollStudentModal'
 import { LampBadge } from './LampBadge'
@@ -74,7 +73,7 @@ function avatarColor(seed: string): string {
 }
 
 function taskMeta(task: Task) {
-  return [task.week_label, task.lesson_label].filter(Boolean).join(' ')
+  return [task.lesson_label].filter(Boolean).join(' ')
 }
 
 function thresholdText(task: Task) {
@@ -315,7 +314,6 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   const [selected, setSelected] = useState<SelectedCell | null>(null)
   const [dispatching, setDispatching] = useState(false)
   const [dispatchMsg, setDispatchMsg] = useState('')
-  const [showAddTask, setShowAddTask] = useState(false)
   const [showEnroll, setShowEnroll] = useState(false)
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
   const [attendanceSlot, setAttendanceSlot] = useState<SessionSlot | null>(null)
@@ -363,7 +361,6 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   }, [sessionSlots])
 
   const handleModalClose = (refresh?: boolean) => {
-    setShowAddTask(false)
     setShowEnroll(false)
     if (refresh) router.refresh()
   }
@@ -937,9 +934,6 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         <button type="button" onClick={() => setShowEnroll(true)} className={toolButton}>
           <UserPlus size={14} />加學生
         </button>
-        <button type="button" onClick={() => setShowAddTask(true)} className={toolButton}>
-          <Plus size={14} />加任務
-        </button>
         <button type="button" onClick={handleDispatch} disabled={dispatching} className={toolButton}>
           <Send size={14} />{dispatching ? '派發中' : '派發'}
         </button>
@@ -1091,14 +1085,6 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           record={selected.record}
           classDepartment={cls.department}
           onClose={handleClose}
-        />
-      )}
-
-      {showAddTask && (
-        <AddTaskModal
-          classId={cls.id}
-          classDepartment={cls.department}
-          onClose={handleModalClose}
         />
       )}
 

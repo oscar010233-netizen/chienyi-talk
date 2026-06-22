@@ -23,7 +23,6 @@ const RECORD_COLUMNS = `
     id,
     task_type,
     task_name,
-    week_label,
     lesson_label,
     threshold_value,
     threshold_text,
@@ -69,7 +68,6 @@ interface JoinedRecord {
     id: string
     task_type: string | null
     task_name: string | null
-    week_label: string | null
     lesson_label: string | null
     threshold_value: number | null
     threshold_text: string | null
@@ -101,9 +99,7 @@ function thresholdText(record: JoinedRecord) {
 }
 
 function weekText(record: JoinedRecord) {
-  return [record.class_task?.week_label, record.class_task?.lesson_label]
-    .filter(Boolean)
-    .join(' ')
+  return record.class_task?.lesson_label ?? null
 }
 
 function mapRecord(record: JoinedRecord) {

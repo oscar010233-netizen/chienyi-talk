@@ -28,7 +28,6 @@ interface TaskRecord {
     id: string
     task_type: TaskType
     task_name: string | null
-    week_label: string | null
     lesson_label: string | null
     threshold_value: number | null
     max_score: number | null
@@ -95,7 +94,7 @@ function compactClassName(record: TaskRecord) {
 }
 
 function weekLesson(record: TaskRecord) {
-  return [record.class_task?.week_label, record.class_task?.lesson_label].filter(Boolean).join(' ')
+  return record.class_task?.lesson_label ?? ''
 }
 
 function thresholdText(record: TaskRecord) {

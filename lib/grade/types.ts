@@ -37,7 +37,8 @@ export interface Task {
   id: string
   tenant_id: string
   class_id: string
-  week_label: string | null
+  bag_id: string | null
+  slot_index: number | null
   lesson_label: string | null
   task_type: TaskType
   task_name: string | null
@@ -45,15 +46,20 @@ export interface Task {
   max_score: number | null
   threshold_text: string | null
   display_order: number | null
-  bag_id: string | null
-  session_date: string | null
-  session_kind: 'team' | 'intensive' | null
 }
 
-export interface SeasonSession {
-  session_date: string
-  session_kind: 'team' | 'intensive'
-  tasks: Partial<Record<TaskType, Task>>
+export interface TaskTemplate {
+  id: string
+  tenant_id: string
+  name: string
+}
+
+export interface TaskTemplateItem {
+  id: string
+  template_id: string
+  task_type: TaskType
+  session_position: 'S1' | 'S2'
+  sort_order: number
 }
 
 export interface TaskRecord {

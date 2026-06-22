@@ -1,6 +1,6 @@
 # DB 現況與約定（給後續 AI agent / 開發者）
 
-> 最後更新：2026-06-21。本檔記錄「光看 schema 看不出來」的真相，動 DB 或寫程式前先讀。
+> 最後更新：2026-06-23。本檔記錄「光看 schema 看不出來」的真相，動 DB 或寫程式前先讀。
 > Schema 欄位清單的單一事實來源在 `lib/db/schema.ts`，並可在前端 `/db` 頁即時檢視。
 
 ## 近期已執行的變更
@@ -21,7 +21,7 @@
 
 5. **`default_attendance.source` 欄位已 DROP。**
    原意是記錄 session 由 weekday1 或 weekday2 產生，但實際值全為 `'generated'`，沒有區分意義。
-   判斷 session 類型改用 `original_date` 的星期幾比對 `classes.weekday1`/`weekday2`（見 `app/api/season-plan/route.ts`）。
+   判斷 session 類型曾改用 `original_date` 的星期幾比對 `classes.weekday1`/`weekday2`；舊 `/api/season-plan` 已於 2026-06-22 移除。
 
 6. **`default_attendance` 表已 DROP（2026-06-20）。**
    `class_tasks` 現在改以 `bag_id + session_date + session_kind` 識別出席 session，不再依賴 `default_attendance_id`。
@@ -32,6 +32,17 @@
 
 6. **`/api/task-records` PATCH 不再接受 `status` / `lamp`。**
    狀態變更一律走 `/api/reinforcement/tasks`（內含 `resolveTaskSubmission` 狀態機）。`/api/task-records` 只能改 latest_result / result_history / teacher_note / comment_text / comment_status。
+
+7. **`class_tasks` 改用 `slot_index` 定位；`session_date` / `session_kind` / `week_label` 已 DROP（2026-06-23）。**
+   `class_tasks` 現在以 `bag_id + slot_index`（對應 `payment_bag_line_sessions.slot_index`）定位「哪一堂課」，`lesson_label` 只負責「屬於哪一課」的顯示分組。三個舊欄位（過渡/遺留）已從 live DB 移除。
+   - 透過 Supabase SQL Editor 分兩步套用：Step 1 先 `ADD slot_index` 並從 `payment_bag_line_sessions` 回填（以 `bag_id`+`session_date`+`session_kind` 對應）；Step 2 才 DROP 舊欄位。對應 migration 檔 `supabase/migrations/20260622000001_class_tasks_slot_index_and_templates.sql`。
+   - 回填零失敗：DROP 當下表內僅 2 筆任務（皆非 attendance、attendance 任務 0 筆），有 bag 的皆成功回填，唯一 1 筆 `slot_index IS NULL` 是無 bag 的 orphan task。
+   - **救援來源**：`audit_log` 仍保留 DROP 前的快照——64 筆 class_tasks 快照中 38 筆含舊 `session_date`/`session_kind`、64 筆含 `week_label`，必要時可由此重建。
+   - `task_type='attendance'` 不再新建（出席事實在 `payment_bag_line_sessions`）。
+
+8. **新增 `class_task_templates` + `class_task_template_items` 兩張表（2026-06-23）。**
+   整季計畫的「任務模板」（老師可存常用任務組合，於各 session 快速帶入）。`template_items` 有 `task_type`(CHECK in homework/practice/quiz/comment/progress) + `session_position`(CHECK in S1/S2) + `sort_order`，`ON DELETE CASCADE` 綁 template。
+   兩表皆已 `ENABLE ROW LEVEL SECURITY`、各 1 條 tenant 隔離 policy（`tenant_id = (SELECT tenant_id FROM profiles WHERE id = auth.uid())`）、各 1 個 `zz_audit` 觸發器，與其他業務表一致。API 在 `app/api/task-templates/route.ts`。
 
 ## 不能動的東西
 
@@ -55,6 +66,15 @@
    - UNIQUE `(tenant_id, category, label)`；RLS policy 允許 `authenticated` 依 `profiles.tenant_id` 管理自己 tenant 的資料。
    - 前端 Step 2 費用資料庫 CRUD：`GET/POST/DELETE /api/billing/fee-items`（`lib/billing/service.ts` 中 `listBillingFeeCatalog` / `saveBillingFeeCatalogItem` / `deleteBillingFeeCatalogItem`）。
    - `zz_audit` trigger 已補掛（`EXECUTE FUNCTION audit_trigger()`，2026-06-21）。
+
+9. **`class_tasks` schema 清理（2026-06-22）。**
+   - 移除 `session_date`、`session_kind`、`week_label` 欄位。
+   - 新增 `slot_index INTEGER`，與 `payment_bag_line_sessions.slot_index` 語義對應
+     （`bag_id + slot_index` 唯一定位一堂課，無 FK constraint，概念 join）。
+   - 新增 `class_task_templates` + `class_task_template_items` 模板表。
+   - 舊 `task_type='attendance'` 歷史資料保留不刪，app 停止建立新的。
+   - 刪除：`SeasonPlanSheet.tsx`、`/api/season-plan`、`AddTaskModal.tsx`。
+   - 新建：`PlanSheet.tsx`（整季計畫重寫）、`/api/task-templates`。
 
 ## 已知缺口 / 殭屍欄位（不是 bug，是待補）
 

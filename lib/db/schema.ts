@@ -16,7 +16,9 @@ export const DB_TABLES: TableMeta[] = [
   { name: 'classes', group: '班級', columns: ['id', 'tenant_id', 'class_name', 'class_code', 'department', 'level', 'class_type', 'weekday1', 'weekday2', 'system_sessions', 'status', 'created_at', 'updated_at'] },
   { name: 'students', group: '班級', columns: ['id', 'tenant_id', 'chinese_name', 'english_name', 'status', 'school', 'grade', 'note', 'parent_name', 'parent_phone', 'created_at', 'updated_at'] },
   { name: 'class_enrollments', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'student_id', 'status', 'slot_order', 'joined_at', 'left_at', 'created_at', 'updated_at'] },
-  { name: 'class_tasks', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'bag_id', 'session_date', 'session_kind', 'week_label', 'lesson_label', 'task_type', 'task_name', 'threshold_value', 'max_score', 'threshold_text', 'display_order', 'status', 'created_at', 'updated_at'] },
+  { name: 'class_tasks', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'bag_id', 'slot_index', 'lesson_label', 'task_type', 'task_name', 'threshold_value', 'max_score', 'threshold_text', 'display_order', 'status', 'created_at', 'updated_at'] },
+  { name: 'class_task_templates', group: '班級', columns: ['id', 'tenant_id', 'name', 'created_at', 'updated_at'] },
+  { name: 'class_task_template_items', group: '班級', columns: ['id', 'tenant_id', 'template_id', 'task_type', 'session_position', 'sort_order', 'created_at'] },
   { name: 'student_task_records', group: '班級', columns: ['id', 'tenant_id', 'class_task_id', 'student_id', 'status', 'latest_result', 'result_history', 'teacher_note', 'comment_text', 'comment_status', 'created_at', 'updated_at'] },
 
   { name: 'rooms', group: '配課表', columns: ['id', 'tenant_id', 'name', 'room_type', 'display_order', 'status', 'created_at', 'updated_at'] },
@@ -83,15 +85,16 @@ export const COL_LABELS: Record<string, string> = {
 
   // class_tasks
   bag_id: '帳袋',
-  session_date: '課堂日期',
-  session_kind: '課型',
-  week_label: '週標',
   lesson_label: '課標',
   task_type: '任務類型',
   task_name: '任務名稱',
   threshold_value: '門檻值',
   max_score: '滿分',
   threshold_text: '門檻文字',
+
+  // class_task_templates
+  template_id: '模板',
+  session_position: '堂位',
 
   // student_task_records
   class_task_id: '課程任務',
@@ -162,7 +165,7 @@ export const COL_LABELS: Record<string, string> = {
 
   // payment_bag_line_sessions
   line_id: '帳行',
-  slot_index: '槽位索引',
+  slot_index: '堂次',
   session_order: '課堂順序',
   legacy_mmdd: '舊月日',
   is_unscheduled: '未排課',

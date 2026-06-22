@@ -78,14 +78,16 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
       .order('slot_order'),
     supabase
       .from('class_tasks')
-      .select('id, tenant_id, class_id, bag_id, session_date, session_kind, week_label, lesson_label, task_type, task_name, threshold_value, max_score, threshold_text, display_order')
+      .select('id, tenant_id, class_id, bag_id, slot_index, lesson_label, task_type, task_name, threshold_value, max_score, threshold_text, display_order')
       .eq('class_id', classRow.id)
+      .eq('tenant_id', classRow.tenant_id)
       .neq('task_type', 'attendance')
       .order('display_order'),
     supabase
       .from('payment_bags')
       .select('id')
       .eq('class_id', classRow.id)
+      .eq('tenant_id', classRow.tenant_id)
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
@@ -100,6 +102,7 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
       .from('payment_bag_lines')
       .select('id')
       .eq('bag_id', bag.id)
+      .eq('tenant_id', classRow.tenant_id)
     const lineIds = (lineRows ?? []).map((r: { id: string }) => r.id)
 
     if (lineIds.length > 0) {
@@ -109,6 +112,7 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
           'id, line_id, student_id, slot_index, session_kind, session_date, is_billable, attendance_status, absence_resolution, attendance_note, makeup_for_session_id'
         )
         .in('line_id', lineIds)
+        .eq('tenant_id', classRow.tenant_id)
         .order('session_date', { ascending: true })
         .order('slot_index', { ascending: true, nullsFirst: false })
 
@@ -117,9 +121,9 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
       // Build deduplicated ClassSession list (for backward compat with other parts)
       const seen = new Set<string>()
       sessions = sessionRows
-        .filter((r) => r.session_kind !== 'makeup' && r.session_date)
+        .filter((r) => r.session_kind !== 'makeup' && r.session_date && r.slot_index !== null)
         .filter((r) => {
-          const key = `${r.session_date}:${r.session_kind}`
+          const key = String(r.slot_index)
           if (seen.has(key)) return false
           seen.add(key)
           return true
@@ -137,6 +141,7 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
     ? await supabase
         .from('student_task_records')
         .select('id, tenant_id, student_id, class_task_id, status, latest_result, result_history, comment_text, comment_status, teacher_note, updated_at')
+        .eq('tenant_id', classRow.tenant_id)
         .in('class_task_id', taskIds)
     : { data: [] }
 

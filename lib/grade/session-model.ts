@@ -2,6 +2,7 @@ import type { ClassSessionRow, Task } from './types'
 
 export interface SessionSlot {
   sessionKey: string
+  slot_index: number | null
   session_date: string
   session_kind: 'team' | 'intensive'
   /**
@@ -26,11 +27,8 @@ export interface SessionSlot {
 
 export interface SessionModelGaps {
   /**
-   * 偵測到同日同種 (session_date + session_kind) 下，
-   * 同一位學生擁有超過一筆 non-makeup row，代表同日兩堂相同種類的課。
-   * 現有 key 策略 (session_date:session_kind) 無法區分它們，場次會被合併。
-   * 若需支援，需要 stable per-session identifier 同時涵蓋出席與任務兩側
-   * （目前無 migration，本版不宣稱支援）。
+   * 保留舊欄位名稱供相容使用。
+   * 目前仍偵測同日同種下的重複 non-makeup row，方便標記歷史排程異常。
    */
   sameDayKindConflict: boolean
 }
@@ -56,14 +54,13 @@ export function buildSessionSlots(
   sessionRows: ClassSessionRow[],
   tasks: Task[],
 ): SessionModelResult {
-  // ── Gap detection ────────────────────────────────────────────────────────
   const sameDayKindConflict = detectSameDayKindConflict(sessionRows)
 
-  // ── Build raw attendance slot map ────────────────────────────────────────
   const rowById = new Map<string, ClassSessionRow>()
   for (const row of sessionRows) rowById.set(row.id, row)
 
-  const slotMap = new Map<string, {
+  const slotMap = new Map<number, {
+    slot_index: number
     session_date: string
     session_kind: 'team' | 'intensive'
     isBillable: boolean
@@ -72,10 +69,10 @@ export function buildSessionSlots(
   }>()
 
   for (const row of sessionRows) {
-    if (row.session_kind === 'makeup' || !row.session_date) continue
-    const key = `${row.session_date}:${row.session_kind}`
-    if (!slotMap.has(key)) {
-      slotMap.set(key, {
+    if (row.session_kind === 'makeup' || row.slot_index === null || !row.session_date) continue
+    if (!slotMap.has(row.slot_index)) {
+      slotMap.set(row.slot_index, {
+        slot_index: row.slot_index,
         session_date: row.session_date,
         session_kind: row.session_kind as 'team' | 'intensive',
         isBillable: false,
@@ -83,7 +80,7 @@ export function buildSessionSlots(
         makeupsByStudent: new Map(),
       })
     }
-    const slot = slotMap.get(key)!
+    const slot = slotMap.get(row.slot_index)!
     slot.attendanceByStudent.set(row.student_id, row)
     if (row.is_billable) slot.isBillable = true
   }
@@ -91,34 +88,33 @@ export function buildSessionSlots(
   for (const row of sessionRows) {
     if (row.session_kind !== 'makeup' || !row.makeup_for_session_id) continue
     const parent = rowById.get(row.makeup_for_session_id)
-    if (!parent?.session_date) continue
-    const key = `${parent.session_date}:${parent.session_kind}`
-    const slot = slotMap.get(key)
+    if (!parent || parent.slot_index === null) continue
+    const slot = slotMap.get(parent.slot_index)
     if (!slot) continue
     const list = slot.makeupsByStudent.get(row.student_id) ?? []
     list.push(row)
     slot.makeupsByStudent.set(row.student_id, list)
   }
 
-  // ── Group tasks; orphans have no session_date+session_kind ───────────────
-  const tasksByKey = new Map<string, Task[]>()
+  const tasksBySlotIndex = new Map<number, Task[]>()
   const orphanTasks: Task[] = []
   for (const task of tasks) {
-    if (task.session_date && task.session_kind) {
-      const key = `${task.session_date}:${task.session_kind}`
-      const arr = tasksByKey.get(key) ?? []
-      arr.push(task)
-      tasksByKey.set(key, arr)
-    } else {
+    if (task.slot_index === null) {
       orphanTasks.push(task)
+      continue
     }
+    if (!slotMap.has(task.slot_index)) {
+      orphanTasks.push(task)
+      continue
+    }
+    const arr = tasksBySlotIndex.get(task.slot_index) ?? []
+    arr.push(task)
+    tasksBySlotIndex.set(task.slot_index, arr)
   }
-
-  // ── Build raw slot list (union of attendance + tasks) ────────────────────
-  const allKeys = new Set([...slotMap.keys(), ...tasksByKey.keys()])
 
   type RawSlot = {
     sessionKey: string
+    slot_index: number
     session_date: string
     session_kind: 'team' | 'intensive'
     isBillable: boolean | null
@@ -127,38 +123,26 @@ export function buildSessionSlots(
     tasks: Task[]
   }
 
-  const raw: RawSlot[] = []
-  for (const key of allKeys) {
-    const colonIdx = key.indexOf(':')
-    const date = key.slice(0, colonIdx)
-    const kind = key.slice(colonIdx + 1) as 'team' | 'intensive'
-    const attSlot = slotMap.get(key)
-    raw.push({
-      sessionKey: key,
-      session_date: date,
-      session_kind: kind,
-      // Task-only slots: no attendance data → billing unknown (null, NOT billable)
-      isBillable: attSlot ? attSlot.isBillable : null,
-      attendanceByStudent: attSlot?.attendanceByStudent ?? new Map(),
-      makeupsByStudent: attSlot?.makeupsByStudent ?? new Map(),
-      tasks: tasksByKey.get(key) ?? [],
-    })
-  }
+  const raw: RawSlot[] = Array.from(slotMap.values()).map((slot) => ({
+    sessionKey: String(slot.slot_index),
+    slot_index: slot.slot_index,
+    session_date: slot.session_date,
+    session_kind: slot.session_kind,
+    isBillable: slot.isBillable,
+    attendanceByStudent: slot.attendanceByStudent,
+    makeupsByStudent: slot.makeupsByStudent,
+    tasks: tasksBySlotIndex.get(slot.slot_index) ?? [],
+  }))
 
-  // Sort by date asc, then team before intensive
-  raw.sort((a, b) => {
-    const cmp = a.session_date.localeCompare(b.session_date)
-    if (cmp !== 0) return cmp
-    return a.session_kind === 'intensive' ? 1 : -1
-  })
+  raw.sort((a, b) => a.slot_index - b.slot_index)
 
   // ── Lesson number assignment — two phases ────────────────────────────────
   //
   // Phase 1 — Pre-scan: collect all explicit lesson numbers as reserved set.
   //   Prevents fallback from occupying a number that belongs to an explicit slot
-  //   arriving later in date order.
+  //   arriving later in slot order.
   //
-  // Phase 2 — Sequential assignment (date order):
+  // Phase 2 — Sequential assignment (slot order):
   //   a) Slot with explicit lesson_label digit N:
   //      → Always keep N (調課 only changes the date, not the lesson number).
   //      → Advance nextCounter to max(nextCounter, N + 1).
@@ -168,20 +152,17 @@ export function buildSessionSlots(
   //      → Advance nextCounter past the assigned number.
   //   c) isBillable === false or null without explicit label:
   //      → No lesson number (lessonNumber = null).
-  //      → Task-only slots WITH explicit label are handled by case (a).
-  //
-  // Phase 1
+  //      → Task-only slots WITH explicit label are already handled above.
+
   const reservedNumbers = new Set<number>()
-  for (const s of raw) {
-    for (const t of s.tasks) {
-      if (t.lesson_label) {
-        const match = t.lesson_label.match(/\d+/)
-        if (match) reservedNumbers.add(parseInt(match[0], 10))
-      }
+  for (const slot of raw) {
+    for (const task of slot.tasks) {
+      if (!task.lesson_label) continue
+      const match = task.lesson_label.match(/\d+/)
+      if (match) reservedNumbers.add(parseInt(match[0], 10))
     }
   }
 
-  // Phase 2
   type Intermediate = RawSlot & {
     lessonNumber: number | null
     lesson_label: string | null
@@ -191,49 +172,46 @@ export function buildSessionSlots(
   let nextCounter = 1
   const fallbackAssigned = new Set<number>()
 
-  const intermediate: Intermediate[] = raw.map((s) => {
+  const intermediate: Intermediate[] = raw.map((slot) => {
     let lessonNumber: number | null = null
     let lesson_label: string | null = null
     let isExplicit = false
 
-    for (const t of s.tasks) {
-      if (t.lesson_label) {
-        lesson_label = t.lesson_label
-        const match = t.lesson_label.match(/\d+/)
-        if (match) {
-          lessonNumber = parseInt(match[0], 10)
-          isExplicit = true
-          break
-        }
+    for (const task of slot.tasks) {
+      if (!task.lesson_label) continue
+      lesson_label = task.lesson_label
+      const match = task.lesson_label.match(/\d+/)
+      if (match) {
+        lessonNumber = parseInt(match[0], 10)
+        isExplicit = true
+        break
       }
     }
 
     if (isExplicit && lessonNumber !== null) {
-      // Always preserve explicit number; advance counter
       nextCounter = Math.max(nextCounter, lessonNumber + 1)
-    } else if (s.isBillable === true) {
-      // Fallback: skip reserved (explicit slots) and already-assigned fallbacks
+    } else if (slot.isBillable === true) {
       let n = nextCounter
-      while (reservedNumbers.has(n) || fallbackAssigned.has(n)) n++
+      while (reservedNumbers.has(n) || fallbackAssigned.has(n)) n += 1
       lessonNumber = n
       fallbackAssigned.add(n)
       nextCounter = n + 1
     }
-    // isBillable === false or null without explicit → lessonNumber stays null
 
-    return { ...s, lessonNumber, lesson_label, isExplicit }
+    return { ...slot, lessonNumber, lesson_label, isExplicit }
   })
 
-  const slots: SessionSlot[] = intermediate.map((s) => ({
-    sessionKey: s.sessionKey,
-    session_date: s.session_date,
-    session_kind: s.session_kind,
-    lessonNumber: s.lessonNumber,
-    lesson_label: s.lesson_label,
-    isBillable: s.isBillable,
-    attendanceByStudent: s.attendanceByStudent,
-    makeupsByStudent: s.makeupsByStudent,
-    tasks: s.tasks,
+  const slots: SessionSlot[] = intermediate.map((slot) => ({
+    sessionKey: slot.sessionKey,
+    slot_index: slot.slot_index,
+    session_date: slot.session_date,
+    session_kind: slot.session_kind,
+    lessonNumber: slot.lessonNumber,
+    lesson_label: slot.lesson_label,
+    isBillable: slot.isBillable,
+    attendanceByStudent: slot.attendanceByStudent,
+    makeupsByStudent: slot.makeupsByStudent,
+    tasks: slot.tasks,
   }))
 
   return { slots, orphanTasks, gaps: { sameDayKindConflict } }

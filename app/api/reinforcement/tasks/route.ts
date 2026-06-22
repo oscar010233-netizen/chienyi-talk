@@ -18,7 +18,6 @@ const RECORD_SELECT = `
     id,
     task_type,
     task_name,
-    week_label,
     lesson_label,
     threshold_value,
     max_score,
@@ -49,7 +48,6 @@ interface JoinedRecord {
     id: string
     task_type: string | null
     task_name: string | null
-    week_label: string | null
     lesson_label: string | null
     threshold_value: number | null
     max_score: number | null

@@ -202,9 +202,7 @@ export type Database = {
           tenant_id: string
           class_id: string
           bag_id: string | null
-          session_date: string | null
-          session_kind: string | null
-          week_label: string | null
+          slot_index: number | null
           lesson_label: string | null
           task_type: string
           task_name: string | null
@@ -221,9 +219,7 @@ export type Database = {
           tenant_id: string
           class_id: string
           bag_id?: string | null
-          session_date?: string | null
-          session_kind?: string | null
-          week_label?: string | null
+          slot_index?: number | null
           lesson_label?: string | null
           task_type: string
           task_name?: string | null
@@ -240,9 +236,7 @@ export type Database = {
           tenant_id?: string
           class_id?: string
           bag_id?: string | null
-          session_date?: string | null
-          session_kind?: string | null
-          week_label?: string | null
+          slot_index?: number | null
           lesson_label?: string | null
           task_type?: string
           task_name?: string | null
@@ -257,6 +251,65 @@ export type Database = {
         Relationships: [
           { foreignKeyName: "class_tasks_class_id_fkey"; columns: ["class_id"]; referencedRelation: "classes"; referencedColumns: ["id"] },
           { foreignKeyName: "class_tasks_bag_id_fkey"; columns: ["bag_id"]; referencedRelation: "payment_bags"; referencedColumns: ["id"] }
+        ]
+      }
+      class_task_templates: {
+        Row: {
+          id: string
+          tenant_id: string
+          name: string
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          name: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          name?: string
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "class_task_templates_tenant_id_fkey"; columns: ["tenant_id"]; referencedRelation: "tenants"; referencedColumns: ["id"] }
+        ]
+      }
+      class_task_template_items: {
+        Row: {
+          id: string
+          tenant_id: string
+          template_id: string
+          task_type: string
+          session_position: string
+          sort_order: number | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          tenant_id: string
+          template_id: string
+          task_type: string
+          session_position: string
+          sort_order?: number | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          tenant_id?: string
+          template_id?: string
+          task_type?: string
+          session_position?: string
+          sort_order?: number | null
+          created_at?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: "class_task_template_items_template_id_fkey"; columns: ["template_id"]; referencedRelation: "class_task_templates"; referencedColumns: ["id"] },
+          { foreignKeyName: "class_task_template_items_tenant_id_fkey"; columns: ["tenant_id"]; referencedRelation: "tenants"; referencedColumns: ["id"] }
         ]
       }
       student_task_records: {
