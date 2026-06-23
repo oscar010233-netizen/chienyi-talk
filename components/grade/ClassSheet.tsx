@@ -547,10 +547,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderSlotCard(slot: SessionSlot) {
     const isIntensive = slot.session_kind === 'intensive'
-    const slotLeftAccent = cn(
-      "relative before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:content-['']",
-      isIntensive ? 'before:bg-violet-400 dark:before:bg-violet-500/70' : 'before:bg-sky-400 dark:before:bg-sky-500/70',
-    )
+    const slotLeftAccent = isIntensive
+      ? 'before:bg-violet-400 dark:before:bg-violet-500/70'
+      : 'before:bg-sky-400 dark:before:bg-sky-500/70'
     const dateLabel = slot.session_date.slice(5).replace('-', '/')
     const kindLabel = isIntensive ? '強' : '團'
     const hasAtt = slot.attendanceByStudent.size > 0
@@ -558,14 +557,20 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
       makeupRows.map((row) => ({ studentId, row })),
     )
     const noTailRows = slot.tasks.length === 0 && makeupEntries.length === 0
+    const rowCardCell = 'bg-white dark:bg-[#2c2c2e]'
 
     return (
-      <tbody key={slot.sessionKey} className="align-top">
+      <tbody
+        key={slot.sessionKey}
+        className={cn(
+          "relative align-top before:absolute before:bottom-0 before:left-0 before:top-0 before:w-[3px] before:content-[''] after:pointer-events-none after:absolute after:inset-0 after:rounded-lg after:border after:border-border/60 after:bg-muted/25 after:content-['']",
+          slotLeftAccent,
+        )}
+      >
         <tr>
           <td
             className={cn(
               'sticky left-0 z-10 border-t border-t-border bg-muted/40 px-4 py-4',
-              slotLeftAccent,
               noTailRows && 'rounded-bl-lg border-b',
               'rounded-tl-lg',
             )}
@@ -650,9 +655,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             <tr key={task.id}>
               <td
                 className={cn(
-                  'sticky left-0 z-10 border-t border-border/40 bg-white py-3 pl-10 pr-4 dark:bg-[#2c2c2e]',
-                  slotLeftAccent,
-                  isLastTaskRow && 'rounded-bl-lg border-b border-border',
+                  'sticky left-0 z-10 border-y border-l border-border/60 py-3 pl-10 pr-4',
+                  rowCardCell,
+                  isLastTaskRow ? 'rounded-bl-lg border-b' : 'rounded-l-md',
                 )}
               >
                 <div className="flex min-w-0 items-center gap-2">
@@ -689,8 +694,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                   <td
                     key={student.student_id}
                     className={cn(
-                      'border-t border-border/40 bg-white px-2 py-2.5 text-center dark:bg-[#2c2c2e]',
-                      isLastTaskRow && 'border-b border-border',
+                      'border-y border-border/60 px-2 py-2.5 text-center',
+                      rowCardCell,
+                      isLastTaskRow && 'border-b',
                     )}
                   >
                     <button
@@ -708,8 +714,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
               <td
                 aria-hidden
                 className={cn(
-                  'border-r border-border border-t border-border/40 bg-white dark:bg-[#2c2c2e]',
-                  isLastTaskRow && 'rounded-br-lg border-b',
+                  'border-y border-r border-border/60',
+                  rowCardCell,
+                  isLastTaskRow ? 'rounded-br-lg border-b' : 'rounded-r-md',
                 )}
               />
             </tr>
@@ -724,15 +731,13 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             ? `${mkStudent.student.chinese_name}${mkStudent.student.english_name ? ` ${mkStudent.student.english_name}` : ''}`
             : studentId
           const isLastMakeupRow = idx === makeupEntries.length - 1
-          const mkNeedsTopBorder = idx > 0 || slot.tasks.length === 0
           return (
             <tr key={mkRow.id}>
               <td
                 className={cn(
-                  'sticky left-0 z-10 bg-white px-4 py-3 dark:bg-[#2c2c2e]',
-                  slotLeftAccent,
-                  mkNeedsTopBorder && 'border-t border-border/40',
-                  isLastMakeupRow && 'rounded-bl-lg border-b border-border',
+                  'sticky left-0 z-10 border-y border-l border-border/60 px-4 py-3',
+                  rowCardCell,
+                  isLastMakeupRow ? 'rounded-bl-lg border-b' : 'rounded-l-md',
                 )}
               >
                 <div className="flex min-w-0 items-start gap-2 pl-8">
@@ -745,9 +750,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 <td
                   key={student.student_id}
                   className={cn(
-                    'bg-white px-2 py-3 text-center dark:bg-[#2c2c2e]',
-                    mkNeedsTopBorder && 'border-t border-border/40',
-                    isLastMakeupRow && 'border-b border-border',
+                    'border-y border-border/60 px-2 py-3 text-center',
+                    rowCardCell,
+                    isLastMakeupRow && 'border-b',
                   )}
                 >
                   {student.student_id === studentId ? (
@@ -767,9 +772,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
               <td
                 aria-hidden
                 className={cn(
-                  'border-r border-border bg-white dark:bg-[#2c2c2e]',
-                  mkNeedsTopBorder && 'border-t border-border/40',
-                  isLastMakeupRow && 'rounded-br-lg border-b',
+                  'border-y border-r border-border/60',
+                  rowCardCell,
+                  isLastMakeupRow ? 'rounded-br-lg border-b' : 'rounded-r-md',
                 )}
               />
             </tr>
