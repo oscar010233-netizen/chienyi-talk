@@ -566,7 +566,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         <tr>
           <td
             className={cn(
-              'sticky left-0 z-10 border-l-[3px] border-l border-t border-border bg-muted/40 px-4 py-4',
+              'sticky left-0 z-10 border-l-[3px] border-t border-t-border bg-muted/40 px-4 py-4',
               borderColor,
               noTailRows && 'rounded-bl-lg border-b',
               'rounded-tl-lg',
@@ -786,9 +786,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   function renderByDate() {
     return (
       <>
-        {sessionSlots.map((slot, idx) => (
+        {sessionSlots.map((slot) => (
           <Fragment key={slot.sessionKey}>
-            {idx > 0 && renderSpacerTbody()}
+            {renderSpacerTbody()}
             {renderSlotCard(slot)}
           </Fragment>
         ))}
@@ -812,9 +812,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   function renderByLesson() {
     return (
       <>
-        {lessonGroups.map((group, groupIdx) => (
+        {lessonGroups.map((group) => (
           <Fragment key={group.lessonNumber}>
-            {groupIdx > 0 && renderSpacerTbody()}
+            {renderSpacerTbody()}
             <tbody>
               <tr>
                 <td
@@ -825,9 +825,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 </td>
               </tr>
             </tbody>
-            {group.slots.map((slot, slotIdx) => (
+            {group.slots.map((slot) => (
               <Fragment key={slot.sessionKey}>
-                {slotIdx > 0 && renderSpacerTbody()}
+                {renderSpacerTbody()}
                 {renderSlotCard(slot)}
               </Fragment>
             ))}
@@ -840,9 +840,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             <tbody>
               {renderSectionHeader('未編課（不計費 / 尚未開袋）')}
             </tbody>
-            {unlessoned.map((slot, idx) => (
+            {unlessoned.map((slot) => (
               <Fragment key={slot.sessionKey}>
-                {idx > 0 && renderSpacerTbody()}
+                {renderSpacerTbody()}
                 {renderSlotCard(slot)}
               </Fragment>
             ))}
