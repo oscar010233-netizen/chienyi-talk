@@ -558,6 +558,11 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     )
     const noTailRows = slot.tasks.length === 0 && makeupEntries.length === 0
     const rowCardCell = 'bg-white dark:bg-[#2c2c2e]'
+    const renderInnerGap = (key: string) => (
+      <tr key={key} aria-hidden="true">
+        <td colSpan={students.length + 2} className="h-2 p-0" />
+      </tr>
+    )
 
     return (
       <tbody
@@ -570,9 +575,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         <tr>
           <td
             className={cn(
-              'sticky left-0 z-10 border-t border-t-border bg-muted/40 px-4 py-4',
-              noTailRows && 'rounded-bl-lg border-b',
-              'rounded-tl-lg',
+              'sticky left-0 z-10 rounded-l-lg border-y border-l border-border/60 bg-muted/40 px-4 py-4',
+              noTailRows && 'border-b',
             )}
           >
             <div className="flex min-w-0 items-start gap-2">
@@ -620,7 +624,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
               <td
                 key={student.student_id}
                 className={cn(
-                  'border-t border-border bg-muted/40 px-2 py-3 text-center',
+                  'border-y border-border/60 bg-muted/40 px-2 py-3 text-center',
                   noTailRows && 'border-b',
                 )}
               >
@@ -642,142 +646,140 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           <td
             aria-hidden
             className={cn(
-              'rounded-tr-lg border-r border-t border-border bg-muted/40',
+              'rounded-r-lg border-y border-r border-border/60 bg-muted/40',
               noTailRows && 'rounded-br-lg border-b',
             )}
           />
         </tr>
 
-        {slot.tasks.map((task, idx) => {
-          const isLastTaskRow = idx === slot.tasks.length - 1 && makeupEntries.length === 0
+        {slot.tasks.map((task) => {
           const record = (studentId: string) => recordMap.get(`${studentId}:${task.id}`)
           return (
-            <tr key={task.id}>
-              <td
-                className={cn(
-                  'sticky left-0 z-10 border-y border-l border-border/60 py-3 pl-10 pr-4',
-                  rowCardCell,
-                  isLastTaskRow ? 'rounded-bl-lg border-b' : 'rounded-l-md',
-                )}
-              >
-                <div className="flex min-w-0 items-center gap-2">
-                  <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
-                    {TASK_SHORT[task.task_type]}
-                  </span>
-                  <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{task.task_name ?? '未命名任務'}</p>
-                  <button
-                    type="button"
-                    onClick={() => setEditingTask(task)}
-                    aria-label={`編輯 ${task.task_name ?? '任務'}`}
-                    className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-foreground"
-                  >
-                    <Pencil size={12} />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
-                    disabled={deletingTaskId === task.id}
-                    aria-label={`刪除 ${task.task_name ?? '任務'}`}
-                    className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-red-500 disabled:opacity-50"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                </div>
-              </td>
-              {students.map((student) => {
-                const rec = record(student.student_id)
-                const display = task.task_type === 'comment'
-                  ? commentLamp(rec?.comment_status)
-                  : lampFor(rec?.status, task.task_type)
-                const detailText = task.task_type === 'quiz' ? (rec?.result_history || rec?.latest_result) : null
-                return (
-                  <td
-                    key={student.student_id}
-                    className={cn(
-                      'border-y border-border/60 px-2 py-2.5 text-center',
-                      rowCardCell,
-                      isLastTaskRow && 'border-b',
-                    )}
-                  >
+            <Fragment key={task.id}>
+              {renderInnerGap(`task-gap-${task.id}`)}
+              <tr>
+                <td
+                  className={cn(
+                    'sticky left-0 z-10 rounded-l-md border-y border-l border-border/60 py-3 pl-10 pr-4',
+                    rowCardCell,
+                  )}
+                >
+                  <div className="flex min-w-0 items-center gap-2">
+                    <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
+                      {TASK_SHORT[task.task_type]}
+                    </span>
+                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{task.task_name ?? '未命名任務'}</p>
                     <button
                       type="button"
-                      onClick={() => handleCellClick(task, student)}
-                      className="inline-flex min-h-7 items-center justify-center rounded-md px-1.5 py-0.5 transition-colors hover:bg-gray-300/60 dark:hover:bg-white/10"
+                      onClick={() => setEditingTask(task)}
+                      aria-label={`編輯 ${task.task_name ?? '任務'}`}
+                      className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-foreground"
                     >
-                      {rec
-                        ? <LampBadge color={display.color} label={display.label} detail={detailText} />
-                        : <span className="text-xs text-gray-300 dark:text-white/20">未派發</span>}
+                      <Pencil size={12} />
                     </button>
-                  </td>
-                )
-              })}
-              <td
-                aria-hidden
-                className={cn(
-                  'border-y border-r border-border/60',
-                  rowCardCell,
-                  isLastTaskRow ? 'rounded-br-lg border-b' : 'rounded-r-md',
-                )}
-              />
-            </tr>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
+                      disabled={deletingTaskId === task.id}
+                      aria-label={`刪除 ${task.task_name ?? '任務'}`}
+                      className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-red-500 disabled:opacity-50"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                </td>
+                {students.map((student) => {
+                  const rec = record(student.student_id)
+                  const display = task.task_type === 'comment'
+                    ? commentLamp(rec?.comment_status)
+                    : lampFor(rec?.status, task.task_type)
+                  const detailText = task.task_type === 'quiz' ? (rec?.result_history || rec?.latest_result) : null
+                  return (
+                    <td
+                      key={student.student_id}
+                      className={cn(
+                        'border-y border-border/60 px-2 py-2.5 text-center',
+                        rowCardCell,
+                      )}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleCellClick(task, student)}
+                        className="inline-flex min-h-7 items-center justify-center rounded-md px-1.5 py-0.5 transition-colors hover:bg-gray-300/60 dark:hover:bg-white/10"
+                      >
+                        {rec
+                          ? <LampBadge color={display.color} label={display.label} detail={detailText} />
+                          : <span className="text-xs text-gray-300 dark:text-white/20">未派發</span>}
+                      </button>
+                    </td>
+                  )
+                })}
+                <td
+                  aria-hidden
+                  className={cn(
+                    'rounded-r-md border-y border-r border-border/60',
+                    rowCardCell,
+                  )}
+                />
+              </tr>
+            </Fragment>
           )
         })}
 
-        {makeupEntries.map(({ studentId, row: mkRow }, idx) => {
+        {makeupEntries.map(({ studentId, row: mkRow }) => {
           const mkDate = mkRow.session_date ? mkRow.session_date.slice(5).replace('-', '/') : '待定'
           const mkDisplay = attDisplay(mkRow)
           const mkStudent = students.find((s) => s.student_id === studentId)
           const mkName = mkStudent
             ? `${mkStudent.student.chinese_name}${mkStudent.student.english_name ? ` ${mkStudent.student.english_name}` : ''}`
             : studentId
-          const isLastMakeupRow = idx === makeupEntries.length - 1
           return (
-            <tr key={mkRow.id}>
-              <td
-                className={cn(
-                  'sticky left-0 z-10 border-y border-l border-border/60 px-4 py-3',
-                  rowCardCell,
-                  isLastMakeupRow ? 'rounded-bl-lg border-b' : 'rounded-l-md',
-                )}
-              >
-                <div className="flex min-w-0 items-start gap-2 pl-8">
-                  <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
-                  <span className="mt-0.5 shrink-0 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補</span>
-                  <p className="truncate text-sm text-muted-foreground">{mkDate}</p>
-                </div>
-              </td>
-              {students.map((student) => (
+            <Fragment key={mkRow.id}>
+              {renderInnerGap(`makeup-gap-${mkRow.id}`)}
+              <tr>
                 <td
-                  key={student.student_id}
                   className={cn(
-                    'border-y border-border/60 px-2 py-3 text-center',
+                    'sticky left-0 z-10 rounded-l-md border-y border-l border-border/60 px-4 py-3',
                     rowCardCell,
-                    isLastMakeupRow && 'border-b',
                   )}
                 >
-                  {student.student_id === studentId ? (
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMakeupRow({ row: mkRow, studentName: mkName })}
-                      aria-label={`補課點名：${mkName}`}
-                      className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-teal-200/50 dark:hover:bg-teal-500/20"
-                    >
-                      <LampBadge color={mkDisplay.color} label={mkDisplay.label} detail={null} />
-                    </button>
-                  ) : (
-                    <span className="text-gray-200 dark:text-white/10">—</span>
-                  )}
+                  <div className="flex min-w-0 items-start gap-2 pl-8">
+                    <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
+                    <span className="mt-0.5 shrink-0 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補</span>
+                    <p className="truncate text-sm text-muted-foreground">{mkDate}</p>
+                  </div>
                 </td>
-              ))}
-              <td
-                aria-hidden
-                className={cn(
-                  'border-y border-r border-border/60',
-                  rowCardCell,
-                  isLastMakeupRow ? 'rounded-br-lg border-b' : 'rounded-r-md',
-                )}
-              />
-            </tr>
+                {students.map((student) => (
+                  <td
+                    key={student.student_id}
+                    className={cn(
+                      'border-y border-border/60 px-2 py-3 text-center',
+                      rowCardCell,
+                    )}
+                  >
+                    {student.student_id === studentId ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMakeupRow({ row: mkRow, studentName: mkName })}
+                        aria-label={`補課點名：${mkName}`}
+                        className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-teal-200/50 dark:hover:bg-teal-500/20"
+                      >
+                        <LampBadge color={mkDisplay.color} label={mkDisplay.label} detail={null} />
+                      </button>
+                    ) : (
+                      <span className="text-gray-200 dark:text-white/10">—</span>
+                    )}
+                  </td>
+                ))}
+                <td
+                  aria-hidden
+                  className={cn(
+                    'rounded-r-md border-y border-r border-border/60',
+                    rowCardCell,
+                  )}
+                />
+              </tr>
+            </Fragment>
           )
         })}
       </tbody>
