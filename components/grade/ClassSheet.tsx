@@ -453,8 +453,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     const threshold = thresholdText(task)
     return (
       <tr key={task.id} className="group">
-        <td className="w-3 p-0" aria-hidden />
-        <td className={cn('sticky left-3 z-10 border-b border-border px-4 py-3.5 transition-colors', rowBg)}>
+        <td className={cn('sticky left-0 z-10 border-b border-border px-4 py-3.5 transition-colors', rowBg)}>
           <div className="flex min-w-0 items-start gap-2">
             <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
               {TASK_SHORT[task.task_type]}
@@ -517,7 +516,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     return (
       <tr>
         <td
-          colSpan={students.length + 3}
+          colSpan={students.length + 2}
           className="border-b border-border bg-muted/50 px-4 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50"
         >
           {label}
@@ -540,7 +539,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     return (
       <tbody aria-hidden="true">
         <tr>
-          <td colSpan={students.length + 3} className="h-6 p-0" />
+          <td colSpan={students.length + 2} className="h-6 p-0" />
         </tr>
       </tbody>
     )
@@ -558,10 +557,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
       makeupRows.map((row) => ({ studentId, row })),
     )
     const noTailRows = slot.tasks.length === 0 && makeupEntries.length === 0
-    const rowCardCell = 'bg-white dark:bg-[#2c2c2e]'
     const renderInnerGap = (key: string) => (
       <tr key={key} aria-hidden="true">
-        <td colSpan={students.length + 3} className="h-2 p-0" />
+        <td colSpan={students.length + 2} className="h-2 p-0" />
       </tr>
     )
 
@@ -569,15 +567,14 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
       <tbody
         key={slot.sessionKey}
         className={cn(
-          "relative align-top before:absolute before:bottom-0 before:left-3 before:top-0 before:w-[3px] before:content-[''] after:pointer-events-none after:absolute after:bottom-0 after:left-3 after:right-0 after:top-0 after:rounded-lg after:border after:border-border/60 after:bg-muted/25 after:content-['']",
+          "relative align-top before:absolute before:bottom-0 before:left-0 before:top-0 before:w-[3px] before:content-[''] after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:right-0 after:top-0 after:rounded-lg after:border after:border-border/60 after:bg-muted/25 after:content-['']",
           slotLeftAccent,
         )}
       >
         <tr>
-          <td className="w-3 p-0" aria-hidden />
           <td
             className={cn(
-              'sticky left-3 z-10 rounded-l-lg border-y border-l border-border/60 bg-muted/40 px-4 py-4',
+              'sticky left-0 z-10 rounded-l-lg border-y border-l border-border/60 bg-muted/40 px-4 py-4',
               noTailRows && 'border-b',
             )}
           >
@@ -654,17 +651,15 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           />
         </tr>
 
-        {slot.tasks.map((task) => {
+        {slot.tasks.map((task, idx) => {
           const record = (studentId: string) => recordMap.get(`${studentId}:${task.id}`)
           return (
             <Fragment key={task.id}>
-              {renderInnerGap(`task-gap-${task.id}`)}
+              {idx > 0 && renderInnerGap(`task-gap-${task.id}`)}
               <tr>
-                <td className="w-3 p-0" aria-hidden />
                 <td
                   className={cn(
-                    'sticky left-3 z-10 rounded-l-md border-y border-l border-border/60 py-3 pl-10 pr-4',
-                    rowCardCell,
+                    'sticky left-0 z-10 border border-border/40 rounded-l-md bg-white py-3 pl-8 pr-4 dark:bg-[#2c2c2e]',
                   )}
                 >
                   <div className="flex min-w-0 items-center gap-2">
@@ -701,8 +696,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                     <td
                       key={student.student_id}
                       className={cn(
-                        'border-y border-border/60 px-2 py-2.5 text-center',
-                        rowCardCell,
+                        'border-y border-border/40 bg-white px-2 py-2.5 text-center dark:bg-[#2c2c2e]',
                       )}
                     >
                       <button
@@ -720,8 +714,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 <td
                   aria-hidden
                   className={cn(
-                    'rounded-r-md border-y border-r border-border/60',
-                    rowCardCell,
+                    'border border-l-0 border-border/40 rounded-r-md bg-white dark:bg-[#2c2c2e]',
                   )}
                 />
               </tr>
@@ -729,7 +722,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           )
         })}
 
-        {makeupEntries.map(({ studentId, row: mkRow }) => {
+        {makeupEntries.map(({ studentId, row: mkRow }, idx) => {
           const mkDate = mkRow.session_date ? mkRow.session_date.slice(5).replace('-', '/') : '待定'
           const mkDisplay = attDisplay(mkRow)
           const mkStudent = students.find((s) => s.student_id === studentId)
@@ -738,13 +731,11 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             : studentId
           return (
             <Fragment key={mkRow.id}>
-              {renderInnerGap(`makeup-gap-${mkRow.id}`)}
+              {idx > 0 && renderInnerGap(`makeup-gap-${mkRow.id}`)}
               <tr>
-                <td className="w-3 p-0" aria-hidden />
                 <td
                   className={cn(
-                    'sticky left-3 z-10 rounded-l-md border-y border-l border-border/60 px-4 py-3',
-                    rowCardCell,
+                    'sticky left-0 z-10 border border-border/40 rounded-l-md bg-white px-4 py-3 dark:bg-[#2c2c2e]',
                   )}
                 >
                   <div className="flex min-w-0 items-start gap-2 pl-8">
@@ -757,8 +748,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                   <td
                     key={student.student_id}
                     className={cn(
-                      'border-y border-border/60 px-2 py-3 text-center',
-                      rowCardCell,
+                      'border-y border-border/40 bg-white px-2 py-3 text-center dark:bg-[#2c2c2e]',
                     )}
                   >
                     {student.student_id === studentId ? (
@@ -778,8 +768,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 <td
                   aria-hidden
                   className={cn(
-                    'rounded-r-md border-y border-r border-border/60',
-                    rowCardCell,
+                    'border border-l-0 border-border/40 rounded-r-md bg-white dark:bg-[#2c2c2e]',
                   )}
                 />
               </tr>
@@ -806,7 +795,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         {sessionSlots.length === 0 && orphanTasks.length === 0 && (
           <tbody>
             <tr>
-              <td colSpan={students.length + 3} className="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
                 還沒有課程資料，請先開袋
               </td>
             </tr>
@@ -827,8 +816,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             <tbody>
               <tr>
                 <td
-                  colSpan={students.length + 3}
-                  className="sticky left-3 border-b border-border bg-muted/50 px-4 py-1.5 text-xs font-semibold text-foreground"
+                  colSpan={students.length + 2}
+                  className="sticky left-0 border-b border-border bg-muted/50 px-4 py-1.5 text-xs font-semibold text-foreground"
                 >
                   {group.lesson_label ?? `第 ${group.lessonNumber} 課`}
                 </td>
@@ -864,7 +853,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         {sessionSlots.length === 0 && orphanTasks.length === 0 && (
           <tbody>
             <tr>
-              <td colSpan={students.length + 3} className="px-4 py-10 text-center text-sm text-muted-foreground">
+              <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
                 還沒有課程資料，請先開袋
               </td>
             </tr>
@@ -1021,12 +1010,11 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
           {/* ── Desktop table ── */}
           <div className="hidden min-h-0 flex-1 overflow-hidden p-4 md:block md:p-6">
-            <div className="mac-card h-full overflow-auto rounded-lg bg-muted/30">
+            <div className="mac-card h-full overflow-auto rounded-lg bg-muted/30 p-3">
               <table className="min-w-full border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr>
-                    <th className="w-3 min-w-[12px] p-0" aria-hidden />
-                    <th className="sticky left-3 top-0 z-30 min-w-[17rem] border-b border-border bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
+                    <th className="sticky left-0 top-0 z-30 min-w-[17rem] border-b border-border bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
                       {viewMode === 'by-date' ? '出席日 / 任務' : '課數 / 任務'}
                     </th>
                     {students.map((student) => (
