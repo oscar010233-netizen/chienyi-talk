@@ -92,7 +92,7 @@ export async function DELETE(request: NextRequest) {
 }
 
 // PATCH /api/tasks
-// - Rename task: { task_id, task_name }
+// - Partial task update: { task_id, task_name?, lesson_label?, threshold_value?, max_score?, threshold_text? }
 // - Update slot lesson label: { class_id, bag_id, slot_index, lesson_label }
 export async function PATCH(request: NextRequest) {
   const body = await request.json() as Record<string, unknown>
@@ -109,9 +109,32 @@ export async function PATCH(request: NextRequest) {
     if (taskError) return NextResponse.json({ error: taskError.message }, { status: 500 })
     if (!taskRow) return NextResponse.json({ error: 'task not found' }, { status: 404 })
 
+    const patch: Record<string, string | number | null> = {}
+
+    if (Object.prototype.hasOwnProperty.call(body, 'task_name')) {
+      patch.task_name = trimOrNull(body.task_name)
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'lesson_label')) {
+      patch.lesson_label = trimOrNull(body.lesson_label)
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'threshold_value')) {
+      patch.threshold_value = numericOrNull(body.threshold_value)
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'max_score')) {
+      patch.max_score = numericOrNull(body.max_score)
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'threshold_text')) {
+      patch.threshold_text = trimOrNull(body.threshold_text)
+    }
+    // task_type is intentionally ignored in PATCH partial updates.
+
+    if (Object.keys(patch).length === 0) {
+      return NextResponse.json({ error: 'no updatable fields provided' }, { status: 400 })
+    }
+
     const { data: updated, error } = await supabase
       .from('class_tasks')
-      .update({ task_name: trimOrNull(body.task_name) })
+      .update(patch)
       .eq('id', taskId)
       .eq('tenant_id', taskRow.tenant_id)
       .select()

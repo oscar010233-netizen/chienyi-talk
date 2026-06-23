@@ -98,6 +98,14 @@ export interface ClassSessionRow {
   makeup_for_session_id: string | null
 }
 
+export interface SessionDailyComment {
+  id: string
+  class_id: string
+  session_date: string
+  comment_text: string | null
+  status: 'draft' | 'published'
+}
+
 export interface ClassDetail {
   class: ClassRow
   students: ClassEnrollment[]
@@ -105,6 +113,7 @@ export interface ClassDetail {
   records: TaskRecord[]
   sessions: ClassSession[]
   sessionRows: ClassSessionRow[]
+  sessionComments: SessionDailyComment[]
   bag_id: string | null
 }
 

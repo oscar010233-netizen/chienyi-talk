@@ -4,7 +4,7 @@ import { Fragment, useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, CalendarDays, ChevronDown, ChevronUp,
-  ClipboardCheck, Kanban, ReceiptText, Send, Trash2, UserPlus,
+  ClipboardCheck, Kanban, MessageSquare, Pencil, ReceiptText, Send, Trash2, UserPlus,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -13,12 +13,14 @@ import { EnrollStudentModal } from './EnrollStudentModal'
 import { LampBadge } from './LampBadge'
 import { MakeupMarkModal } from './MakeupMarkModal'
 import { TaskUpdateDrawer } from './TaskUpdateDrawer'
+import { EditTaskModal } from './EditTaskModal'
+import { SessionCommentModal } from './SessionCommentModal'
 import { commentLamp, lampFor } from '@/lib/grade/status'
 import { buildSessionSlots } from '@/lib/grade/session-model'
 import type { SessionSlot } from '@/lib/grade/session-model'
 import type {
   ClassDetail, ClassEnrollment, ClassSessionRow,
-  Lamp, Task, TaskRecord, TaskType,
+  Lamp, SessionDailyComment, Task, TaskRecord, TaskType,
 } from '@/lib/grade/types'
 
 type ViewMode = 'by-date' | 'by-lesson'
@@ -99,7 +101,6 @@ function attDisplay(row: ClassSessionRow | undefined): { label: string; color: L
 }
 
 // ─── Mobile slot card ────────────────────────────────────────────────────────
-// All interactive elements are sibling buttons — no button-inside-button.
 
 interface MobileSlotCardProps {
   slot: SessionSlot
@@ -112,6 +113,9 @@ interface MobileSlotCardProps {
   onMakeup: (row: ClassSessionRow, name: string) => void
   onTaskCell: (task: Task, student: ClassEnrollment) => void
   onDeleteTask: (taskId: string, taskName: string) => void
+  onEditTask: (task: Task) => void
+  onComment: () => void
+  hasComment: boolean
 }
 
 function MobileSlotCard({
@@ -125,6 +129,9 @@ function MobileSlotCard({
   onMakeup,
   onTaskCell,
   onDeleteTask,
+  onEditTask,
+  onComment,
+  hasComment,
 }: MobileSlotCardProps) {
   const [expanded, setExpanded] = useState(true)
   const isIntensive = slot.session_kind === 'intensive'
@@ -134,7 +141,6 @@ function MobileSlotCard({
     ? 'border-l-violet-400 dark:border-l-violet-500/70'
     : 'border-l-sky-400 dark:border-l-sky-500/70'
 
-  // 優先使用 lesson_label，再 fallback 到計算課數
   const lessonPrefix = viewMode === 'by-lesson'
     ? (slot.lesson_label ?? (slot.lessonNumber != null ? `第 ${slot.lessonNumber} 課` : null))
     : null
@@ -152,13 +158,11 @@ function MobileSlotCard({
 
   return (
     <div className={cn('overflow-hidden rounded-lg border border-border border-l-[3px]', borderColor)}>
-      {/* Card header — three sibling elements, no nested buttons */}
       <div className="flex items-center gap-2 bg-muted/40 px-4 py-3">
         <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP['attendance'])}>
           {kindLabel}
         </span>
 
-        {/* Title: expand toggle */}
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
@@ -172,7 +176,6 @@ function MobileSlotCard({
           )}
         </button>
 
-        {/* Attendance button — sibling, not nested */}
         {bagId && hasAtt && (
           <button
             type="button"
@@ -183,8 +186,19 @@ function MobileSlotCard({
             <ClipboardCheck size={14} />
           </button>
         )}
-
-        {/* Chevron toggle — sibling */}
+        <button
+          type="button"
+          onClick={onComment}
+          aria-label="班級評語"
+          className={cn(
+            'shrink-0 rounded p-1 transition-colors',
+            hasComment
+              ? 'text-teal-500 hover:text-teal-600'
+              : 'text-muted-foreground/30 hover:text-teal-500'
+          )}
+        >
+          <MessageSquare size={14} />
+        </button>
         <button
           type="button"
           onClick={() => setExpanded((e) => !e)}
@@ -197,7 +211,6 @@ function MobileSlotCard({
 
       {expanded && (
         <div className="divide-y divide-border">
-          {/* Attendance by student */}
           {hasAtt ? (
             students.map((student) => {
               const row = slot.attendanceByStudent.get(student.student_id)
@@ -224,7 +237,6 @@ function MobileSlotCard({
             </p>
           )}
 
-          {/* Tasks in this slot */}
           {slot.tasks.length > 0 && (
             <div className="space-y-1.5 px-4 py-3">
               <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/50">教學任務</p>
@@ -257,6 +269,14 @@ function MobileSlotCard({
                   </div>
                   <button
                     type="button"
+                    onClick={() => onEditTask(task)}
+                    aria-label={`編輯 ${task.task_name ?? '任務'}`}
+                    className="shrink-0 rounded p-1 text-muted-foreground/40 hover:text-foreground"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => onDeleteTask(task.id, task.task_name ?? '未命名任務')}
                     disabled={deletingTaskId === task.id}
                     aria-label={`刪除 ${task.task_name ?? '任務'}`}
@@ -269,7 +289,6 @@ function MobileSlotCard({
             </div>
           )}
 
-          {/* Makeup sub-entries */}
           {hasMakeups && (
             <div className="divide-y divide-border">
               {Array.from(slot.makeupsByStudent.entries()).flatMap(([studentId, makeupRows]) => {
@@ -316,7 +335,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   const [dispatchMsg, setDispatchMsg] = useState('')
   const [showEnroll, setShowEnroll] = useState(false)
   const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null)
+  const [editingTask, setEditingTask] = useState<Task | null>(null)
   const [attendanceSlot, setAttendanceSlot] = useState<SessionSlot | null>(null)
+  const [commentSlot, setCommentSlot] = useState<SessionSlot | null>(null)
   const [selectedMakeupRow, setSelectedMakeupRow] = useState<{ row: ClassSessionRow; studentName: string } | null>(null)
   const router = useRouter()
 
@@ -329,6 +350,12 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     return map
   }, [records])
 
+  const commentByDate = useMemo(() => {
+    const map = new Map<string, SessionDailyComment>()
+    for (const c of detail.sessionComments) map.set(c.session_date, c)
+    return map
+  }, [detail.sessionComments])
+
   const teachingTasks = useMemo(
     () => tasks.filter((t) => t.task_type !== 'attendance'),
     [tasks],
@@ -339,12 +366,6 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     [detail.sessionRows, teachingTasks],
   )
 
-  /**
-   * 依課數模式使用的排列。
-   * lessonGroups: 有明確/計算課數的場次，依 lessonNumber 分組後排序。
-   * withoutLesson: 不計費或帳務未知場次（無法推算課數），放在未編課區。
-   * sessionSlots 本身保持日期排序供 by-date 模式使用。
-   */
   const { lessonGroups, unlessoned } = useMemo(() => {
     const groupMap = new Map<number, { lessonNumber: number; lesson_label: string | null; slots: SessionSlot[] }>()
     for (const slot of sessionSlots) {
@@ -424,68 +445,15 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   const toolButton =
     'inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted disabled:opacity-50'
 
-  // ── Shared table helpers ─────────────────────────────────────────────────
+  // ── Desktop table helpers ────────────────────────────────────────────────
 
-  function renderMakeupRows(slot: SessionSlot) {
-    if (slot.makeupsByStudent.size === 0) return null
-    const isIntensive = slot.session_kind === 'intensive'
-    const attBg = isIntensive
-      ? 'bg-violet-50/70 dark:bg-violet-500/[0.06] group-hover:bg-violet-100/70 dark:group-hover:bg-violet-500/[0.10]'
-      : 'bg-sky-50/70 dark:bg-sky-500/[0.06] group-hover:bg-sky-100/70 dark:group-hover:bg-sky-500/[0.10]'
-    const borderColor = isIntensive
-      ? 'border-l-violet-400 dark:border-l-violet-500/70'
-      : 'border-l-sky-400 dark:border-l-sky-500/70'
-
-    return Array.from(slot.makeupsByStudent.entries()).flatMap(([studentId, makeupRows]) =>
-      makeupRows.map((mkRow) => {
-        const mkDate = mkRow.session_date ? mkRow.session_date.slice(5).replace('-', '/') : '待定'
-        const mkDisplay = attDisplay(mkRow)
-        const mkStudent = students.find((s) => s.student_id === studentId)
-        const mkName = mkStudent
-          ? `${mkStudent.student.chinese_name}${mkStudent.student.english_name ? ` ${mkStudent.student.english_name}` : ''}`
-          : studentId
-        return (
-          <tr key={mkRow.id} className="group">
-            <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] px-4 py-2.5 transition-colors', attBg, borderColor)}>
-              <div className="flex min-w-0 items-start gap-2 pl-4">
-                <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
-                <span className="mt-0.5 shrink-0 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補</span>
-                <p className="truncate text-sm text-muted-foreground">{mkDate}</p>
-              </div>
-            </td>
-            {students.map((student) => (
-              <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', attBg)}>
-                {student.student_id === studentId ? (
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMakeupRow({ row: mkRow, studentName: mkName })}
-                    aria-label={`補課點名：${mkName}`}
-                    className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-teal-200/50 dark:hover:bg-teal-500/20"
-                  >
-                    <LampBadge color={mkDisplay.color} label={mkDisplay.label} detail={null} />
-                  </button>
-                ) : (
-                  <span className="text-gray-200 dark:text-white/10">—</span>
-                )}
-              </td>
-            ))}
-            <td aria-hidden className={cn('border-b border-border transition-colors', attBg)} />
-          </tr>
-        )
-      })
-    )
-  }
-
-  function renderTaskRow(task: Task, rowIndex: number) {
-    const zebra = cn(
-      rowIndex % 2 === 1 ? 'bg-[#f3f4f6] dark:bg-[#353537]' : 'bg-white dark:bg-[#2c2c2e]',
-      'group-hover:bg-[#e5e7eb] dark:group-hover:bg-[#3a3a3c]',
-    )
+  function renderTaskRow(task: Task) {
+    const rowBg = 'bg-white dark:bg-[#2c2c2e]'
     const meta = taskMeta(task)
     const threshold = thresholdText(task)
     return (
       <tr key={task.id} className="group">
-        <td className={cn('sticky left-0 z-10 border-b border-border px-4 py-3.5 transition-colors', zebra)}>
+        <td className={cn('sticky left-0 z-10 border-b border-border px-4 py-3.5 transition-colors', rowBg)}>
           <div className="flex min-w-0 items-start gap-2">
             <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
               {TASK_SHORT[task.task_type]}
@@ -497,6 +465,14 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 {threshold && <span> · 門檻 {threshold}</span>}
               </p>
             </div>
+            <button
+              type="button"
+              onClick={() => setEditingTask(task)}
+              aria-label={`編輯 ${task.task_name ?? '任務'}`}
+              className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground/50 transition-colors hover:text-foreground"
+            >
+              <Pencil size={13} />
+            </button>
             <button
               type="button"
               onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
@@ -518,7 +494,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             ? (record?.result_history || record?.latest_result)
             : null
           return (
-            <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', zebra)}>
+            <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', rowBg)}>
               <button
                 type="button"
                 onClick={() => handleCellClick(task, student)}
@@ -531,7 +507,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             </td>
           )
         })}
-        <td aria-hidden className={cn('border-b border-border transition-colors', zebra)} />
+        <td aria-hidden className={cn('border-b border-border transition-colors', rowBg)} />
       </tr>
     )
   }
@@ -552,329 +528,333 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   function renderOrphanTasks() {
     if (orphanTasks.length === 0) return null
     return (
-      <>
+      <tbody>
         {renderSectionHeader('未對應課次的任務')}
-        {orphanTasks.map((task, idx) => renderTaskRow(task, idx))}
-      </>
+        {orphanTasks.map((task) => renderTaskRow(task))}
+      </tbody>
     )
   }
 
-  // ── By-date mode (sorted by session_date) ────────────────────────────────
+  function renderSpacerTbody() {
+    return (
+      <tbody aria-hidden="true">
+        <tr>
+          <td colSpan={students.length + 2} className="h-3 p-0" />
+        </tr>
+      </tbody>
+    )
+  }
+
+  function renderSlotCard(slot: SessionSlot) {
+    const isIntensive = slot.session_kind === 'intensive'
+    const borderColor = isIntensive
+      ? 'border-l-violet-400 dark:border-l-violet-500/70'
+      : 'border-l-sky-400 dark:border-l-sky-500/70'
+    const dateLabel = slot.session_date.slice(5).replace('-', '/')
+    const kindLabel = isIntensive ? '強' : '團'
+    const hasAtt = slot.attendanceByStudent.size > 0
+    const makeupEntries = Array.from(slot.makeupsByStudent.entries()).flatMap(([studentId, makeupRows]) =>
+      makeupRows.map((row) => ({ studentId, row })),
+    )
+    const noTailRows = slot.tasks.length === 0 && makeupEntries.length === 0
+
+    return (
+      <tbody key={slot.sessionKey} className="align-top">
+        <tr>
+          <td
+            className={cn(
+              'sticky left-0 z-10 border-l-[3px] border-l border-t border-border bg-muted/40 px-4 py-4',
+              borderColor,
+              noTailRows && 'rounded-bl-lg border-b',
+              'rounded-tl-lg',
+            )}
+          >
+            <div className="flex min-w-0 items-start gap-2">
+              <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP.attendance)}>
+                {kindLabel}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-medium text-foreground">{dateLabel}</p>
+                {slot.isBillable === false && (
+                  <p className="text-[10px] text-muted-foreground/60">不計費</p>
+                )}
+                {slot.isBillable === null && (
+                  <p className="text-[10px] text-muted-foreground/60">尚未開袋</p>
+                )}
+              </div>
+              {detail.bag_id && hasAtt && (
+                <button
+                  type="button"
+                  onClick={() => setAttendanceSlot(slot)}
+                  aria-label="點名"
+                  className="mt-0.5 shrink-0 rounded p-1 text-sky-500/70 transition-colors hover:text-sky-600"
+                >
+                  <ClipboardCheck size={13} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setCommentSlot(slot)}
+                aria-label="班級評語"
+                className={cn(
+                  'mt-0.5 shrink-0 rounded p-1 transition-colors',
+                  commentByDate.has(slot.session_date)
+                    ? 'text-teal-500 hover:text-teal-600'
+                    : 'text-muted-foreground/30 hover:text-teal-500'
+                )}
+              >
+                <MessageSquare size={13} />
+              </button>
+            </div>
+          </td>
+          {students.map((student) => {
+            const row = slot.attendanceByStudent.get(student.student_id)
+            const display = attDisplay(row)
+            return (
+              <td
+                key={student.student_id}
+                className={cn(
+                  'border-t border-border bg-muted/40 px-2 py-3 text-center',
+                  noTailRows && 'border-b',
+                )}
+              >
+                {row ? (
+                  <button
+                    type="button"
+                    onClick={() => setAttendanceSlot(slot)}
+                    aria-label={`${student.student.chinese_name} 出席：${display.label}`}
+                    className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-sky-200/50 dark:hover:bg-sky-500/20"
+                  >
+                    <LampBadge color={display.color} label={display.label} detail={null} />
+                  </button>
+                ) : (
+                  <span className="text-gray-200 dark:text-white/10">—</span>
+                )}
+              </td>
+            )
+          })}
+          <td
+            aria-hidden
+            className={cn(
+              'rounded-tr-lg border-r border-t border-border bg-muted/40',
+              noTailRows && 'rounded-br-lg border-b',
+            )}
+          />
+        </tr>
+
+        {slot.tasks.map((task, idx) => {
+          const isLastTaskRow = idx === slot.tasks.length - 1 && makeupEntries.length === 0
+          const record = (studentId: string) => recordMap.get(`${studentId}:${task.id}`)
+          return (
+            <tr key={task.id}>
+              <td
+                className={cn(
+                  'sticky left-0 z-10 border-l border-l-2 border-l-border/30 border-t border-border/40 bg-white py-3 pl-10 pr-4 dark:bg-[#2c2c2e]',
+                  isLastTaskRow && 'rounded-bl-lg border-b border-border',
+                )}
+              >
+                <div className="flex min-w-0 items-center gap-2">
+                  <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
+                    {TASK_SHORT[task.task_type]}
+                  </span>
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{task.task_name ?? '未命名任務'}</p>
+                  <button
+                    type="button"
+                    onClick={() => setEditingTask(task)}
+                    aria-label={`編輯 ${task.task_name ?? '任務'}`}
+                    className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-foreground"
+                  >
+                    <Pencil size={12} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
+                    disabled={deletingTaskId === task.id}
+                    aria-label={`刪除 ${task.task_name ?? '任務'}`}
+                    className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-red-500 disabled:opacity-50"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              </td>
+              {students.map((student) => {
+                const rec = record(student.student_id)
+                const display = task.task_type === 'comment'
+                  ? commentLamp(rec?.comment_status)
+                  : lampFor(rec?.status, task.task_type)
+                const detailText = task.task_type === 'quiz' ? (rec?.result_history || rec?.latest_result) : null
+                return (
+                  <td
+                    key={student.student_id}
+                    className={cn(
+                      'border-t border-border/40 bg-white px-2 py-2.5 text-center dark:bg-[#2c2c2e]',
+                      isLastTaskRow && 'border-b border-border',
+                    )}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleCellClick(task, student)}
+                      className="inline-flex min-h-7 items-center justify-center rounded-md px-1.5 py-0.5 transition-colors hover:bg-gray-300/60 dark:hover:bg-white/10"
+                    >
+                      {rec
+                        ? <LampBadge color={display.color} label={display.label} detail={detailText} />
+                        : <span className="text-xs text-gray-300 dark:text-white/20">未派發</span>}
+                    </button>
+                  </td>
+                )
+              })}
+              <td
+                aria-hidden
+                className={cn(
+                  'border-r border-border border-t border-border/40 bg-white dark:bg-[#2c2c2e]',
+                  isLastTaskRow && 'rounded-br-lg border-b',
+                )}
+              />
+            </tr>
+          )
+        })}
+
+        {makeupEntries.map(({ studentId, row: mkRow }, idx) => {
+          const mkDate = mkRow.session_date ? mkRow.session_date.slice(5).replace('-', '/') : '待定'
+          const mkDisplay = attDisplay(mkRow)
+          const mkStudent = students.find((s) => s.student_id === studentId)
+          const mkName = mkStudent
+            ? `${mkStudent.student.chinese_name}${mkStudent.student.english_name ? ` ${mkStudent.student.english_name}` : ''}`
+            : studentId
+          const isLastMakeupRow = idx === makeupEntries.length - 1
+          const mkNeedsTopBorder = idx > 0 || slot.tasks.length === 0
+          return (
+            <tr key={mkRow.id}>
+              <td
+                className={cn(
+                  'sticky left-0 z-10 border-l border-l-border bg-white px-4 py-3 dark:bg-[#2c2c2e]',
+                  mkNeedsTopBorder && 'border-t border-border/40',
+                  isLastMakeupRow && 'rounded-bl-lg border-b border-border',
+                )}
+              >
+                <div className="flex min-w-0 items-start gap-2 pl-8">
+                  <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
+                  <span className="mt-0.5 shrink-0 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補</span>
+                  <p className="truncate text-sm text-muted-foreground">{mkDate}</p>
+                </div>
+              </td>
+              {students.map((student) => (
+                <td
+                  key={student.student_id}
+                  className={cn(
+                    'bg-white px-2 py-3 text-center dark:bg-[#2c2c2e]',
+                    mkNeedsTopBorder && 'border-t border-border/40',
+                    isLastMakeupRow && 'border-b border-border',
+                  )}
+                >
+                  {student.student_id === studentId ? (
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMakeupRow({ row: mkRow, studentName: mkName })}
+                      aria-label={`補課點名：${mkName}`}
+                      className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-teal-200/50 dark:hover:bg-teal-500/20"
+                    >
+                      <LampBadge color={mkDisplay.color} label={mkDisplay.label} detail={null} />
+                    </button>
+                  ) : (
+                    <span className="text-gray-200 dark:text-white/10">—</span>
+                  )}
+                </td>
+              ))}
+              <td
+                aria-hidden
+                className={cn(
+                  'border-r border-border bg-white dark:bg-[#2c2c2e]',
+                  mkNeedsTopBorder && 'border-t border-border/40',
+                  isLastMakeupRow && 'rounded-br-lg border-b',
+                )}
+              />
+            </tr>
+          )
+        })}
+      </tbody>
+    )
+  }
+
+  // ── By-date mode ─────────────────────────────────────────────────────────
 
   function renderByDate() {
     return (
       <>
-        {sessionSlots.map((slot) => {
-          const isIntensive = slot.session_kind === 'intensive'
-          const attBg = isIntensive
-            ? 'bg-violet-50/70 dark:bg-violet-500/[0.06] group-hover:bg-violet-100/70 dark:group-hover:bg-violet-500/[0.10]'
-            : 'bg-sky-50/70 dark:bg-sky-500/[0.06] group-hover:bg-sky-100/70 dark:group-hover:bg-sky-500/[0.10]'
-          const borderColor = isIntensive
-            ? 'border-l-violet-400 dark:border-l-violet-500/70'
-            : 'border-l-sky-400 dark:border-l-sky-500/70'
-          const dateLabel = slot.session_date.slice(5).replace('-', '/')
-          const kindLabel = isIntensive ? '強' : '團'
-          const hasAtt = slot.attendanceByStudent.size > 0
-
-          return (
-            <Fragment key={slot.sessionKey}>
-              {/* Primary: attendance row */}
-              <tr className="group">
-                <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] px-4 py-3.5 transition-colors', attBg, borderColor)}>
-                  <div className="flex min-w-0 items-start gap-2">
-                    <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP['attendance'])}>
-                      {kindLabel}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-foreground">{dateLabel}</p>
-                      {slot.isBillable === false && (
-                        <p className="text-[10px] text-muted-foreground/60">不計費</p>
-                      )}
-                      {slot.isBillable === null && (
-                        <p className="text-[10px] text-muted-foreground/60">尚未開袋</p>
-                      )}
-                    </div>
-                    {detail.bag_id && hasAtt && (
-                      <button
-                        type="button"
-                        onClick={() => setAttendanceSlot(slot)}
-                        aria-label="點名"
-                        className="mt-0.5 shrink-0 rounded p-1 text-sky-500/70 transition-colors hover:text-sky-600"
-                      >
-                        <ClipboardCheck size={13} />
-                      </button>
-                    )}
-                  </div>
-                </td>
-                {students.map((student) => {
-                  const row = slot.attendanceByStudent.get(student.student_id)
-                  const display = attDisplay(row)
-                  return (
-                    <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', attBg)}>
-                      {row ? (
-                        <button
-                          type="button"
-                          onClick={() => setAttendanceSlot(slot)}
-                          aria-label={`${student.student.chinese_name} 出席：${display.label}`}
-                          className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-sky-200/50 dark:hover:bg-sky-500/20"
-                        >
-                          <LampBadge color={display.color} label={display.label} detail={null} />
-                        </button>
-                      ) : (
-                        <span className="text-gray-200 dark:text-white/10">—</span>
-                      )}
-                    </td>
-                  )
-                })}
-                <td aria-hidden className={cn('border-b border-border transition-colors', attBg)} />
-              </tr>
-
-              {/* Secondary: task sub-rows for this slot */}
-              {slot.tasks.map((task, idx) => {
-                const subBg = cn(
-                  idx % 2 === 0 ? 'bg-white/80 dark:bg-[#2c2c2e]/80' : 'bg-[#f3f4f6]/80 dark:bg-[#353537]/80',
-                  'group-hover:bg-[#e5e7eb]/80 dark:group-hover:bg-[#3a3a3c]/80',
-                )
-                const record = (studentId: string) => recordMap.get(`${studentId}:${task.id}`)
-                return (
-                  <tr key={task.id} className="group">
-                    <td className={cn('sticky left-0 z-10 border-b border-border py-2.5 pl-8 pr-4 transition-colors', subBg)}>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
-                          {TASK_SHORT[task.task_type]}
-                        </span>
-                        <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{task.task_name ?? '未命名任務'}</p>
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
-                          disabled={deletingTaskId === task.id}
-                          aria-label={`刪除 ${task.task_name ?? '任務'}`}
-                          className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-red-500 disabled:opacity-50"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </td>
-                    {students.map((student) => {
-                      const rec = record(student.student_id)
-                      const display = task.task_type === 'comment'
-                        ? commentLamp(rec?.comment_status)
-                        : lampFor(rec?.status, task.task_type)
-                      const detailText = task.task_type === 'quiz' ? (rec?.result_history || rec?.latest_result) : null
-                      return (
-                        <td key={student.student_id} className={cn('border-b border-border px-2 py-2 text-center transition-colors', subBg)}>
-                          <button
-                            type="button"
-                            onClick={() => handleCellClick(task, student)}
-                            className="inline-flex min-h-7 items-center justify-center rounded-md px-1.5 py-0.5 transition-colors hover:bg-gray-300/60 dark:hover:bg-white/10"
-                          >
-                            {rec
-                              ? <LampBadge color={display.color} label={display.label} detail={detailText} />
-                              : <span className="text-xs text-gray-300 dark:text-white/20">未派發</span>}
-                          </button>
-                        </td>
-                      )
-                    })}
-                    <td aria-hidden className={cn('border-b border-border transition-colors', subBg)} />
-                  </tr>
-                )
-              })}
-
-              {renderMakeupRows(slot)}
-            </Fragment>
-          )
-        })}
-
+        {sessionSlots.map((slot, idx) => (
+          <Fragment key={slot.sessionKey}>
+            {idx > 0 && renderSpacerTbody()}
+            {renderSlotCard(slot)}
+          </Fragment>
+        ))}
+        {orphanTasks.length > 0 && renderSpacerTbody()}
         {renderOrphanTasks()}
-
         {sessionSlots.length === 0 && orphanTasks.length === 0 && (
-          <tr>
-            <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
-              還沒有課程資料，請先開袋
-            </td>
-          </tr>
+          <tbody>
+            <tr>
+              <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                還沒有課程資料，請先開袋
+              </td>
+            </tr>
+          </tbody>
         )}
       </>
     )
   }
 
-  // ── By-lesson mode (grouped by lessonNumber, unlessoned grouped at bottom) ─
+  // ── By-lesson mode ────────────────────────────────────────────────────────
 
   function renderByLesson() {
-    const renderLessonSlot = (slot: SessionSlot) => {
-      const isIntensive = slot.session_kind === 'intensive'
-      const borderColor = isIntensive
-        ? 'border-l-violet-300 dark:border-l-violet-500/50'
-        : 'border-l-sky-300 dark:border-l-sky-500/50'
-      const dateLabel = slot.session_date.slice(5).replace('-', '/')
-      const kindLabel = isIntensive ? '強' : '團'
-      const hasAtt = slot.attendanceByStudent.size > 0
-
-      return (
-        <Fragment key={slot.sessionKey}>
-          <tr className="group">
-            <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] bg-muted/40 px-4 py-2.5 transition-colors group-hover:bg-muted/60', borderColor)}>
-              <div className="flex min-w-0 items-center gap-2">
-                <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP['attendance'])}>
-                  {kindLabel}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold text-foreground">{dateLabel}</p>
-                  <p className="text-[11px] text-muted-foreground">
-                    {slot.isBillable === null && ' · 尚未開袋'}
-                    {slot.isBillable === false && ' · 不計費'}
-                  </p>
-                </div>
-                {detail.bag_id && hasAtt && (
-                  <button
-                    type="button"
-                    onClick={() => setAttendanceSlot(slot)}
-                    aria-label="點名"
-                    className="shrink-0 rounded p-1 text-sky-500/70 transition-colors hover:text-sky-600"
-                  >
-                    <ClipboardCheck size={13} />
-                  </button>
-                )}
-              </div>
-            </td>
-            {students.map((student) => {
-              const row = slot.attendanceByStudent.get(student.student_id)
-              const display = attDisplay(row)
-              return (
-                <td
-                  key={student.student_id}
-                  className="border-b border-border bg-muted/40 px-2 py-2 text-center transition-colors group-hover:bg-muted/60"
-                >
-                  {row ? (
-                    <button
-                      type="button"
-                      onClick={() => setAttendanceSlot(slot)}
-                      aria-label={`${student.student.chinese_name} 出席：${display.label}`}
-                      className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted"
-                    >
-                      {display.label}
-                    </button>
-                  ) : (
-                    <span className="text-[11px] text-gray-200 dark:text-white/10">—</span>
-                  )}
-                </td>
-              )
-            })}
-            <td aria-hidden className="border-b border-border bg-muted/40 transition-colors group-hover:bg-muted/60" />
-          </tr>
-
-          {/* Task rows — primary visual weight */}
-          {slot.tasks.map((task, idx) => renderTaskRow(task, idx))}
-
-          {slot.tasks.length === 0 && (
-            <tr>
-              <td colSpan={students.length + 2} className="border-b border-border bg-white px-8 py-2 text-xs text-muted-foreground/50 dark:bg-[#2c2c2e]">
-                這堂課尚無任務 — 點「加任務」並指定課次
-              </td>
-            </tr>
-          )}
-
-          {renderMakeupRows(slot)}
-        </Fragment>
-      )
-    }
-
     return (
       <>
-        {lessonGroups.map((group) => (
+        {lessonGroups.map((group, groupIdx) => (
           <Fragment key={group.lessonNumber}>
-            <tr>
-              <td
-                colSpan={students.length + 2}
-                className="border-b border-border bg-muted/50 px-4 py-1.5 text-xs font-semibold text-foreground"
-              >
-                {group.lesson_label ?? `第 ${group.lessonNumber} 課`}
-              </td>
-            </tr>
-            {group.slots.map(renderLessonSlot)}
+            {groupIdx > 0 && renderSpacerTbody()}
+            <tbody>
+              <tr>
+                <td
+                  colSpan={students.length + 2}
+                  className="sticky left-0 border-b border-border bg-muted/50 px-4 py-1.5 text-xs font-semibold text-foreground"
+                >
+                  {group.lesson_label ?? `第 ${group.lessonNumber} 課`}
+                </td>
+              </tr>
+            </tbody>
+            {group.slots.map((slot, slotIdx) => (
+              <Fragment key={slot.sessionKey}>
+                {slotIdx > 0 && renderSpacerTbody()}
+                {renderSlotCard(slot)}
+              </Fragment>
+            ))}
           </Fragment>
         ))}
 
-        {/* Unlessoned: non-billable or billing-unknown slots */}
         {unlessoned.length > 0 && (
           <>
-            {renderSectionHeader('未編課（不計費 / 尚未開袋）')}
-            {unlessoned.map((slot) => {
-              const isIntensive = slot.session_kind === 'intensive'
-              const borderColor = isIntensive
-                ? 'border-l-violet-200 dark:border-l-violet-500/30'
-                : 'border-l-sky-200 dark:border-l-sky-500/30'
-              const dateLabel = slot.session_date.slice(5).replace('-', '/')
-              const kindLabel = isIntensive ? '強' : '團'
-              const note = slot.isBillable === null ? '尚未開袋' : '不計費'
-              const hasAtt = slot.attendanceByStudent.size > 0
-
-              return (
-                <Fragment key={slot.sessionKey}>
-                  <tr className="group">
-                    <td className={cn('sticky left-0 z-10 border-b border-border border-l-[3px] bg-muted/20 px-4 py-2.5 transition-colors group-hover:bg-muted/40', borderColor)}>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold opacity-60', TASK_CHIP['attendance'])}>
-                          {kindLabel}
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm text-muted-foreground">{dateLabel}</p>
-                          <p className="text-[10px] text-muted-foreground/60">{note}</p>
-                        </div>
-                        {detail.bag_id && hasAtt && (
-                          <button
-                            type="button"
-                            onClick={() => setAttendanceSlot(slot)}
-                            aria-label="點名"
-                            className="shrink-0 rounded p-1 text-sky-500/50 transition-colors hover:text-sky-600"
-                          >
-                            <ClipboardCheck size={13} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                    {students.map((student) => {
-                      const row = slot.attendanceByStudent.get(student.student_id)
-                      const display = attDisplay(row)
-                      return (
-                        <td
-                          key={student.student_id}
-                          className="border-b border-border bg-muted/20 px-2 py-2 text-center transition-colors group-hover:bg-muted/40"
-                        >
-                          {row ? (
-                            <button
-                              type="button"
-                              onClick={() => setAttendanceSlot(slot)}
-                              aria-label={`${student.student.chinese_name} 出席：${display.label}`}
-                              className="inline-flex items-center justify-center rounded px-1.5 py-0.5 text-[11px] font-medium text-muted-foreground/60 transition-colors hover:bg-muted"
-                            >
-                              {display.label}
-                            </button>
-                          ) : (
-                            <span className="text-[11px] text-gray-200 dark:text-white/10">—</span>
-                          )}
-                        </td>
-                      )
-                    })}
-                    <td aria-hidden className="border-b border-border bg-muted/20 transition-colors group-hover:bg-muted/40" />
-                  </tr>
-                  {/* Tasks for unlessoned slots (e.g. task-only without explicit label) */}
-                  {slot.tasks.map((task, idx) => renderTaskRow(task, idx))}
-                  {renderMakeupRows(slot)}
-                </Fragment>
-              )
-            })}
+            {lessonGroups.length > 0 && renderSpacerTbody()}
+            <tbody>
+              {renderSectionHeader('未編課（不計費 / 尚未開袋）')}
+            </tbody>
+            {unlessoned.map((slot, idx) => (
+              <Fragment key={slot.sessionKey}>
+                {idx > 0 && renderSpacerTbody()}
+                {renderSlotCard(slot)}
+              </Fragment>
+            ))}
           </>
         )}
 
+        {orphanTasks.length > 0 && renderSpacerTbody()}
         {renderOrphanTasks()}
 
         {sessionSlots.length === 0 && orphanTasks.length === 0 && (
-          <tr>
-            <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
-              還沒有課程資料，請先開袋
-            </td>
-          </tr>
+          <tbody>
+            <tr>
+              <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
+                還沒有課程資料，請先開袋
+              </td>
+            </tr>
+          </tbody>
         )}
       </>
     )
@@ -901,7 +881,6 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           </p>
         </div>
 
-        {/* View mode toggle */}
         <div className="flex overflow-hidden rounded-lg border border-border">
           <button
             type="button"
@@ -960,7 +939,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         </div>
       ) : (
         <>
-          {/* ── Mobile card layout (md+ hides this) ── */}
+          {/* ── Mobile card layout ── */}
           <div className="space-y-3 p-4 md:hidden">
             {sessionSlots.length === 0 && orphanTasks.length === 0 ? (
               <p className="py-10 text-center text-sm text-muted-foreground">還沒有課程資料，請先開袋</p>
@@ -979,6 +958,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                     onMakeup={(row, name) => setSelectedMakeupRow({ row, studentName: name })}
                     onTaskCell={handleCellClick}
                     onDeleteTask={handleDeleteTask}
+                    onEditTask={setEditingTask}
+                    onComment={() => setCommentSlot(slot)}
+                    hasComment={commentByDate.has(slot.session_date)}
                   />
                 ))}
                 {orphanTasks.length > 0 && (
@@ -1023,10 +1005,10 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             )}
           </div>
 
-          {/* ── Desktop table (below md hides this) ── */}
+          {/* ── Desktop table ── */}
           <div className="hidden min-h-0 flex-1 overflow-hidden p-4 md:block md:p-6">
-            <div className="mac-card h-full overflow-auto rounded-lg">
-              <table className="w-full border-separate border-spacing-0 text-sm">
+            <div className="mac-card h-full overflow-auto rounded-lg bg-muted/30">
+              <table className="min-w-full border-separate border-spacing-0 text-sm">
                 <thead>
                   <tr>
                     <th className="sticky left-0 top-0 z-30 min-w-[17rem] border-b border-border bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
@@ -1044,12 +1026,10 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                         <span className="block text-[10px] text-muted-foreground">{student.student.english_name}</span>
                       </th>
                     ))}
-                    <th aria-hidden className="w-full border-b border-border bg-white dark:bg-[#2c2c2e]" />
+                    <th aria-hidden className="min-w-[3rem] border-b border-border bg-white dark:bg-[#2c2c2e]" />
                   </tr>
                 </thead>
-                <tbody>
-                  {viewMode === 'by-date' ? renderByDate() : renderByLesson()}
-                </tbody>
+                {viewMode === 'by-date' ? renderByDate() : renderByLesson()}
               </table>
             </div>
           </div>
@@ -1085,6 +1065,22 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
           record={selected.record}
           classDepartment={cls.department}
           onClose={handleClose}
+        />
+      )}
+
+      {editingTask && (
+        <EditTaskModal
+          task={editingTask}
+          onClose={(refresh) => { setEditingTask(null); if (refresh) router.refresh() }}
+        />
+      )}
+
+      {commentSlot && (
+        <SessionCommentModal
+          classId={cls.id}
+          sessionDate={commentSlot.session_date}
+          existingComment={commentByDate.get(commentSlot.session_date) ?? null}
+          onClose={(refresh) => { setCommentSlot(null); if (refresh) router.refresh() }}
         />
       )}
 

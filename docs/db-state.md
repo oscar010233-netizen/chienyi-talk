@@ -76,6 +76,16 @@
    - 刪除：`SeasonPlanSheet.tsx`、`/api/season-plan`、`AddTaskModal.tsx`。
    - 新建：`PlanSheet.tsx`（整季計畫重寫）、`/api/task-templates`。
 
+10. **新增 `session_daily_comments` 表（2026-06-23）。**
+   每個班級 × 每個出席日 一則評語（給家長的話，非每個任務）。
+   - 欄位：`id UUID PK`、`tenant_id UUID FK tenants`、`class_id UUID FK classes`、`session_date DATE`、`comment_text TEXT`、`status TEXT CHECK IN ('draft','published')`、`created_at`、`updated_at`。
+   - UNIQUE `(tenant_id, class_id, session_date)`，同一班同一天僅一筆。
+   - 已 `ENABLE ROW LEVEL SECURITY`，tenant 隔離 policy 一條（`tenant_id = (SELECT tenant_id FROM profiles WHERE id = auth.uid())`）。
+   - **trigger 已補齊（2026-06-23 驗收時補）**：`set_session_daily_comments_updated_at`（BEFORE UPDATE → `set_updated_at()`）+ `zz_audit`（AFTER I/U/D → `audit_trigger()`），與所有業務表一致。建表 DDL 當下漏掛，驗收查 information_schema 發現後補上。
+   - API：`GET/POST /api/session-comments`（POST 為 upsert on `(tenant_id,class_id,session_date)`，先查 classes 取 tenant_id 對齊）。
+   - 前端：`SessionCommentModal`，從 ClassSheet 出席日行的 `MessageSquare` icon 觸發（有評語填色 / 無評語淡色）。
+   - **Gemini 潤色按鈕預留（disabled）**，待後續串接。
+
 ## 已知缺口 / 殭屍欄位（不是 bug，是待補）
 
 - **`classes.department` 已有新增班級寫入 UI**，但舊資料可能仍為 null。若 buffer 的 ENG/XIAO 分類不準，優先回填舊班級 department。

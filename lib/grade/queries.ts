@@ -1,5 +1,16 @@
 import { createServiceClient } from '@/lib/supabase/server'
-import type { ClassWithCount, ClassDetail, ClassEnrollment, Task, TaskRecord, ClassRow, RosterStudent, ClassSession, ClassSessionRow } from './types'
+import type {
+  ClassWithCount,
+  ClassDetail,
+  ClassEnrollment,
+  Task,
+  TaskRecord,
+  ClassRow,
+  RosterStudent,
+  ClassSession,
+  ClassSessionRow,
+  SessionDailyComment,
+} from './types'
 
 // School-wide student roster, each with the classes they're actively enrolled in.
 export async function getAllStudents(): Promise<RosterStudent[]> {
@@ -69,7 +80,7 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
 
   if (!classRow) return null
 
-  const [studentsResult, tasksResult, bagResult] = await Promise.all([
+  const [studentsResult, tasksResult, bagResult, sessionCommentsResult] = await Promise.all([
     supabase
       .from('class_enrollments')
       .select('id, class_id, student_id, slot_order, status, student:students(id, chinese_name, english_name, status, school, grade)')
@@ -91,6 +102,11 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from('session_daily_comments')
+      .select('id, class_id, session_date, comment_text, status')
+      .eq('class_id', classRow.id)
+      .eq('tenant_id', classRow.tenant_id),
   ])
 
   const bag = bagResult.data
@@ -152,6 +168,7 @@ export async function getClassDetail(classId: string): Promise<ClassDetail | nul
     records: (recordsData ?? []) as TaskRecord[],
     sessions,
     sessionRows,
+    sessionComments: (sessionCommentsResult.data ?? []) as SessionDailyComment[],
     bag_id: bag?.id ?? null,
   }
 }
