@@ -539,7 +539,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     return (
       <tbody aria-hidden="true">
         <tr>
-          <td colSpan={students.length + 2} className="h-6 p-0" />
+          <td colSpan={students.length + 2} className="h-4 p-0" />
         </tr>
       </tbody>
     )
@@ -659,7 +659,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
               <tr>
                 <td
                   className={cn(
-                    'sticky left-0 z-10 border border-border/40 rounded-l-md bg-white py-3 pl-8 pr-4 dark:bg-[#2c2c2e]',
+                    'sticky left-0 z-10 border-y border-border/20 border-l-2 border-l-border/40 rounded-l-md bg-white py-3 pl-8 pr-4 dark:bg-[#2c2c2e]',
                   )}
                 >
                   <div className="flex min-w-0 items-center gap-2">
