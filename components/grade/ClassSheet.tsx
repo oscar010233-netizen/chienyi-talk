@@ -547,12 +547,10 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderSlotCard(slot: SessionSlot) {
     const isIntensive = slot.session_kind === 'intensive'
-    const slotLeftBorder = isIntensive
-      ? 'border-l-[3px] border-l-violet-400 dark:border-l-violet-500/70'
-      : 'border-l-[3px] border-l-sky-400 dark:border-l-sky-500/70'
-    const borderColor = isIntensive
-      ? 'border-l-violet-400 dark:border-l-violet-500/70'
-      : 'border-l-sky-400 dark:border-l-sky-500/70'
+    const slotLeftAccent = cn(
+      "relative before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:content-['']",
+      isIntensive ? 'before:bg-violet-400 dark:before:bg-violet-500/70' : 'before:bg-sky-400 dark:before:bg-sky-500/70',
+    )
     const dateLabel = slot.session_date.slice(5).replace('-', '/')
     const kindLabel = isIntensive ? '強' : '團'
     const hasAtt = slot.attendanceByStudent.size > 0
@@ -566,8 +564,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         <tr>
           <td
             className={cn(
-              'sticky left-0 z-10 border-l-[3px] border-t border-t-border bg-muted/40 px-4 py-4',
-              borderColor,
+              'sticky left-0 z-10 border-t border-t-border bg-muted/40 px-4 py-4',
+              slotLeftAccent,
               noTailRows && 'rounded-bl-lg border-b',
               'rounded-tl-lg',
             )}
@@ -653,7 +651,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
               <td
                 className={cn(
                   'sticky left-0 z-10 border-t border-border/40 bg-white py-3 pl-10 pr-4 dark:bg-[#2c2c2e]',
-                  slotLeftBorder,
+                  slotLeftAccent,
                   isLastTaskRow && 'rounded-bl-lg border-b border-border',
                 )}
               >
@@ -732,7 +730,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
               <td
                 className={cn(
                   'sticky left-0 z-10 bg-white px-4 py-3 dark:bg-[#2c2c2e]',
-                  slotLeftBorder,
+                  slotLeftAccent,
                   mkNeedsTopBorder && 'border-t border-border/40',
                   isLastMakeupRow && 'rounded-bl-lg border-b border-border',
                 )}
