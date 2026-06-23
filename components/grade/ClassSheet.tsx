@@ -539,7 +539,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     return (
       <tbody aria-hidden="true">
         <tr>
-          <td colSpan={students.length + 2} className="h-3 p-0" />
+          <td colSpan={students.length + 2} className="h-6 p-0" />
         </tr>
       </tbody>
     )
@@ -547,6 +547,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderSlotCard(slot: SessionSlot) {
     const isIntensive = slot.session_kind === 'intensive'
+    const slotLeftBorder = isIntensive
+      ? 'border-l-[3px] border-l-violet-400 dark:border-l-violet-500/70'
+      : 'border-l-[3px] border-l-sky-400 dark:border-l-sky-500/70'
     const borderColor = isIntensive
       ? 'border-l-violet-400 dark:border-l-violet-500/70'
       : 'border-l-sky-400 dark:border-l-sky-500/70'
@@ -649,7 +652,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             <tr key={task.id}>
               <td
                 className={cn(
-                  'sticky left-0 z-10 border-l border-l-2 border-l-border/30 border-t border-border/40 bg-white py-3 pl-10 pr-4 dark:bg-[#2c2c2e]',
+                  'sticky left-0 z-10 border-t border-border/40 bg-white py-3 pl-10 pr-4 dark:bg-[#2c2c2e]',
+                  slotLeftBorder,
                   isLastTaskRow && 'rounded-bl-lg border-b border-border',
                 )}
               >
@@ -727,7 +731,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             <tr key={mkRow.id}>
               <td
                 className={cn(
-                  'sticky left-0 z-10 border-l border-l-border bg-white px-4 py-3 dark:bg-[#2c2c2e]',
+                  'sticky left-0 z-10 bg-white px-4 py-3 dark:bg-[#2c2c2e]',
+                  slotLeftBorder,
                   mkNeedsTopBorder && 'border-t border-border/40',
                   isLastMakeupRow && 'rounded-bl-lg border-b border-border',
                 )}
