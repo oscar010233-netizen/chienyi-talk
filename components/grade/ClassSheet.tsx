@@ -451,8 +451,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderStudentHeader() {
     return (
-      <div style={gridCols} className="sticky top-0 z-30 grid rounded-t-xl border-b mac-hairline bg-white dark:bg-[#2c2c2e]">
-        <div className="sticky left-0 z-40 rounded-tl-xl bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
+      <div style={gridCols} className="sticky top-0 z-30 grid rounded-t-lg border-b mac-hairline bg-white dark:bg-[#2c2c2e]">
+        <div className="sticky left-0 z-40 rounded-tl-lg bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
           {viewMode === 'by-date' ? '出席日 / 任務' : '課數 / 任務'}
         </div>
         {students.map((student, idx) => (
@@ -460,7 +460,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             key={student.student_id}
             className={cn(
               'bg-white px-3 py-3 text-center font-normal dark:bg-[#2c2c2e]',
-              idx === students.length - 1 && 'rounded-tr-xl',
+              idx === students.length - 1 && 'rounded-tr-lg',
             )}
           >
             <span className={cn('mx-auto mb-1.5 flex size-8 items-center justify-center rounded-full text-xs font-semibold', avatarColor(student.student_id))}>
@@ -476,7 +476,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderTaskRowCard(task: Task) {
     return (
-      <div key={task.id} className="mx-3 my-2 rounded-lg border mac-hairline bg-white dark:bg-[#2c2c2e]">
+      <div key={task.id} className="mx-3 my-2 rounded-lg mac-soft">
         <div style={gridCols} className="grid items-center">
           <div className="sticky left-0 z-10 rounded-l-lg bg-white py-3 pl-6 pr-4 dark:bg-[#2c2c2e]">
             <div className="flex min-w-0 items-center gap-2">
@@ -537,7 +537,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
       : studentId
 
     return (
-      <div key={mkRow.id} className="mx-3 my-2 rounded-lg border mac-hairline bg-white dark:bg-[#2c2c2e]">
+      <div key={mkRow.id} className="mx-3 my-2 rounded-lg mac-soft">
         <div style={gridCols} className="grid items-center">
           <div className="sticky left-0 z-10 rounded-l-lg bg-white px-4 py-3 dark:bg-[#2c2c2e]">
             <div className="flex min-w-0 items-start gap-2 pl-6">
@@ -641,7 +641,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             )
           })}
         </div>
-        <div className="rounded-b-lg bg-muted/30 px-1 pt-1.5 pb-2 dark:bg-white/[0.03]">
+        <div className="rounded-b-lg bg-muted/50 px-1 pt-1.5 pb-2 dark:bg-white/[0.03]">
           {slot.tasks.map((task) => renderTaskRowCard(task))}
           {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
         </div>
@@ -854,9 +854,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
           {/* ── Desktop grid ── */}
           <div className="hidden min-h-0 flex-1 overflow-hidden p-4 md:block md:p-6">
-            <div className="mac-card h-full overflow-auto rounded-lg border border-border bg-muted/30 p-4">
+            <div className="mac-card h-full overflow-auto rounded-lg border border-border bg-muted/30">
               {renderStudentHeader()}
-              <div className="pt-3">
+              <div className="px-4 pt-3 pb-4">
                 {viewMode === 'by-date' ? renderByDate() : renderByLesson()}
               </div>
             </div>
