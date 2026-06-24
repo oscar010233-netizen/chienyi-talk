@@ -451,14 +451,17 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderStudentHeader() {
     return (
-      <div style={gridCols} className="sticky top-0 z-30 grid bg-white dark:bg-[#2c2c2e]">
-        <div className="sticky left-0 z-40 border-b border-border bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
+      <div style={gridCols} className="sticky top-0 z-30 grid rounded-t-xl border-b mac-hairline bg-white dark:bg-[#2c2c2e]">
+        <div className="sticky left-0 z-40 rounded-tl-xl bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
           {viewMode === 'by-date' ? '出席日 / 任務' : '課數 / 任務'}
         </div>
-        {students.map((student) => (
+        {students.map((student, idx) => (
           <div
             key={student.student_id}
-            className="border-b border-border bg-white px-3 py-3 text-center font-normal dark:bg-[#2c2c2e]"
+            className={cn(
+              'bg-white px-3 py-3 text-center font-normal dark:bg-[#2c2c2e]',
+              idx === students.length - 1 && 'rounded-tr-xl',
+            )}
           >
             <span className={cn('mx-auto mb-1.5 flex size-8 items-center justify-center rounded-full text-xs font-semibold', avatarColor(student.student_id))}>
               {initials(student.student.chinese_name, student.student.english_name)}
@@ -473,9 +476,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderTaskRowCard(task: Task) {
     return (
-      <div key={task.id} className="mx-3 my-2 rounded-md border border-border/40 bg-white dark:bg-[#2c2c2e]">
+      <div key={task.id} className="mx-3 my-2 rounded-lg border mac-hairline bg-white dark:bg-[#2c2c2e]">
         <div style={gridCols} className="grid items-center">
-          <div className="sticky left-0 z-10 bg-white py-3 pl-6 pr-4 dark:bg-[#2c2c2e]">
+          <div className="sticky left-0 z-10 rounded-l-lg bg-white py-3 pl-6 pr-4 dark:bg-[#2c2c2e]">
             <div className="flex min-w-0 items-center gap-2">
               <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
                 {TASK_SHORT[task.task_type]}
@@ -534,9 +537,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
       : studentId
 
     return (
-      <div key={mkRow.id} className="mx-3 my-2 rounded-md border border-border/40 bg-white dark:bg-[#2c2c2e]">
+      <div key={mkRow.id} className="mx-3 my-2 rounded-lg border mac-hairline bg-white dark:bg-[#2c2c2e]">
         <div style={gridCols} className="grid items-center">
-          <div className="sticky left-0 z-10 bg-white px-4 py-3 dark:bg-[#2c2c2e]">
+          <div className="sticky left-0 z-10 rounded-l-lg bg-white px-4 py-3 dark:bg-[#2c2c2e]">
             <div className="flex min-w-0 items-start gap-2 pl-6">
               <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
               <span className="mt-0.5 shrink-0 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補 {mkDate}</span>
@@ -576,9 +579,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     )
 
     return (
-      <div key={slot.sessionKey} className="mb-4 rounded-lg border border-border/60 bg-card">
+      <div key={slot.sessionKey} className="mb-4 rounded-lg mac-soft">
         <div style={gridCols} className="grid">
-          <div className={cn('sticky left-0 z-20 border-l-[3px] bg-muted/40 px-4 py-4', accent)}>
+          <div className={cn('sticky left-0 z-20 rounded-tl-lg border-l-[3px] px-4 py-4', accent)}>
             <div className="flex min-w-0 items-start gap-2">
               <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP.attendance)}>
                 {kindLabel}
@@ -621,7 +624,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             const row = slot.attendanceByStudent.get(student.student_id)
             const display = attDisplay(row)
             return (
-              <div key={student.student_id} className="bg-muted/40 px-2 py-3 text-center">
+              <div key={student.student_id} className="px-2 py-3 text-center">
                 {row ? (
                   <button
                     type="button"
@@ -638,7 +641,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             )
           })}
         </div>
-        <div className="pt-1 pb-1">
+        <div className="rounded-b-lg bg-muted/30 px-1 pt-1.5 pb-2 dark:bg-white/[0.03]">
           {slot.tasks.map((task) => renderTaskRowCard(task))}
           {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
         </div>
@@ -649,7 +652,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   function renderOrphanTasks() {
     if (orphanTasks.length === 0) return null
     return (
-      <div className="mb-3 rounded-lg border border-border/60 bg-card">
+      <div className="mb-3 rounded-lg mac-soft">
         <div className="sticky left-0 border-b border-border bg-muted/50 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
           未對應課次的任務
         </div>
