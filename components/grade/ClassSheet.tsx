@@ -452,9 +452,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   function renderStudentHeader() {
     return (
       <div style={gridCols} className="sticky top-0 z-30 grid rounded-t-lg border-b mac-hairline bg-white pl-5 dark:bg-[#2c2c2e]">
-        <div className="sticky left-5 z-40 rounded-tl-lg bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
-          {viewMode === 'by-date' ? '出席日 / 任務' : '課數 / 任務'}
-        </div>
+        <div className="sticky left-5 z-40 rounded-tl-lg bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]" />
         {students.map((student, idx) => (
           <div
             key={student.student_id}
@@ -649,8 +647,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             )
           })}
         </div>
-        {slot.tasks.map((task, idx) => renderTaskRowCard(task, idx))}
         {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
+        {slot.tasks.map((task, idx) => renderTaskRowCard(task, idx))}
       </div>
     )
   }
