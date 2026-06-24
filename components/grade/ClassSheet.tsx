@@ -445,139 +445,140 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   const toolButton =
     'inline-flex h-9 items-center gap-1.5 rounded-md border border-border bg-background px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted disabled:opacity-50'
 
-  // ── Desktop table helpers ────────────────────────────────────────────────
+  const gridCols = { gridTemplateColumns: `260px repeat(${students.length}, 96px)` }
 
-  function renderTaskRow(task: Task) {
-    const rowBg = 'bg-white dark:bg-[#2c2c2e]'
-    const meta = taskMeta(task)
-    const threshold = thresholdText(task)
+  // ── Desktop grid helpers ─────────────────────────────────────────────────
+
+  function renderStudentHeader() {
     return (
-      <tr key={task.id} className="group">
-        <td className={cn('sticky left-0 z-10 border-b border-border px-4 py-3.5 transition-colors', rowBg)}>
-          <div className="flex min-w-0 items-start gap-2">
-            <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
-              {TASK_SHORT[task.task_type]}
+      <div style={gridCols} className="sticky top-0 z-30 grid bg-white dark:bg-[#2c2c2e]">
+        <div className="sticky left-0 z-40 border-b border-border bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
+          {viewMode === 'by-date' ? '出席日 / 任務' : '課數 / 任務'}
+        </div>
+        {students.map((student) => (
+          <div
+            key={student.student_id}
+            className="border-b border-border bg-white px-3 py-3 text-center font-normal dark:bg-[#2c2c2e]"
+          >
+            <span className={cn('mx-auto mb-1.5 flex size-8 items-center justify-center rounded-full text-xs font-semibold', avatarColor(student.student_id))}>
+              {initials(student.student.chinese_name, student.student.english_name)}
             </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-foreground">{task.task_name ?? '未命名任務'}</p>
-              <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                {meta || '未設定週數/課數'}
-                {threshold && <span> · 門檻 {threshold}</span>}
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setEditingTask(task)}
-              aria-label={`編輯 ${task.task_name ?? '任務'}`}
-              className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground/50 transition-colors hover:text-foreground"
-            >
-              <Pencil size={13} />
-            </button>
-            <button
-              type="button"
-              onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
-              disabled={deletingTaskId === task.id}
-              aria-label={`刪除 ${task.task_name ?? '任務'}`}
-              className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground/50 transition-colors hover:text-red-500 disabled:opacity-50"
-            >
-              <Trash2 size={13} />
-            </button>
+            <span className="block text-xs font-medium leading-tight text-foreground">{student.student.chinese_name}</span>
+            <span className="block text-[10px] text-muted-foreground">{student.student.english_name}</span>
           </div>
-        </td>
-        {students.map((student) => {
-          const record = recordMap.get(`${student.student_id}:${task.id}`)
-          const isComment = task.task_type === 'comment'
-          const display = isComment
-            ? commentLamp(record?.comment_status)
-            : lampFor(record?.status, task.task_type)
-          const detailText = task.task_type === 'quiz'
-            ? (record?.result_history || record?.latest_result)
-            : null
-          return (
-            <td key={student.student_id} className={cn('border-b border-border px-2 py-2.5 text-center transition-colors', rowBg)}>
+        ))}
+      </div>
+    )
+  }
+
+  function renderTaskRowCard(task: Task) {
+    return (
+      <div key={task.id} className="mx-2 my-1.5 rounded-md border border-border/40 bg-white dark:bg-[#2c2c2e]">
+        <div style={gridCols} className="grid items-center">
+          <div className="sticky left-0 z-10 bg-white py-3 pl-6 pr-4 dark:bg-[#2c2c2e]">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
+                {TASK_SHORT[task.task_type]}
+              </span>
+              <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{task.task_name ?? '未命名任務'}</p>
               <button
                 type="button"
-                onClick={() => handleCellClick(task, student)}
-                className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-gray-300/60 dark:hover:bg-white/10"
+                onClick={() => setEditingTask(task)}
+                aria-label={`編輯 ${task.task_name ?? '任務'}`}
+                className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-foreground"
               >
-                {record
-                  ? <LampBadge color={display.color} label={display.label} detail={detailText} />
-                  : <span className="text-gray-300 dark:text-white/20">未派發</span>}
+                <Pencil size={12} />
               </button>
-            </td>
-          )
-        })}
-        <td aria-hidden className={cn('border-b border-border transition-colors', rowBg)} />
-      </tr>
+              <button
+                type="button"
+                onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
+                disabled={deletingTaskId === task.id}
+                aria-label={`刪除 ${task.task_name ?? '任務'}`}
+                className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-red-500 disabled:opacity-50"
+              >
+                <Trash2 size={12} />
+              </button>
+            </div>
+          </div>
+          {students.map((student) => {
+            const rec = recordMap.get(`${student.student_id}:${task.id}`)
+            const display = task.task_type === 'comment'
+              ? commentLamp(rec?.comment_status)
+              : lampFor(rec?.status, task.task_type)
+            const detailText = task.task_type === 'quiz' ? (rec?.result_history || rec?.latest_result) : null
+            return (
+              <div key={student.student_id} className="px-2 py-2.5 text-center">
+                <button
+                  type="button"
+                  onClick={() => handleCellClick(task, student)}
+                  className="inline-flex min-h-7 items-center justify-center rounded-md px-1.5 py-0.5 transition-colors hover:bg-gray-300/60 dark:hover:bg-white/10"
+                >
+                  {rec
+                    ? <LampBadge color={display.color} label={display.label} detail={detailText} />
+                    : <span className="text-xs text-gray-300 dark:text-white/20">未派發</span>}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      </div>
     )
   }
 
-  function renderSectionHeader(label: string) {
+  function renderMakeupRowCard(studentId: string, mkRow: ClassSessionRow) {
+    const mkDate = mkRow.session_date ? mkRow.session_date.slice(5).replace('-', '/') : '待定'
+    const mkDisplay = attDisplay(mkRow)
+    const mkStudent = students.find((s) => s.student_id === studentId)
+    const mkName = mkStudent
+      ? `${mkStudent.student.chinese_name}${mkStudent.student.english_name ? ` ${mkStudent.student.english_name}` : ''}`
+      : studentId
+
     return (
-      <tr>
-        <td
-          colSpan={students.length + 2}
-          className="border-b border-border bg-muted/50 px-4 py-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50"
-        >
-          {label}
-        </td>
-      </tr>
+      <div key={mkRow.id} className="mx-2 my-1.5 rounded-md border border-border/40 bg-white dark:bg-[#2c2c2e]">
+        <div style={gridCols} className="grid items-center">
+          <div className="sticky left-0 z-10 bg-white px-4 py-3 dark:bg-[#2c2c2e]">
+            <div className="flex min-w-0 items-start gap-2 pl-6">
+              <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
+              <span className="mt-0.5 shrink-0 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補 {mkDate}</span>
+            </div>
+          </div>
+          {students.map((student) => (
+            <div key={student.student_id} className="px-2 py-3 text-center">
+              {student.student_id === studentId ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedMakeupRow({ row: mkRow, studentName: mkName })}
+                  aria-label={`補課點名：${mkName}`}
+                  className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-teal-200/50 dark:hover:bg-teal-500/20"
+                >
+                  <LampBadge color={mkDisplay.color} label={mkDisplay.label} detail={null} />
+                </button>
+              ) : (
+                <span className="text-gray-200 dark:text-white/10">—</span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
     )
   }
 
-  function renderOrphanTasks() {
-    if (orphanTasks.length === 0) return null
-    return (
-      <tbody>
-        {renderSectionHeader('未對應課次的任務')}
-        {orphanTasks.map((task) => renderTaskRow(task))}
-      </tbody>
-    )
-  }
-
-  function renderSpacerTbody() {
-    return (
-      <tbody aria-hidden="true">
-        <tr>
-          <td colSpan={students.length + 2} className="h-4 p-0" />
-        </tr>
-      </tbody>
-    )
-  }
-
-  function renderSlotCard(slot: SessionSlot) {
+  function renderSessionCard(slot: SessionSlot) {
     const isIntensive = slot.session_kind === 'intensive'
-    const slotLeftAccent = isIntensive
-      ? 'before:bg-violet-400 dark:before:bg-violet-500/70'
-      : 'before:bg-sky-400 dark:before:bg-sky-500/70'
+    const accent = isIntensive
+      ? 'border-l-violet-400 dark:border-l-violet-500/70'
+      : 'border-l-sky-400 dark:border-l-sky-500/70'
     const dateLabel = slot.session_date.slice(5).replace('-', '/')
     const kindLabel = isIntensive ? '強' : '團'
     const hasAtt = slot.attendanceByStudent.size > 0
     const makeupEntries = Array.from(slot.makeupsByStudent.entries()).flatMap(([studentId, makeupRows]) =>
       makeupRows.map((row) => ({ studentId, row })),
     )
-    const noTailRows = slot.tasks.length === 0 && makeupEntries.length === 0
-    const renderInnerGap = (key: string) => (
-      <tr key={key} aria-hidden="true">
-        <td colSpan={students.length + 2} className="h-2 p-0" />
-      </tr>
-    )
 
     return (
-      <tbody
-        key={slot.sessionKey}
-        className={cn(
-          "relative align-top before:absolute before:bottom-0 before:left-0 before:top-0 before:w-[3px] before:content-[''] after:pointer-events-none after:absolute after:bottom-0 after:left-0 after:right-0 after:top-0 after:rounded-lg after:border after:border-border/60 after:bg-muted/25 after:content-['']",
-          slotLeftAccent,
-        )}
-      >
-        <tr>
-          <td
-            className={cn(
-              'sticky left-0 z-10 rounded-l-lg border-y border-l border-border/60 bg-muted/40 px-4 py-4',
-              noTailRows && 'border-b',
-            )}
-          >
+      <div key={slot.sessionKey} className="mb-3 rounded-lg border border-border/60 bg-card">
+        <div style={gridCols} className="grid">
+          <div className={cn('sticky left-0 z-20 border-l-[3px] bg-muted/40 px-4 py-4', accent)}>
             <div className="flex min-w-0 items-start gap-2">
               <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP.attendance)}>
                 {kindLabel}
@@ -615,18 +616,12 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 <MessageSquare size={13} />
               </button>
             </div>
-          </td>
+          </div>
           {students.map((student) => {
             const row = slot.attendanceByStudent.get(student.student_id)
             const display = attDisplay(row)
             return (
-              <td
-                key={student.student_id}
-                className={cn(
-                  'border-y border-border/60 bg-muted/40 px-2 py-3 text-center',
-                  noTailRows && 'border-b',
-                )}
-              >
+              <div key={student.student_id} className="bg-muted/40 px-2 py-3 text-center">
                 {row ? (
                   <button
                     type="button"
@@ -639,143 +634,25 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
                 ) : (
                   <span className="text-gray-200 dark:text-white/10">—</span>
                 )}
-              </td>
+              </div>
             )
           })}
-          <td
-            aria-hidden
-            className={cn(
-              'rounded-r-lg border-y border-r border-border/60 bg-muted/40',
-              noTailRows && 'rounded-br-lg border-b',
-            )}
-          />
-        </tr>
+        </div>
+        {slot.tasks.map((task) => renderTaskRowCard(task))}
+        {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
+      </div>
+    )
+  }
 
-        {slot.tasks.map((task, idx) => {
-          const record = (studentId: string) => recordMap.get(`${studentId}:${task.id}`)
-          return (
-            <Fragment key={task.id}>
-              {idx > 0 && renderInnerGap(`task-gap-${task.id}`)}
-              <tr>
-                <td
-                  className={cn(
-                    'sticky left-0 z-10 border-y border-border/20 border-l-2 border-l-border/40 rounded-l-md bg-white py-3 pl-8 pr-4 dark:bg-[#2c2c2e]',
-                  )}
-                >
-                  <div className="flex min-w-0 items-center gap-2">
-                    <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
-                      {TASK_SHORT[task.task_type]}
-                    </span>
-                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{task.task_name ?? '未命名任務'}</p>
-                    <button
-                      type="button"
-                      onClick={() => setEditingTask(task)}
-                      aria-label={`編輯 ${task.task_name ?? '任務'}`}
-                      className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-foreground"
-                    >
-                      <Pencil size={12} />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
-                      disabled={deletingTaskId === task.id}
-                      aria-label={`刪除 ${task.task_name ?? '任務'}`}
-                      className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-red-500 disabled:opacity-50"
-                    >
-                      <Trash2 size={12} />
-                    </button>
-                  </div>
-                </td>
-                {students.map((student) => {
-                  const rec = record(student.student_id)
-                  const display = task.task_type === 'comment'
-                    ? commentLamp(rec?.comment_status)
-                    : lampFor(rec?.status, task.task_type)
-                  const detailText = task.task_type === 'quiz' ? (rec?.result_history || rec?.latest_result) : null
-                  return (
-                    <td
-                      key={student.student_id}
-                      className={cn(
-                        'border-y border-border/40 bg-white px-2 py-2.5 text-center dark:bg-[#2c2c2e]',
-                      )}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => handleCellClick(task, student)}
-                        className="inline-flex min-h-7 items-center justify-center rounded-md px-1.5 py-0.5 transition-colors hover:bg-gray-300/60 dark:hover:bg-white/10"
-                      >
-                        {rec
-                          ? <LampBadge color={display.color} label={display.label} detail={detailText} />
-                          : <span className="text-xs text-gray-300 dark:text-white/20">未派發</span>}
-                      </button>
-                    </td>
-                  )
-                })}
-                <td
-                  aria-hidden
-                  className={cn(
-                    'border border-l-0 border-border/40 rounded-r-md bg-white dark:bg-[#2c2c2e]',
-                  )}
-                />
-              </tr>
-            </Fragment>
-          )
-        })}
-
-        {makeupEntries.map(({ studentId, row: mkRow }, idx) => {
-          const mkDate = mkRow.session_date ? mkRow.session_date.slice(5).replace('-', '/') : '待定'
-          const mkDisplay = attDisplay(mkRow)
-          const mkStudent = students.find((s) => s.student_id === studentId)
-          const mkName = mkStudent
-            ? `${mkStudent.student.chinese_name}${mkStudent.student.english_name ? ` ${mkStudent.student.english_name}` : ''}`
-            : studentId
-          return (
-            <Fragment key={mkRow.id}>
-              {idx > 0 && renderInnerGap(`makeup-gap-${mkRow.id}`)}
-              <tr>
-                <td
-                  className={cn(
-                    'sticky left-0 z-10 border border-border/40 rounded-l-md bg-white px-4 py-3 dark:bg-[#2c2c2e]',
-                  )}
-                >
-                  <div className="flex min-w-0 items-start gap-2 pl-8">
-                    <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
-                    <span className="mt-0.5 shrink-0 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補</span>
-                    <p className="truncate text-sm text-muted-foreground">{mkDate}</p>
-                  </div>
-                </td>
-                {students.map((student) => (
-                  <td
-                    key={student.student_id}
-                    className={cn(
-                      'border-y border-border/40 bg-white px-2 py-3 text-center dark:bg-[#2c2c2e]',
-                    )}
-                  >
-                    {student.student_id === studentId ? (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedMakeupRow({ row: mkRow, studentName: mkName })}
-                        aria-label={`補課點名：${mkName}`}
-                        className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-teal-200/50 dark:hover:bg-teal-500/20"
-                      >
-                        <LampBadge color={mkDisplay.color} label={mkDisplay.label} detail={null} />
-                      </button>
-                    ) : (
-                      <span className="text-gray-200 dark:text-white/10">—</span>
-                    )}
-                  </td>
-                ))}
-                <td
-                  aria-hidden
-                  className={cn(
-                    'border border-l-0 border-border/40 rounded-r-md bg-white dark:bg-[#2c2c2e]',
-                  )}
-                />
-              </tr>
-            </Fragment>
-          )
-        })}
-      </tbody>
+  function renderOrphanTasks() {
+    if (orphanTasks.length === 0) return null
+    return (
+      <div className="mb-3 rounded-lg border border-border/60 bg-card">
+        <div className="sticky left-0 border-b border-border bg-muted/50 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+          未對應課次的任務
+        </div>
+        {orphanTasks.map((task) => renderTaskRowCard(task))}
+      </div>
     )
   }
 
@@ -784,22 +661,10 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   function renderByDate() {
     return (
       <>
-        {sessionSlots.map((slot) => (
-          <Fragment key={slot.sessionKey}>
-            {renderSpacerTbody()}
-            {renderSlotCard(slot)}
-          </Fragment>
-        ))}
-        {orphanTasks.length > 0 && renderSpacerTbody()}
+        {sessionSlots.map((slot) => renderSessionCard(slot))}
         {renderOrphanTasks()}
         {sessionSlots.length === 0 && orphanTasks.length === 0 && (
-          <tbody>
-            <tr>
-              <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                還沒有課程資料，請先開袋
-              </td>
-            </tr>
-          </tbody>
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">還沒有課程資料，請先開袋</p>
         )}
       </>
     )
@@ -811,53 +676,27 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     return (
       <>
         {lessonGroups.map((group) => (
-          <Fragment key={group.lessonNumber}>
-            {renderSpacerTbody()}
-            <tbody>
-              <tr>
-                <td
-                  colSpan={students.length + 2}
-                  className="sticky left-0 border-b border-border bg-muted/50 px-4 py-1.5 text-xs font-semibold text-foreground"
-                >
-                  {group.lesson_label ?? `第 ${group.lessonNumber} 課`}
-                </td>
-              </tr>
-            </tbody>
-            {group.slots.map((slot) => (
-              <Fragment key={slot.sessionKey}>
-                {renderSpacerTbody()}
-                {renderSlotCard(slot)}
-              </Fragment>
-            ))}
-          </Fragment>
+          <div key={group.lessonNumber}>
+            <div className="sticky left-0 mb-2 border-b border-border bg-muted/50 px-4 py-1.5 text-xs font-semibold text-foreground">
+              {group.lesson_label ?? `第 ${group.lessonNumber} 課`}
+            </div>
+            {group.slots.map((slot) => renderSessionCard(slot))}
+          </div>
         ))}
 
         {unlessoned.length > 0 && (
-          <>
-            {lessonGroups.length > 0 && renderSpacerTbody()}
-            <tbody>
-              {renderSectionHeader('未編課（不計費 / 尚未開袋）')}
-            </tbody>
-            {unlessoned.map((slot) => (
-              <Fragment key={slot.sessionKey}>
-                {renderSpacerTbody()}
-                {renderSlotCard(slot)}
-              </Fragment>
-            ))}
-          </>
+          <div>
+            <div className="sticky left-0 mb-2 border-b border-border bg-muted/50 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+              未編課（不計費 / 尚未開袋）
+            </div>
+            {unlessoned.map((slot) => renderSessionCard(slot))}
+          </div>
         )}
 
-        {orphanTasks.length > 0 && renderSpacerTbody()}
         {renderOrphanTasks()}
 
         {sessionSlots.length === 0 && orphanTasks.length === 0 && (
-          <tbody>
-            <tr>
-              <td colSpan={students.length + 2} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                還沒有課程資料，請先開袋
-              </td>
-            </tr>
-          </tbody>
+          <p className="px-4 py-10 text-center text-sm text-muted-foreground">還沒有課程資料，請先開袋</p>
         )}
       </>
     )
@@ -1008,32 +847,13 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             )}
           </div>
 
-          {/* ── Desktop table ── */}
+          {/* ── Desktop grid ── */}
           <div className="hidden min-h-0 flex-1 overflow-hidden p-4 md:block md:p-6">
-            <div className="mac-card h-full overflow-auto rounded-lg bg-muted/30 p-3">
-              <table className="min-w-full border-separate border-spacing-0 text-sm">
-                <thead>
-                  <tr>
-                    <th className="sticky left-0 top-0 z-30 min-w-[17rem] border-b border-border bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
-                      {viewMode === 'by-date' ? '出席日 / 任務' : '課數 / 任務'}
-                    </th>
-                    {students.map((student) => (
-                      <th
-                        key={student.student_id}
-                        className="sticky top-0 z-20 min-w-[7rem] border-b border-border bg-white px-3 py-3 text-center align-bottom font-normal dark:bg-[#2c2c2e]"
-                      >
-                        <span className={cn('mx-auto mb-1.5 flex size-8 items-center justify-center rounded-full text-xs font-semibold', avatarColor(student.student_id))}>
-                          {initials(student.student.chinese_name, student.student.english_name)}
-                        </span>
-                        <span className="block text-xs font-medium leading-tight text-foreground">{student.student.chinese_name}</span>
-                        <span className="block text-[10px] text-muted-foreground">{student.student.english_name}</span>
-                      </th>
-                    ))}
-                    <th aria-hidden className="min-w-[3rem] border-b border-border bg-white dark:bg-[#2c2c2e]" />
-                  </tr>
-                </thead>
+            <div className="mac-card h-full overflow-auto rounded-lg border border-border bg-muted/30 p-3">
+              {renderStudentHeader()}
+              <div className="pt-3">
                 {viewMode === 'by-date' ? renderByDate() : renderByLesson()}
-              </table>
+              </div>
             </div>
           </div>
         </>
