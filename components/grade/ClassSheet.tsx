@@ -451,8 +451,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderStudentHeader() {
     return (
-      <div style={gridCols} className="sticky top-0 z-30 grid rounded-t-lg border-b mac-hairline bg-white dark:bg-[#2c2c2e]">
-        <div className="sticky left-0 z-40 rounded-tl-lg bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
+      <div style={gridCols} className="sticky top-0 z-30 grid rounded-t-lg border-b mac-hairline bg-white pl-5 dark:bg-[#2c2c2e]">
+        <div className="sticky left-5 z-40 rounded-tl-lg bg-white px-4 py-3 text-left text-xs font-medium text-muted-foreground dark:bg-[#2c2c2e]">
           {viewMode === 'by-date' ? '出席日 / 任務' : '課數 / 任務'}
         </div>
         {students.map((student, idx) => (
@@ -476,9 +476,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderTaskRowCard(task: Task) {
     return (
-      <div key={task.id} className="mx-3 my-2 rounded-lg mac-soft">
+      <div key={task.id} className="my-2 rounded-lg mac-soft">
         <div style={gridCols} className="grid items-center">
-          <div className="sticky left-0 z-10 rounded-l-lg bg-white py-3 pl-6 pr-4 dark:bg-[#2c2c2e]">
+          <div className="sticky left-5 z-10 rounded-l-lg bg-white py-3 pl-6 pr-4 dark:bg-[#2c2c2e]">
             <div className="flex min-w-0 items-center gap-2">
               <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
                 {TASK_SHORT[task.task_type]}
@@ -537,9 +537,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
       : studentId
 
     return (
-      <div key={mkRow.id} className="mx-3 my-2 rounded-lg mac-soft">
+      <div key={mkRow.id} className="my-2 rounded-lg mac-soft">
         <div style={gridCols} className="grid items-center">
-          <div className="sticky left-0 z-10 rounded-l-lg bg-white px-4 py-3 dark:bg-[#2c2c2e]">
+          <div className="sticky left-5 z-10 rounded-l-lg bg-white px-4 py-3 dark:bg-[#2c2c2e]">
             <div className="flex min-w-0 items-start gap-2 pl-6">
               <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
               <span className="mt-0.5 shrink-0 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補 {mkDate}</span>
@@ -581,7 +581,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     return (
       <div key={slot.sessionKey} className={cn('mb-4 rounded-lg mac-soft border-l-4', accent)}>
         <div style={gridCols} className="grid">
-          <div className="sticky left-0 z-20 px-4 py-4">
+          <div className="sticky left-5 z-20 px-4 py-4">
             <div className="flex min-w-0 items-start gap-2">
               <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP.attendance)}>
                 {kindLabel}
@@ -641,7 +641,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             )
           })}
         </div>
-        <div className="rounded-b-lg px-1 pt-1.5 pb-2">
+        <div className="rounded-b-lg pt-1.5 pb-2">
           {slot.tasks.map((task) => renderTaskRowCard(task))}
           {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
         </div>
@@ -653,7 +653,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     if (orphanTasks.length === 0) return null
     return (
       <div className="mb-3 rounded-lg mac-soft">
-        <div className="sticky left-0 border-b border-border bg-muted/50 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+        <div className="sticky left-5 border-b border-border bg-muted/50 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
           未對應課次的任務
         </div>
         {orphanTasks.map((task) => renderTaskRowCard(task))}
@@ -682,7 +682,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
       <>
         {lessonGroups.map((group) => (
           <div key={group.lessonNumber}>
-            <div className="sticky left-0 mb-2 border-b border-border bg-muted/50 px-4 py-1.5 text-xs font-semibold text-foreground">
+            <div className="sticky left-5 mb-2 border-b border-border bg-muted/50 px-4 py-1.5 text-xs font-semibold text-foreground">
               {group.lesson_label ?? `第 ${group.lessonNumber} 課`}
             </div>
             {group.slots.map((slot) => renderSessionCard(slot))}
@@ -691,7 +691,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
         {unlessoned.length > 0 && (
           <div>
-            <div className="sticky left-0 mb-2 border-b border-border bg-muted/50 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+            <div className="sticky left-5 mb-2 border-b border-border bg-muted/50 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
               未編課（不計費 / 尚未開袋）
             </div>
             {unlessoned.map((slot) => renderSessionCard(slot))}
