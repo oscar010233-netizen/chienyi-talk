@@ -138,8 +138,8 @@ function MobileSlotCard({
   const dateLabel = slot.session_date.slice(5).replace('-', '/')
   const kindLabel = isIntensive ? '強化' : '團課'
   const borderColor = isIntensive
-    ? 'border-l-violet-400 dark:border-l-violet-500/70'
-    : 'border-l-sky-400 dark:border-l-sky-500/70'
+    ? 'border-l-rose-500 dark:border-l-rose-500/70'
+    : 'border-l-red-400 dark:border-l-red-500/70'
 
   const lessonPrefix = viewMode === 'by-lesson'
     ? (slot.lesson_label ?? (slot.lessonNumber != null ? `第 ${slot.lessonNumber} 課` : null))
@@ -565,8 +565,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
   function renderSessionCard(slot: SessionSlot) {
     const isIntensive = slot.session_kind === 'intensive'
     const accent = isIntensive
-      ? 'border-l-violet-400 dark:border-l-violet-500/70'
-      : 'border-l-sky-400 dark:border-l-sky-500/70'
+      ? 'border-l-rose-500 dark:border-l-rose-500/70'
+      : 'border-l-red-400 dark:border-l-red-500/70'
     const dateLabel = slot.session_date.slice(5).replace('-', '/')
     const kindLabel = isIntensive ? '強' : '團'
     const hasAtt = slot.attendanceByStudent.size > 0
@@ -576,8 +576,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
     return (
       <div key={slot.sessionKey} className={cn('mb-4 rounded-lg mac-soft border-l-4 pb-1', accent)}>
-        <div style={gridCols} className="grid">
-          <div className="sticky left-5 z-20 px-4 py-4">
+        <div style={gridCols} className="grid rounded-t-lg border-b border-red-200/70 bg-red-50 dark:border-red-500/20 dark:bg-red-500/10">
+          <div className="sticky left-5 z-20 rounded-tl-lg bg-red-50 px-4 py-4 dark:bg-red-500/10">
             <div className="flex min-w-0 items-start gap-2">
               <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP.attendance)}>
                 {kindLabel}
