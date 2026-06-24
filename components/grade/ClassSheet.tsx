@@ -579,9 +579,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     )
 
     return (
-      <div key={slot.sessionKey} className="mb-4 rounded-lg mac-soft">
+      <div key={slot.sessionKey} className={cn('mb-4 rounded-lg mac-soft border-l-4', accent)}>
         <div style={gridCols} className="grid">
-          <div className={cn('sticky left-0 z-20 rounded-tl-lg border-l-[3px] px-4 py-4', accent)}>
+          <div className="sticky left-0 z-20 px-4 py-4">
             <div className="flex min-w-0 items-start gap-2">
               <span className={cn('mt-0.5 shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP.attendance)}>
                 {kindLabel}
@@ -641,7 +641,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             )
           })}
         </div>
-        <div className="rounded-b-lg bg-muted/50 px-1 pt-1.5 pb-2 dark:bg-white/[0.03]">
+        <div className="rounded-b-lg px-1 pt-1.5 pb-2">
           {slot.tasks.map((task) => renderTaskRowCard(task))}
           {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
         </div>
@@ -854,10 +854,12 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
           {/* ── Desktop grid ── */}
           <div className="hidden min-h-0 flex-1 overflow-hidden p-4 md:block md:p-6">
-            <div className="mac-card h-full overflow-auto rounded-lg border border-border bg-muted/30">
-              {renderStudentHeader()}
-              <div className="px-4 pt-3 pb-4">
-                {viewMode === 'by-date' ? renderByDate() : renderByLesson()}
+            <div className="mac-card h-full overflow-hidden rounded-lg border border-border">
+              <div className="h-full overflow-auto bg-muted/30">
+                {renderStudentHeader()}
+                <div className="px-4 pt-3 pb-4">
+                  {viewMode === 'by-date' ? renderByDate() : renderByLesson()}
+                </div>
               </div>
             </div>
           </div>
