@@ -473,7 +473,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderTaskRowCard(task: Task) {
     return (
-      <div key={task.id} className="mx-2 my-1.5 rounded-md border border-border/40 bg-white dark:bg-[#2c2c2e]">
+      <div key={task.id} className="mx-3 my-2 rounded-md border border-border/40 bg-white dark:bg-[#2c2c2e]">
         <div style={gridCols} className="grid items-center">
           <div className="sticky left-0 z-10 bg-white py-3 pl-6 pr-4 dark:bg-[#2c2c2e]">
             <div className="flex min-w-0 items-center gap-2">
@@ -534,7 +534,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
       : studentId
 
     return (
-      <div key={mkRow.id} className="mx-2 my-1.5 rounded-md border border-border/40 bg-white dark:bg-[#2c2c2e]">
+      <div key={mkRow.id} className="mx-3 my-2 rounded-md border border-border/40 bg-white dark:bg-[#2c2c2e]">
         <div style={gridCols} className="grid items-center">
           <div className="sticky left-0 z-10 bg-white px-4 py-3 dark:bg-[#2c2c2e]">
             <div className="flex min-w-0 items-start gap-2 pl-6">
@@ -576,7 +576,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     )
 
     return (
-      <div key={slot.sessionKey} className="mb-3 rounded-lg border border-border/60 bg-card">
+      <div key={slot.sessionKey} className="mb-4 rounded-lg border border-border/60 bg-card">
         <div style={gridCols} className="grid">
           <div className={cn('sticky left-0 z-20 border-l-[3px] bg-muted/40 px-4 py-4', accent)}>
             <div className="flex min-w-0 items-start gap-2">
@@ -638,8 +638,10 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             )
           })}
         </div>
-        {slot.tasks.map((task) => renderTaskRowCard(task))}
-        {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
+        <div className="pt-1 pb-1">
+          {slot.tasks.map((task) => renderTaskRowCard(task))}
+          {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
+        </div>
       </div>
     )
   }
@@ -849,7 +851,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
           {/* ── Desktop grid ── */}
           <div className="hidden min-h-0 flex-1 overflow-hidden p-4 md:block md:p-6">
-            <div className="mac-card h-full overflow-auto rounded-lg border border-border bg-muted/30 p-3">
+            <div className="mac-card h-full overflow-auto rounded-lg border border-border bg-muted/30 p-4">
               {renderStudentHeader()}
               <div className="pt-3">
                 {viewMode === 'by-date' ? renderByDate() : renderByLesson()}
