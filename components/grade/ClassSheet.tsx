@@ -476,54 +476,52 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
 
   function renderTaskRowCard(task: Task) {
     return (
-      <div key={task.id} className="my-2 rounded-lg mac-soft">
-        <div style={gridCols} className="grid items-center">
-          <div className="sticky left-5 z-10 rounded-l-lg bg-white py-3 pl-6 pr-4 dark:bg-[#2c2c2e]">
-            <div className="flex min-w-0 items-center gap-2">
-              <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
-                {TASK_SHORT[task.task_type]}
-              </span>
-              <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{task.task_name ?? '未命名任務'}</p>
+      <div key={task.id} style={gridCols} className="grid items-center border-t border-border/40 transition-colors hover:bg-muted/30">
+        <div className="sticky left-5 z-10 bg-white py-3 pl-4 pr-4 dark:bg-[#2c2c2e]">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
+              {TASK_SHORT[task.task_type]}
+            </span>
+            <p className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">{task.task_name ?? '未命名任務'}</p>
+            <button
+              type="button"
+              onClick={() => setEditingTask(task)}
+              aria-label={`編輯 ${task.task_name ?? '任務'}`}
+              className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-foreground"
+            >
+              <Pencil size={12} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
+              disabled={deletingTaskId === task.id}
+              aria-label={`刪除 ${task.task_name ?? '任務'}`}
+              className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-red-500 disabled:opacity-50"
+            >
+              <Trash2 size={12} />
+            </button>
+          </div>
+        </div>
+        {students.map((student) => {
+          const rec = recordMap.get(`${student.student_id}:${task.id}`)
+          const display = task.task_type === 'comment'
+            ? commentLamp(rec?.comment_status)
+            : lampFor(rec?.status, task.task_type)
+          const detailText = task.task_type === 'quiz' ? (rec?.result_history || rec?.latest_result) : null
+          return (
+            <div key={student.student_id} className="px-2 py-2.5 text-center">
               <button
                 type="button"
-                onClick={() => setEditingTask(task)}
-                aria-label={`編輯 ${task.task_name ?? '任務'}`}
-                className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-foreground"
+                onClick={() => handleCellClick(task, student)}
+                className="inline-flex min-h-7 items-center justify-center rounded-md px-1.5 py-0.5 transition-colors hover:bg-gray-300/60 dark:hover:bg-white/10"
               >
-                <Pencil size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDeleteTask(task.id, task.task_name ?? '未命名任務')}
-                disabled={deletingTaskId === task.id}
-                aria-label={`刪除 ${task.task_name ?? '任務'}`}
-                className="shrink-0 rounded p-1 text-muted-foreground/40 transition-colors hover:text-red-500 disabled:opacity-50"
-              >
-                <Trash2 size={12} />
+                {rec
+                  ? <LampBadge color={display.color} label={display.label} detail={detailText} />
+                  : <span className="text-xs text-gray-300 dark:text-white/20">未派發</span>}
               </button>
             </div>
-          </div>
-          {students.map((student) => {
-            const rec = recordMap.get(`${student.student_id}:${task.id}`)
-            const display = task.task_type === 'comment'
-              ? commentLamp(rec?.comment_status)
-              : lampFor(rec?.status, task.task_type)
-            const detailText = task.task_type === 'quiz' ? (rec?.result_history || rec?.latest_result) : null
-            return (
-              <div key={student.student_id} className="px-2 py-2.5 text-center">
-                <button
-                  type="button"
-                  onClick={() => handleCellClick(task, student)}
-                  className="inline-flex min-h-7 items-center justify-center rounded-md px-1.5 py-0.5 transition-colors hover:bg-gray-300/60 dark:hover:bg-white/10"
-                >
-                  {rec
-                    ? <LampBadge color={display.color} label={display.label} detail={detailText} />
-                    : <span className="text-xs text-gray-300 dark:text-white/20">未派發</span>}
-                </button>
-              </div>
-            )
-          })}
-        </div>
+          )
+        })}
       </div>
     )
   }
@@ -537,31 +535,29 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
       : studentId
 
     return (
-      <div key={mkRow.id} className="my-2 rounded-lg mac-soft">
-        <div style={gridCols} className="grid items-center">
-          <div className="sticky left-5 z-10 rounded-l-lg bg-white px-4 py-3 dark:bg-[#2c2c2e]">
-            <div className="flex min-w-0 items-start gap-2 pl-6">
-              <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
-              <span className="mt-0.5 shrink-0 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補 {mkDate}</span>
-            </div>
+      <div key={mkRow.id} style={gridCols} className="grid items-center border-t border-border/40">
+        <div className="sticky left-5 z-10 bg-white px-4 py-3 dark:bg-[#2c2c2e]">
+          <div className="flex min-w-0 items-start gap-2 pl-6">
+            <span className="mt-0.5 text-xs text-muted-foreground/60">└</span>
+            <span className="mt-0.5 shrink-0 rounded-md bg-teal-100 px-1.5 py-0.5 text-[10px] font-semibold text-teal-700 dark:bg-teal-500/15 dark:text-teal-200">補 {mkDate}</span>
           </div>
-          {students.map((student) => (
-            <div key={student.student_id} className="px-2 py-3 text-center">
-              {student.student_id === studentId ? (
-                <button
-                  type="button"
-                  onClick={() => setSelectedMakeupRow({ row: mkRow, studentName: mkName })}
-                  aria-label={`補課點名：${mkName}`}
-                  className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-teal-200/50 dark:hover:bg-teal-500/20"
-                >
-                  <LampBadge color={mkDisplay.color} label={mkDisplay.label} detail={null} />
-                </button>
-              ) : (
-                <span className="text-gray-200 dark:text-white/10">—</span>
-              )}
-            </div>
-          ))}
         </div>
+        {students.map((student) => (
+          <div key={student.student_id} className="px-2 py-3 text-center">
+            {student.student_id === studentId ? (
+              <button
+                type="button"
+                onClick={() => setSelectedMakeupRow({ row: mkRow, studentName: mkName })}
+                aria-label={`補課點名：${mkName}`}
+                className="inline-flex min-h-8 items-center justify-center rounded-md px-1.5 py-1 transition-colors hover:bg-teal-200/50 dark:hover:bg-teal-500/20"
+              >
+                <LampBadge color={mkDisplay.color} label={mkDisplay.label} detail={null} />
+              </button>
+            ) : (
+              <span className="text-gray-200 dark:text-white/10">—</span>
+            )}
+          </div>
+        ))}
       </div>
     )
   }
@@ -579,7 +575,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     )
 
     return (
-      <div key={slot.sessionKey} className={cn('mb-4 rounded-lg mac-soft border-l-4', accent)}>
+      <div key={slot.sessionKey} className={cn('mb-4 rounded-lg mac-soft border-l-4 pb-1', accent)}>
         <div style={gridCols} className="grid">
           <div className="sticky left-5 z-20 px-4 py-4">
             <div className="flex min-w-0 items-start gap-2">
@@ -641,10 +637,8 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             )
           })}
         </div>
-        <div className="rounded-b-lg pt-1.5 pb-2">
-          {slot.tasks.map((task) => renderTaskRowCard(task))}
-          {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
-        </div>
+        {slot.tasks.map((task) => renderTaskRowCard(task))}
+        {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
       </div>
     )
   }
