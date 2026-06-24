@@ -474,10 +474,22 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
     )
   }
 
-  function renderTaskRowCard(task: Task) {
+  function renderTaskRowCard(task: Task, idx: number) {
     return (
-      <div key={task.id} style={gridCols} className="grid items-center border-t border-border/40 transition-colors hover:bg-muted/30">
-        <div className="sticky left-5 z-10 bg-white py-3 pl-4 pr-4 dark:bg-[#2c2c2e]">
+      <div
+        key={task.id}
+        style={gridCols}
+        className={cn(
+          'grid items-center border-t border-border/40 transition-colors hover:bg-muted/30',
+          idx % 2 === 1 && 'bg-muted/40 dark:bg-white/[0.03]',
+        )}
+      >
+        <div
+          className={cn(
+            'sticky left-5 z-10 py-3 pl-4 pr-4',
+            idx % 2 === 1 ? 'bg-muted/40 dark:bg-white/[0.03]' : 'bg-white dark:bg-[#2c2c2e]',
+          )}
+        >
           <div className="flex min-w-0 items-center gap-2">
             <span className={cn('shrink-0 rounded-md px-1.5 py-0.5 text-[10px] font-semibold', TASK_CHIP[task.task_type])}>
               {TASK_SHORT[task.task_type]}
@@ -637,7 +649,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
             )
           })}
         </div>
-        {slot.tasks.map((task) => renderTaskRowCard(task))}
+        {slot.tasks.map((task, idx) => renderTaskRowCard(task, idx))}
         {makeupEntries.map(({ studentId, row }) => renderMakeupRowCard(studentId, row))}
       </div>
     )
@@ -650,7 +662,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         <div className="sticky left-5 border-b border-border bg-muted/50 px-4 py-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
           未對應課次的任務
         </div>
-        {orphanTasks.map((task) => renderTaskRowCard(task))}
+        {orphanTasks.map((task, idx) => renderTaskRowCard(task, idx))}
       </div>
     )
   }
