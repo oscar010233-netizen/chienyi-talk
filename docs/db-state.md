@@ -78,13 +78,14 @@
 
 10. **新增 `session_daily_comments` 表（2026-06-23）。**
    每個班級 × 每個出席日 一則評語（給家長的話，非每個任務）。
-   - 欄位：`id UUID PK`、`tenant_id UUID FK tenants`、`class_id UUID FK classes`、`session_date DATE`、`comment_text TEXT`、`status TEXT CHECK IN ('draft','published')`、`created_at`、`updated_at`。
+   - 欄位：`id UUID PK`、`tenant_id UUID FK tenants`、`class_id UUID FK classes`、`session_date DATE`、`comment_text TEXT`、`comment_raw TEXT`、`status TEXT CHECK IN ('draft','published')`、`created_at`、`updated_at`。
+   - `comment_raw`（2026-06-25 新增）：保存 AI 潤色前的老師原文，供「還原」與版本對照；無潤色時為 NULL。對應舊 Apps Script 把原文存進儲存格 note 的行為。
    - UNIQUE `(tenant_id, class_id, session_date)`，同一班同一天僅一筆。
    - 已 `ENABLE ROW LEVEL SECURITY`，tenant 隔離 policy 一條（`tenant_id = (SELECT tenant_id FROM profiles WHERE id = auth.uid())`）。
    - **trigger 已補齊（2026-06-23 驗收時補）**：`set_session_daily_comments_updated_at`（BEFORE UPDATE → `set_updated_at()`）+ `zz_audit`（AFTER I/U/D → `audit_trigger()`），與所有業務表一致。建表 DDL 當下漏掛，驗收查 information_schema 發現後補上。
    - API：`GET/POST /api/session-comments`（POST 為 upsert on `(tenant_id,class_id,session_date)`，先查 classes 取 tenant_id 對齊）。
    - 前端：`SessionCommentModal`，從 ClassSheet 出席日行的 `MessageSquare` icon 觸發（有評語填色 / 無評語淡色）。
-   - **Gemini 潤色按鈕預留（disabled）**，待後續串接。
+   - **Gemini 潤色已串接（2026-06-25）**：`POST /api/session-comments/polish`（`lib/ai/polishComment.ts`，gemini-2.5-flash，prompt 移植自舊 Apps Script `06_AIComment.gs`）。modal 潤色後原文存入 `comment_raw`，可一鍵還原。
 
 ## 已知缺口 / 殭屍欄位（不是 bug，是待補）
 

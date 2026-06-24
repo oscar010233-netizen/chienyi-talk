@@ -19,7 +19,8 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith('/api/tasks') ||
       pathname.startsWith('/api/task-templates') ||
       pathname.startsWith('/api/profiles') ||
-      pathname.startsWith('/api/day-entries')
+      pathname.startsWith('/api/day-entries') ||
+      pathname.startsWith('/api/session-comments')
     )
 
   if (isPublicExamGrading || isPublicWorkspacePreview || pathname.startsWith('/api/auth')) {

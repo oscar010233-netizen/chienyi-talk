@@ -103,6 +103,7 @@ export interface SessionDailyComment {
   class_id: string
   session_date: string
   comment_text: string | null
+  comment_raw: string | null
   status: 'draft' | 'published'
 }
 

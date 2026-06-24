@@ -30,36 +30,55 @@ export async function polishParentComment(rawComment: string): Promise<string> {
 
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash'
 
-  const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': apiKey,
+  // Gemini occasionally returns 503 (overloaded) / 429 (rate limit) on demand
+  // spikes. These are transient — retry with exponential backoff before giving up.
+  const RETRY_STATUS = new Set([429, 500, 503])
+  const MAX_ATTEMPTS = 5
+
+  let lastError = ''
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: 'user',
+              parts: [{ text: POLISH_PROMPT + raw }],
+            },
+          ],
+        }),
       },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: POLISH_PROMPT + raw }],
-          },
-        ],
-      }),
-    },
-  )
+    )
 
-  const data = (await response.json().catch(() => ({}))) as {
-    candidates?: { content?: { parts?: { text?: string }[] } }[]
-    error?: { message?: string }
+    const data = (await response.json().catch(() => ({}))) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[]
+      error?: { message?: string }
+    }
+
+    if (response.ok) {
+      const result = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ''
+      if (!result) throw new Error('Gemini 沒有回傳潤稿結果')
+      return result
+    }
+
+    lastError = data.error?.message || `Gemini 回應失敗（${response.status}）`
+
+    if (!RETRY_STATUS.has(response.status) || attempt === MAX_ATTEMPTS) {
+      if (RETRY_STATUS.has(response.status)) {
+        throw new Error('Gemini 暫時忙線（伺服器過載），已自動重試仍失敗，請稍候再試一次')
+      }
+      throw new Error(lastError)
+    }
+
+    // backoff: 0.7s, 1.4s, 2.1s, 2.8s — rides through intermittent 503 spikes
+    await new Promise((resolve) => setTimeout(resolve, 700 * attempt))
   }
 
-  if (!response.ok) {
-    throw new Error(data.error?.message || `Gemini 回應失敗（${response.status}）`)
-  }
-
-  const result = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || ''
-  if (!result) throw new Error('Gemini 沒有回傳潤稿結果')
-
-  return result
+  throw new Error(lastError || '潤色失敗')
 }

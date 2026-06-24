@@ -59,6 +59,7 @@ export async function POST(request: NextRequest) {
     class_id: classId,
     session_date: sessionDate,
     comment_text: trimOrNull(body.comment_text),
+    comment_raw: trimOrNull(body.comment_raw),
     status,
   }
 

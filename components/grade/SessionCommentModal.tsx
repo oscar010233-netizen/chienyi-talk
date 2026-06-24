@@ -17,7 +17,7 @@ export function SessionCommentModal({ classId, sessionDate, existingComment, onC
   const [status, setStatus] = useState<'draft' | 'published'>(existingComment?.status ?? 'draft')
   const [saving, setSaving] = useState(false)
   const [polishing, setPolishing] = useState(false)
-  const [prePolish, setPrePolish] = useState<string | null>(null)
+  const [prePolish, setPrePolish] = useState<string | null>(existingComment?.comment_raw ?? null)
   const [error, setError] = useState('')
 
   const dateTitle = sessionDate.slice(5).replace('-', '/')
@@ -64,6 +64,7 @@ export function SessionCommentModal({ classId, sessionDate, existingComment, onC
           class_id: classId,
           session_date: sessionDate,
           comment_text: commentText,
+          comment_raw: prePolish,
           status,
         }),
       })
