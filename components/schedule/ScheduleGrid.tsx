@@ -58,6 +58,16 @@ function eventFill(color: string | null): string {
     : 'rgba(59, 130, 246, 0.14)'
 }
 
+function handleInteractiveKeyDown(
+  event: React.KeyboardEvent<HTMLElement>,
+  onActivate: () => void
+) {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    onActivate()
+  }
+}
+
 interface DragState {
   roomId: string
   startSlot: number
@@ -154,8 +164,8 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
   }
 
   return (
-    <div className="min-h-0 flex-1 flex flex-col">
-      <div className="min-h-0 flex-1 flex flex-col overflow-clip rounded-xl mac-soft">
+    <div className="min-h-0 flex flex-1 flex-col">
+      <div className="mac-soft min-h-0 flex flex-1 flex-col overflow-clip rounded-xl">
         <div
           ref={scrollRef}
           className="min-h-0 flex-1 overflow-auto"
@@ -163,7 +173,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
         >
           <div className="flex min-w-full flex-col">
             <div className="mac-glass mac-hairline sticky top-0 z-30 flex shrink-0 border-b shadow-[0_2px_10px_-4px_rgba(0,0,0,0.10)]">
-              <div className="sticky left-0 z-10 w-16 shrink-0 bg-background/90 backdrop-blur-xl border-r border-border" />
+              <div className="sticky left-0 z-10 w-16 shrink-0 border-r border-border bg-background/90 backdrop-blur-xl" />
               {rooms.map((room, index) => (
                 <div
                   key={room.id}
@@ -278,7 +288,20 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                           return (
                             <div
                               key={event.id}
-                              style={{ position: 'absolute', top: top + 2, left: 6, right: 6, height }}
+                              role="button"
+                              tabIndex={0}
+                              style={{
+                                position: 'absolute',
+                                top: top + 2,
+                                left: 6,
+                                right: 6,
+                                height,
+                                borderColor: color,
+                                backgroundColor: eventFill(color),
+                              }}
+                              className="z-10 overflow-hidden rounded-md border border-l-4 shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99]"
+                              onClick={() => onClickEvent(event)}
+                              onKeyDown={keyEvent => handleInteractiveKeyDown(keyEvent, () => onClickEvent(event))}
                             >
                               {teachers.map((teacher, teacherIndex) => {
                                 const teacherStart = minutesFromTime(teacher.start_time)
@@ -287,7 +310,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                 const segmentEnd = Math.min(teacherEnd, clampedEnd)
                                 if (segmentEnd <= segmentStart) return null
 
-                                const segmentTop = minuteToTop(segmentStart) - (top + 2)
+                                const segmentTop = minuteToTop(segmentStart) - top
                                 const segmentHeight = Math.max(
                                   minuteToTop(segmentEnd) - minuteToTop(segmentStart) - (teacherIndex === teachers.length - 1 ? 4 : 0),
                                   20
@@ -295,33 +318,44 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                 const segmentColor = teacher.color ?? color
 
                                 return (
-                                  <button
+                                  <div
                                     key={teacher.id}
-                                    type="button"
                                     style={{
                                       position: 'absolute',
                                       top: segmentTop,
                                       left: 0,
                                       right: 0,
                                       height: segmentHeight,
-                                      borderColor: segmentColor,
                                       backgroundColor: eventFill(segmentColor),
+                                      borderTop: teacherIndex > 0 ? `1px dashed ${color}` : undefined,
                                     }}
-                                    className="z-10 overflow-hidden rounded-md border border-l-4 px-2 py-1 text-left shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99]"
-                                    onClick={clickEvent => {
-                                      clickEvent.stopPropagation()
-                                      onClickEvent(event)
-                                    }}
+                                    className="overflow-hidden text-left transition-[filter] hover:brightness-[1.02]"
                                   >
-                                    {teacherIndex === 0 && (
-                                      <p className="truncate text-xs font-semibold leading-tight text-foreground">
-                                        {eventTitle(event)}
+                                    <span
+                                      className="absolute inset-y-0 left-0 w-1.5"
+                                      style={{ backgroundColor: segmentColor }}
+                                    />
+                                    <div className="flex h-full min-w-0 flex-col justify-center px-2 py-1 pl-4">
+                                      {teacherIndex === 0 && (
+                                        <p className="truncate text-xs font-semibold leading-tight text-foreground">
+                                          {eventTitle(event)}
+                                        </p>
+                                      )}
+                                      {teacherIndex === 0 && segmentHeight >= 44 && (
+                                        <p className="truncate text-[10px] text-muted-foreground">
+                                          {eventSubtitle(event)}
+                                        </p>
+                                      )}
+                                      <p
+                                        className={[
+                                          'truncate text-[10px] text-muted-foreground',
+                                          teacherIndex === 0 ? 'mt-0.5' : '',
+                                        ].join(' ')}
+                                      >
+                                        {teacher.teacher?.display_name ?? '未指定老師'} {teacher.start_time.slice(0, 5)} - {teacher.end_time.slice(0, 5)}
                                       </p>
-                                    )}
-                                    <p className="truncate text-[10px] text-muted-foreground">
-                                      {teacher.teacher?.display_name ?? '未指定老師'} {teacher.start_time.slice(0, 5)} - {teacher.end_time.slice(0, 5)}
-                                    </p>
-                                  </button>
+                                    </div>
+                                  </div>
                                 )
                               })}
                             </div>

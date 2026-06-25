@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { CalendarClock, Loader2, Plus, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Room, ScheduleEvent } from '@/lib/schedule/types'
@@ -64,6 +64,16 @@ const EVENT_TYPES: { value: ScheduleEvent['event_type']; label: string }[] = [
   { value: 'other', label: '其他' },
 ]
 
+const TIME_OPTIONS = Array.from(
+  { length: (22 * 60 - 12 * 60) / 15 + 1 },
+  (_, index) => {
+    const totalMinutes = 12 * 60 + index * 15
+    const hours = String(Math.floor(totalMinutes / 60)).padStart(2, '0')
+    const mins = String(totalMinutes % 60).padStart(2, '0')
+    return `${hours}:${mins}`
+  }
+)
+
 function minutes(value: string): number {
   const [hours, mins] = value.split(':').map(Number)
   return hours * 60 + mins
@@ -115,6 +125,27 @@ async function readJsonArray<T>(response: Response): Promise<T[]> {
   if (!contentType.includes('application/json')) return []
   const data = await response.json()
   return Array.isArray(data) ? data : []
+}
+
+function TimeField({
+  value,
+  onChange,
+  className,
+}: {
+  value: string
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void
+  className?: string
+}) {
+  return (
+    <input
+      type="time"
+      step={300}
+      list="schedule-time-options"
+      value={value}
+      onChange={onChange}
+      className={className}
+    />
+  )
 }
 
 export function CreateEventModal({ open, onClose, rooms, draft, event, date, onSaved }: Props) {
@@ -220,7 +251,7 @@ function EventForm({
           ...previous.teacherSegments,
           {
             localId: segmentId(nextIndex),
-            teacherId: profiles[0]?.id ?? '',
+            teacherId: '',
             startTime: last?.endTime ?? previous.startTime,
             endTime: previous.endTime,
             color: EVENT_COLORS[(nextIndex + 1) % EVENT_COLORS.length],
@@ -235,6 +266,20 @@ function EventForm({
       ...previous,
       teacherSegments: previous.teacherSegments.filter((_, currentIndex) => currentIndex !== index),
     }))
+  }
+
+  function changeClass(classId: string) {
+    setForm(previous => {
+      const previousClassName = classes.find(item => item.id === previous.classId)?.class_name ?? ''
+      const nextClassName = classes.find(item => item.id === classId)?.class_name ?? ''
+      const shouldSyncTitle = !previous.title.trim() || previous.title === previousClassName
+
+      return {
+        ...previous,
+        classId,
+        title: shouldSyncTitle ? nextClassName : previous.title,
+      }
+    })
   }
 
   function validateTeacherSegments(): string | null {
@@ -349,6 +394,11 @@ function EventForm({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center md:items-center">
+      <datalist id="schedule-time-options">
+        {TIME_OPTIONS.map(time => (
+          <option key={time} value={time} />
+        ))}
+      </datalist>
       <button
         aria-label="關閉"
         className="absolute inset-0 bg-black/35 backdrop-blur-[2px]"
@@ -401,7 +451,7 @@ function EventForm({
               <span className="text-xs font-medium text-muted-foreground">班級</span>
               <select
                 value={form.classId}
-                onChange={event => update('classId', event.target.value)}
+                onChange={event => changeClass(event.target.value)}
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
               >
                 <option value="">不指定班級</option>
@@ -415,12 +465,12 @@ function EventForm({
           </div>
 
           <label className="grid gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">標題</span>
+            <span className="text-xs font-medium text-muted-foreground">標題（選填）</span>
             <input
               type="text"
               value={form.title}
               onChange={event => update('title', event.target.value)}
-              placeholder="例如：國三 A 班"
+              placeholder={form.classId ? '已選班級時可留空，會自動帶入班級名稱' : '例如：國三 A 班'}
               className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
             />
           </label>
@@ -448,9 +498,8 @@ function EventForm({
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="grid gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">開始</span>
-              <input
-                type="time"
+              <span className="text-xs font-medium text-muted-foreground">開始時間</span>
+              <TimeField
                 value={form.startTime}
                 onChange={event => update('startTime', event.target.value)}
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
@@ -458,9 +507,8 @@ function EventForm({
             </label>
 
             <label className="grid gap-1.5">
-              <span className="text-xs font-medium text-muted-foreground">結束</span>
-              <input
-                type="time"
+              <span className="text-xs font-medium text-muted-foreground">結束時間</span>
+              <TimeField
                 value={form.endTime}
                 onChange={event => update('endTime', event.target.value)}
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
@@ -476,7 +524,7 @@ function EventForm({
                   key={color}
                   type="button"
                   onClick={() => update('color', color)}
-                  aria-label={`選擇顏色 ${color}`}
+                  aria-label={`選擇課程顏色 ${color}`}
                   style={{ backgroundColor: color }}
                   className={cn(
                     'size-7 rounded-full ring-offset-2 ring-offset-white transition-transform dark:ring-offset-[#2c2c2e]',
@@ -532,8 +580,7 @@ function EventForm({
 
                     <label className="grid gap-1.5">
                       <span className="text-[11px] font-medium text-muted-foreground">開始</span>
-                      <input
-                        type="time"
+                      <TimeField
                         value={segment.startTime}
                         onChange={event => updateSegment(index, { startTime: event.target.value })}
                         className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
@@ -542,8 +589,7 @@ function EventForm({
 
                     <label className="grid gap-1.5">
                       <span className="text-[11px] font-medium text-muted-foreground">結束</span>
-                      <input
-                        type="time"
+                      <TimeField
                         value={segment.endTime}
                         onChange={event => updateSegment(index, { endTime: event.target.value })}
                         className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
@@ -551,8 +597,8 @@ function EventForm({
                     </label>
 
                     <div className="flex items-center justify-between gap-2 sm:justify-end">
-                      <div className="flex gap-1.5">
-                        {EVENT_COLORS.slice(0, 6).map(color => (
+                      <div className="flex max-w-[88px] flex-wrap justify-end gap-1.5 sm:max-w-[120px]">
+                        {EVENT_COLORS.map(color => (
                           <button
                             key={color}
                             type="button"
