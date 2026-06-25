@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
-import { TASK_CHIP, TASK_SHORT } from '@/lib/grade/task-style'
+import { SESSION_POSITION_LABEL, TASK_CHIP, TASK_SHORT } from '@/lib/grade/task-style'
 import { cn } from '@/lib/utils'
 import type { TaskTemplate, TaskTemplateItem, TaskType } from '@/lib/grade/types'
 
@@ -166,7 +166,7 @@ export function TemplateManager({ tenantId }: Props) {
                           key={item.id}
                           className={cn('rounded-full px-2 py-1 text-xs font-medium', TASK_CHIP[item.task_type])}
                         >
-                          {item.session_position} · {taskTypeName(item.task_type as Exclude<TaskType, 'attendance'>)}
+                          {SESSION_POSITION_LABEL[item.session_position]} · {taskTypeName(item.task_type as Exclude<TaskType, 'attendance'>)}
                         </span>
                       ))}
                     </div>
@@ -218,8 +218,8 @@ export function TemplateManager({ tenantId }: Props) {
                   )))}
                   className="h-9 w-24 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15"
                 >
-                  <option value="S1">S1</option>
-                  <option value="S2">S2</option>
+                  <option value="S1">{SESSION_POSITION_LABEL.S1}</option>
+                  <option value="S2">{SESSION_POSITION_LABEL.S2}</option>
                 </select>
                 <button
                   type="button"

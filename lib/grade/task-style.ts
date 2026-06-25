@@ -17,3 +17,8 @@ export const TASK_CHIP: Record<TaskType, string> = {
   comment: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-200',
   progress: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-200',
 }
+
+export const SESSION_POSITION_LABEL = {
+  S1: '團課',
+  S2: '強化',
+} as const

@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, CalendarDays, ChevronDown, ChevronUp, Loader2, Trash2 } from 'lucide-react'
 import Link from 'next/link'
-import { TASK_CHIP, TASK_SHORT } from '@/lib/grade/task-style'
+import { SESSION_POSITION_LABEL, TASK_CHIP, TASK_SHORT } from '@/lib/grade/task-style'
 import { cn } from '@/lib/utils'
 import type { ClassRow, Task, TaskTemplate, TaskTemplateItem, TaskType } from '@/lib/grade/types'
 
 const WEEKDAY_ZH = ['', '一', '二', '三', '四', '五', '六', '日']
 
 type ManualPlanTaskType = 'homework' | 'practice' | 'quiz' | 'progress'
+type TemplateApplyScope = 'season' | 'team' | 'intensive'
+type ConflictMode = 'overwrite' | 'skip'
 
 const PLAN_TASK_TYPES: ManualPlanTaskType[] = ['homework', 'practice', 'quiz', 'progress']
 
@@ -17,6 +19,13 @@ const TASK_TYPE_OPTIONS = PLAN_TASK_TYPES.map((taskType) => [taskType, TASK_SHOR
 
 interface TemplateWithItems extends TaskTemplate {
   items: TaskTemplateItem[]
+}
+
+interface TemplateApplyConflictState {
+  templateId: string
+  scope: TemplateApplyScope
+  targetSlots: PlanSessionSlot[]
+  conflictSlots: PlanSessionSlot[]
 }
 
 export interface PlanSessionSlot {
@@ -71,6 +80,12 @@ function deriveSessionPosition(sessionKind: PlanSessionSlot['session_kind']): 'S
 
 function taskTypeName(taskType: Exclude<TaskType, 'attendance'>) {
   return TASK_SHORT[taskType] ?? taskType
+}
+
+function scopeLabel(scope: TemplateApplyScope) {
+  if (scope === 'season') return '整季'
+  if (scope === 'team') return '全團課'
+  return '全強化'
 }
 
 function TaskNameInput({
@@ -128,6 +143,8 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
     initialSlots.map((slot) => [slot.slot_index, slot.lesson_label ?? '']),
   ))
   const [templateSelection, setTemplateSelection] = useState<Record<number, string>>({})
+  const [bulkTemplateId, setBulkTemplateId] = useState('')
+  const [templateConflict, setTemplateConflict] = useState<TemplateApplyConflictState | null>(null)
   const tenantQuery = `tenant_id=${encodeURIComponent(cls.tenant_id)}`
 
   const selectedCount = selectedSlots.length
@@ -185,6 +202,32 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
   const clearStatus = useCallback(() => {
     setLoadingMessage('')
   }, [])
+
+  const templateById = useMemo(
+    () => new Map(templates.map((template) => [template.id, template])),
+    [templates],
+  )
+
+  function templateItemsForSlot(template: TemplateWithItems, slot: PlanSessionSlot) {
+    const sessionPosition = deriveSessionPosition(slot.session_kind)
+    return template.items
+      .filter((item) => item.session_position === sessionPosition && item.task_type !== 'comment')
+      .sort((a, b) => a.sort_order - b.sort_order)
+  }
+
+  function targetSlotsForScope(scope: TemplateApplyScope, template: TemplateWithItems) {
+    return slots.filter((slot) => {
+      if (scope === 'team' && slot.session_kind !== 'team') return false
+      if (scope === 'intensive' && slot.session_kind !== 'intensive') return false
+      return templateItemsForSlot(template, slot).length > 0
+    })
+  }
+
+  function buildLessonLabelMap(targetSlots: PlanSessionSlot[]) {
+    return Object.fromEntries(
+      targetSlots.map((slot) => [String(slot.slot_index), (lessonDrafts[slot.slot_index] ?? '').trim() || null]),
+    )
+  }
 
   async function applyLessonLabel(slotIndex: number, lessonLabel: string) {
     const nextLessonLabel = lessonLabel.trim()
@@ -279,12 +322,10 @@ async function createTasks(slot: PlanSessionSlot, tasksToCreate: Array<{ task_ty
     }
 
     const sessionPosition = deriveSessionPosition(slot.session_kind)
-    const templateItems = template.items
-      .filter((item) => item.session_position === sessionPosition && item.task_type !== 'comment')
-      .sort((a, b) => a.sort_order - b.sort_order)
+    const templateItems = templateItemsForSlot(template, slot)
 
     if (templateItems.length === 0) {
-      setError(`模板「${template.name}」沒有 ${sessionPosition} 項目`)
+      setError(`模板「${template.name}」沒有 ${SESSION_POSITION_LABEL[sessionPosition]} 項目`)
       return
     }
 
@@ -299,6 +340,87 @@ async function createTasks(slot: PlanSessionSlot, tasksToCreate: Array<{ task_ty
       setError(err instanceof Error ? err.message : '套用模板失敗')
       setLoadingMessage('')
     }
+  }
+
+  async function applyTemplateToScope(templateId: string, scope: TemplateApplyScope, conflictMode: ConflictMode) {
+    if (!bagId) {
+      setError('尚未開袋，無法套用模板')
+      return
+    }
+
+    const template = templateById.get(templateId)
+    if (!template) {
+      setError('找不到模板')
+      return
+    }
+
+    const targetSlots = targetSlotsForScope(scope, template)
+    if (targetSlots.length === 0) {
+      setError(`模板「${template.name}」沒有可套用的${scopeLabel(scope)}堂次`)
+      return
+    }
+
+    setStatus(`套用模板「${template.name}」到${scopeLabel(scope)}中…`)
+    try {
+      const response = await fetch('/api/tasks/apply-template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          class_id: classId,
+          bag_id: bagId,
+          template_id: templateId,
+          scope,
+          conflict_mode: conflictMode,
+          lesson_labels: buildLessonLabelMap(targetSlots),
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) throw new Error(json.error ?? '整季套用模板失敗')
+
+      for (const updatedSlot of (json.slots ?? []) as Array<{ slot_index: number; tasks: Task[] }>) {
+        updateSlot(updatedSlot.slot_index, (slot) => ({
+          ...slot,
+          lesson_label: updatedSlot.tasks.find((task) => task.lesson_label)?.lesson_label ?? slot.lesson_label,
+          tasks: sortTasks(updatedSlot.tasks),
+        }))
+      }
+      clearStatus()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '整季套用模板失敗')
+      setLoadingMessage('')
+    }
+  }
+
+  function handleScopeTemplateApply(scope: TemplateApplyScope) {
+    if (!bulkTemplateId) {
+      setError('請先選擇模板')
+      return
+    }
+
+    const template = templateById.get(bulkTemplateId)
+    if (!template) {
+      setError('找不到模板')
+      return
+    }
+
+    const targetSlots = targetSlotsForScope(scope, template)
+    if (targetSlots.length === 0) {
+      setError(`模板「${template.name}」沒有可套用的${scopeLabel(scope)}堂次`)
+      return
+    }
+
+    const conflictSlots = targetSlots.filter((slot) => slot.tasks.length > 0)
+    if (conflictSlots.length === 0) {
+      void applyTemplateToScope(bulkTemplateId, scope, 'skip')
+      return
+    }
+
+    setTemplateConflict({
+      templateId: bulkTemplateId,
+      scope,
+      targetSlots,
+      conflictSlots,
+    })
   }
 
   async function handleTaskNameSave(slotIndex: number, taskId: string, taskName: string) {
@@ -471,6 +593,43 @@ async function createTasks(slot: PlanSessionSlot, tasksToCreate: Array<{ task_ty
               >
                 清除勾選
               </button>
+              <div className="ml-auto flex flex-wrap items-center gap-2">
+                <select
+                  value={bulkTemplateId}
+                  onChange={(event) => setBulkTemplateId(event.target.value)}
+                  onFocus={() => void loadTemplates(false)}
+                  className="h-9 min-w-[12rem] rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15"
+                >
+                  <option value="">選擇模板</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>{template.name}</option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => handleScopeTemplateApply('season')}
+                  disabled={templatesLoading || !bulkTemplateId}
+                  className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted disabled:opacity-40"
+                >
+                  套用整季
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleScopeTemplateApply('team')}
+                  disabled={templatesLoading || !bulkTemplateId}
+                  className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted disabled:opacity-40"
+                >
+                  套用全團課
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleScopeTemplateApply('intensive')}
+                  disabled={templatesLoading || !bulkTemplateId}
+                  className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted disabled:opacity-40"
+                >
+                  套用全強化
+                </button>
+              </div>
             </div>
 
             <div className="overflow-hidden rounded-lg border border-border bg-white dark:bg-[#2c2c2e]">
@@ -505,7 +664,7 @@ async function createTasks(slot: PlanSessionSlot, tasksToCreate: Array<{ task_ty
                             {date.day && <span className="ml-1 text-muted-foreground">({date.day})</span>}
                           </div>
                           <div className="mt-1 text-xs text-muted-foreground">
-                            {slot.session_kind === 'intensive' ? '強化' : '團課'} · {sessionPosition}
+                            {SESSION_POSITION_LABEL[sessionPosition]}
                           </div>
                         </td>
                         <td className="border-b border-border px-3 py-3">
@@ -600,6 +759,51 @@ async function createTasks(slot: PlanSessionSlot, tasksToCreate: Array<{ task_ty
                 </tbody>
               </table>
             </div>
+
+            {templateConflict && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/45 px-4">
+                <div className="w-full max-w-md rounded-xl border border-border bg-white p-5 shadow-xl dark:bg-[#2c2c2e]">
+                  <h2 className="text-base font-semibold text-foreground">套用模板前確認</h2>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {`這次會套用到 ${scopeLabel(templateConflict.scope)} ${templateConflict.targetSlots.length} 堂，其中 ${templateConflict.conflictSlots.length} 堂已有既有任務。`}
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-red-600 dark:text-red-300">
+                    覆蓋會刪除這些堂次現有任務與學生記錄，comment/attendance 不會變動。
+                  </p>
+                  <div className="mt-4 flex flex-wrap justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTemplateConflict(null)}
+                      className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm text-foreground/80 transition-colors hover:bg-muted"
+                    >
+                      取消
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const currentConflict = templateConflict
+                        setTemplateConflict(null)
+                        void applyTemplateToScope(currentConflict.templateId, currentConflict.scope, 'skip')
+                      }}
+                      className="inline-flex h-9 items-center rounded-md border border-border px-3 text-sm text-foreground/80 transition-colors hover:bg-muted"
+                    >
+                      跳過既有任務
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const currentConflict = templateConflict
+                        setTemplateConflict(null)
+                        void applyTemplateToScope(currentConflict.templateId, currentConflict.scope, 'overwrite')
+                      }}
+                      className="inline-flex h-9 items-center rounded-md bg-red-600 px-3 text-sm font-medium text-white transition-colors hover:bg-red-500"
+                    >
+                      覆蓋並套用
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
           </>
         )}
