@@ -4,7 +4,7 @@ import { Fragment, useCallback, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowLeft, CalendarDays, ChevronDown, ChevronUp,
-  ClipboardCheck, Kanban, MessageSquare, Pencil, ReceiptText, Send, Trash2, UserPlus,
+  ClipboardCheck, Kanban, LayoutTemplate, MessageSquare, Pencil, ReceiptText, Send, Trash2, UserPlus,
 } from 'lucide-react'
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
@@ -15,33 +15,16 @@ import { MakeupMarkModal } from './MakeupMarkModal'
 import { TaskUpdateDrawer } from './TaskUpdateDrawer'
 import { EditTaskModal } from './EditTaskModal'
 import { SessionCommentModal } from './SessionCommentModal'
+import { TASK_CHIP, TASK_SHORT } from '@/lib/grade/task-style'
 import { commentLamp, lampFor } from '@/lib/grade/status'
 import { buildSessionSlots } from '@/lib/grade/session-model'
 import type { SessionSlot } from '@/lib/grade/session-model'
 import type {
   ClassDetail, ClassEnrollment, ClassSessionRow,
-  Lamp, SessionDailyComment, Task, TaskRecord, TaskType,
+  Lamp, SessionDailyComment, Task, TaskRecord,
 } from '@/lib/grade/types'
 
 type ViewMode = 'by-date' | 'by-lesson'
-
-const TASK_SHORT: Record<TaskType, string> = {
-  attendance: '出席',
-  homework: '作業',
-  practice: '練習',
-  quiz: '考試',
-  comment: '評論',
-  progress: '進度',
-}
-
-const TASK_CHIP: Record<TaskType, string> = {
-  attendance: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-200',
-  homework: 'bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-200',
-  practice: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200',
-  quiz: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-200',
-  comment: 'bg-teal-100 text-teal-700 dark:bg-teal-500/15 dark:text-teal-200',
-  progress: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-200',
-}
 
 const AVATAR_COLORS = [
   'bg-sky-100 text-sky-700',
@@ -189,7 +172,7 @@ function MobileSlotCard({
         <button
           type="button"
           onClick={onComment}
-          aria-label="班級評語"
+          aria-label="公告"
           className={cn(
             'shrink-0 rounded p-1 transition-colors',
             hasComment
@@ -614,7 +597,7 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
               <button
                 type="button"
                 onClick={() => setCommentSlot(slot)}
-                aria-label="班級評語"
+                aria-label="公告"
                 className={cn(
                   'mt-0.5 shrink-0 rounded p-1 transition-colors',
                   commentByDate.has(slot.session_date)
@@ -772,6 +755,9 @@ export function ClassSheet({ detail }: { detail: ClassDetail }) {
         </Link>
         <Link href={`/classes/${classSlug}/plan`} className={toolButton}>
           <CalendarDays size={14} />整季計畫
+        </Link>
+        <Link href={`/classes/${classSlug}/templates`} className={toolButton}>
+          <LayoutTemplate size={14} />任務模板
         </Link>
         <Link href={`/classes/${classSlug}/kanban`} className={toolButton}>
           <Kanban size={14} />Kanban

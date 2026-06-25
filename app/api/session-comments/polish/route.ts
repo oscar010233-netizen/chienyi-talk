@@ -6,7 +6,7 @@ export async function POST(request: NextRequest) {
   const text = String(body.text ?? '').trim()
 
   if (!text) {
-    return NextResponse.json({ error: '評語內容是空的，無法潤色' }, { status: 400 })
+    return NextResponse.json({ error: '公告內容是空的，無法潤色' }, { status: 400 })
   }
 
   try {

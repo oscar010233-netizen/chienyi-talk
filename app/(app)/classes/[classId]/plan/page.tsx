@@ -55,7 +55,7 @@ export default async function SeasonPlanPage({ params }: Props) {
           .eq('tenant_id', cls.tenant_id)
           .eq('class_id', id)
           .eq('bag_id', bag.id)
-          .neq('task_type', 'attendance')
+          .not('task_type', 'in', '("attendance","comment")')
           .order('display_order'),
       ])
 

@@ -25,7 +25,7 @@ export function SessionCommentModal({ classId, sessionDate, existingComment, onC
   async function handlePolish() {
     const raw = commentText.trim()
     if (!raw) {
-      setError('請先輸入評語內容，再進行潤色')
+      setError('請先輸入公告內容，再進行潤色')
       return
     }
     setPolishing(true)
@@ -83,7 +83,7 @@ export function SessionCommentModal({ classId, sessionDate, existingComment, onC
       <button aria-label="關閉" className="absolute inset-0 bg-black/40" onClick={() => onClose()} />
       <div className="relative z-10 max-h-[90vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-xl md:max-w-md md:rounded-2xl dark:bg-[#2c2c2e]">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
-          <p className="truncate font-semibold text-foreground">{dateTitle} 班級評語</p>
+          <p className="truncate font-semibold text-foreground">{dateTitle} 公告</p>
           <button type="button" onClick={() => onClose()} className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground">
             <X size={18} />
           </button>
@@ -91,12 +91,12 @@ export function SessionCommentModal({ classId, sessionDate, existingComment, onC
 
         <div className="grid gap-4 p-4">
           <label className="grid gap-1.5">
-            <span className="text-xs font-medium text-muted-foreground">評語內容</span>
+            <span className="text-xs font-medium text-muted-foreground">公告內容</span>
             <textarea
               value={commentText}
               onChange={(event) => setCommentText(event.target.value)}
               rows={5}
-              placeholder="輸入給家長的評語..."
+              placeholder="輸入公告內容（給家長）..."
               className="resize-none rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15"
             />
           </label>

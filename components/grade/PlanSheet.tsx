@@ -1,22 +1,19 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, CalendarDays, Loader2, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, CalendarDays, ChevronDown, ChevronUp, Loader2, Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { TASK_CHIP, TASK_SHORT } from '@/lib/grade/task-style'
 import { cn } from '@/lib/utils'
 import type { ClassRow, Task, TaskTemplate, TaskTemplateItem, TaskType } from '@/lib/grade/types'
 
 const WEEKDAY_ZH = ['', '一', '二', '三', '四', '五', '六', '日']
 
-const TASK_TYPE_LABEL: Record<Exclude<TaskType, 'attendance'>, string> = {
-  homework: '作業',
-  practice: '練習',
-  quiz: '測驗',
-  comment: '評語',
-  progress: '進度',
-}
+type ManualPlanTaskType = 'homework' | 'practice' | 'quiz' | 'progress'
 
-const TASK_TYPE_OPTIONS = Object.entries(TASK_TYPE_LABEL) as Array<[Exclude<TaskType, 'attendance'>, string]>
+const PLAN_TASK_TYPES: ManualPlanTaskType[] = ['homework', 'practice', 'quiz', 'progress']
+
+const TASK_TYPE_OPTIONS = PLAN_TASK_TYPES.map((taskType) => [taskType, TASK_SHORT[taskType]] as const)
 
 interface TemplateWithItems extends TaskTemplate {
   items: TaskTemplateItem[]
@@ -53,12 +50,27 @@ function sortTasks(tasks: Task[]) {
   })
 }
 
+function reorderTasks(tasks: Task[], orderedTaskIds: string[]) {
+  const byId = new Map(tasks.map((task) => [task.id, task]))
+  const orderPool = tasks
+    .map((task) => task.display_order)
+    .filter((value): value is number => value != null)
+    .sort((a, b) => a - b)
+  const fallbackStart = orderPool.length > 0 ? orderPool[0] : 1
+
+  return orderedTaskIds
+    .map((taskId, index) => ({
+      ...byId.get(taskId)!,
+      display_order: orderPool[index] ?? (fallbackStart + index),
+    }))
+}
+
 function deriveSessionPosition(sessionKind: PlanSessionSlot['session_kind']): 'S1' | 'S2' {
   return sessionKind === 'intensive' ? 'S2' : 'S1'
 }
 
 function taskTypeName(taskType: Exclude<TaskType, 'attendance'>) {
-  return TASK_TYPE_LABEL[taskType] ?? taskType
+  return TASK_SHORT[taskType] ?? taskType
 }
 
 function TaskNameInput({
@@ -116,10 +128,6 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
     initialSlots.map((slot) => [slot.slot_index, slot.lesson_label ?? '']),
   ))
   const [templateSelection, setTemplateSelection] = useState<Record<number, string>>({})
-  const [newTemplateName, setNewTemplateName] = useState('')
-  const [newTemplateItems, setNewTemplateItems] = useState<Array<{ task_type: Exclude<TaskType, 'attendance'>; session_position: 'S1' | 'S2' }>>([
-    { task_type: 'homework', session_position: 'S1' },
-  ])
   const tenantQuery = `tenant_id=${encodeURIComponent(cls.tenant_id)}`
 
   const selectedCount = selectedSlots.length
@@ -221,7 +229,7 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
     }
   }
 
-  async function createTasks(slot: PlanSessionSlot, tasksToCreate: Array<{ task_type: Exclude<TaskType, 'attendance'>; task_name: string | null }>) {
+async function createTasks(slot: PlanSessionSlot, tasksToCreate: Array<{ task_type: Exclude<TaskType, 'attendance'>; task_name: string | null }>) {
     if (!bagId) throw new Error('尚未開袋，無法新增任務')
 
     const lessonLabel = (lessonDrafts[slot.slot_index] ?? '').trim() || null
@@ -246,7 +254,7 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
     }))
   }
 
-  async function handleAddSingleTask(slot: PlanSessionSlot, taskType: Exclude<TaskType, 'attendance'>) {
+  async function handleAddSingleTask(slot: PlanSessionSlot, taskType: ManualPlanTaskType) {
     setStatus(`新增${taskTypeName(taskType)}中…`)
     try {
       await createTasks(slot, [{ task_type: taskType, task_name: taskTypeName(taskType) }])
@@ -272,7 +280,7 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
 
     const sessionPosition = deriveSessionPosition(slot.session_kind)
     const templateItems = template.items
-      .filter((item) => item.session_position === sessionPosition)
+      .filter((item) => item.session_position === sessionPosition && item.task_type !== 'comment')
       .sort((a, b) => a.sort_order - b.sort_order)
 
     if (templateItems.length === 0) {
@@ -335,6 +343,54 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
     }
   }
 
+  async function handleMoveTask(slotIndex: number, taskId: string, direction: 'up' | 'down') {
+    const targetSlot = slots.find((slot) => slot.slot_index === slotIndex)
+    if (!targetSlot || !bagId) return
+
+    const currentIndex = targetSlot.tasks.findIndex((task) => task.id === taskId)
+    if (currentIndex === -1) return
+
+    const nextIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1
+    if (nextIndex < 0 || nextIndex >= targetSlot.tasks.length) return
+
+    const orderedTaskIds = targetSlot.tasks.map((task) => task.id)
+    ;[orderedTaskIds[currentIndex], orderedTaskIds[nextIndex]] = [orderedTaskIds[nextIndex], orderedTaskIds[currentIndex]]
+
+    const previousTasks = targetSlot.tasks
+    updateSlot(slotIndex, (slot) => ({
+      ...slot,
+      tasks: reorderTasks(slot.tasks, orderedTaskIds),
+    }))
+
+    setError('')
+    try {
+      const response = await fetch('/api/tasks', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'reorder',
+          class_id: classId,
+          bag_id: bagId,
+          slot_index: slotIndex,
+          ordered_task_ids: orderedTaskIds,
+        }),
+      })
+      const json = await response.json()
+      if (!response.ok) throw new Error(json.error ?? '任務排序失敗')
+
+      updateSlot(slotIndex, (slot) => ({
+        ...slot,
+        tasks: sortTasks((json.tasks ?? []) as Task[]),
+      }))
+    } catch (err) {
+      updateSlot(slotIndex, (slot) => ({
+        ...slot,
+        tasks: previousTasks,
+      }))
+      setError(err instanceof Error ? err.message : '任務排序失敗')
+    }
+  }
+
   async function handleApplySameLesson() {
     if (selectedSlots.length < 2) {
       setError('請至少勾選兩堂課')
@@ -361,58 +417,6 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
     setSelectedSlots((current) => current.includes(slotIndex)
       ? current.filter((value) => value !== slotIndex)
       : [...current, slotIndex].sort((a, b) => a - b))
-  }
-
-  async function handleCreateTemplate() {
-    const name = newTemplateName.trim()
-    if (!name) {
-      setError('模板名稱必填')
-      return
-    }
-
-    setStatus('儲存模板中…')
-    try {
-      const response = await fetch('/api/task-templates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          tenant_id: cls.tenant_id,
-          name,
-          items: newTemplateItems.map((item, index) => ({
-            task_type: item.task_type,
-            session_position: item.session_position,
-            sort_order: index,
-          })),
-        }),
-      })
-      const json = await response.json()
-      if (!response.ok) throw new Error(json.error ?? '儲存模板失敗')
-
-      setTemplates((current) => [...current, json.template as TemplateWithItems])
-      setNewTemplateName('')
-      setNewTemplateItems([{ task_type: 'homework', session_position: 'S1' }])
-      clearStatus()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '儲存模板失敗')
-      setLoadingMessage('')
-    }
-  }
-
-  async function handleDeleteTemplate(templateId: string, templateName: string) {
-    if (!confirm(`刪除模板「${templateName}」？`)) return
-
-    setStatus('刪除模板中…')
-    try {
-      const response = await fetch(`/api/task-templates?id=${templateId}&${tenantQuery}`, { method: 'DELETE' })
-      const json = await response.json()
-      if (!response.ok) throw new Error(json.error ?? '刪除模板失敗')
-
-      setTemplates((current) => current.filter((template) => template.id !== templateId))
-      clearStatus()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '刪除模板失敗')
-      setLoadingMessage('')
-    }
   }
 
   const headerMessage = useMemo(() => {
@@ -515,9 +519,9 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
                         </td>
                         <td className="border-b border-border px-3 py-3">
                           <div className="space-y-2">
-                            {slot.tasks.length > 0 ? slot.tasks.map((task) => (
+                            {slot.tasks.length > 0 ? slot.tasks.map((task, taskIndex) => (
                               <div key={task.id} className="flex items-center gap-2 rounded-md border border-border/70 bg-muted/20 px-2 py-2">
-                                <span className="shrink-0 rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground">
+                                <span className={cn('shrink-0 rounded-md px-2 py-1 text-xs font-medium', TASK_CHIP[task.task_type])}>
                                   {taskTypeName(task.task_type as Exclude<TaskType, 'attendance'>)}
                                 </span>
                                 <TaskNameInput
@@ -525,6 +529,24 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
                                   value={task.task_name ?? ''}
                                   onSave={(nextValue) => handleTaskNameSave(slot.slot_index, task.id, nextValue)}
                                 />
+                                <div className="flex shrink-0 items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleMoveTask(slot.slot_index, task.id, 'up')}
+                                    disabled={taskIndex === 0}
+                                    className="grid size-8 place-items-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30"
+                                  >
+                                    <ChevronUp size={14} />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => void handleMoveTask(slot.slot_index, task.id, 'down')}
+                                    disabled={taskIndex === slot.tasks.length - 1}
+                                    className="grid size-8 place-items-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground disabled:opacity-30"
+                                  >
+                                    <ChevronDown size={14} />
+                                  </button>
+                                </div>
                                 <button
                                   type="button"
                                   onClick={() => void handleDeleteTask(slot.slot_index, task.id, task.task_name ?? '')}
@@ -541,6 +563,7 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
                               <select
                                 value={templateSelection[slot.slot_index] ?? ''}
                                 onChange={(event) => setTemplateSelection((current) => ({ ...current, [slot.slot_index]: event.target.value }))}
+                                onFocus={() => void loadTemplates(false)}
                                 className="h-9 min-w-[11rem] rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15"
                               >
                                 <option value="">選擇模板</option>
@@ -578,121 +601,6 @@ export function PlanSheet({ classId, cls, bagId, initialSlots }: Props) {
               </table>
             </div>
 
-            <div className="mt-6 rounded-lg border border-border bg-white p-4 dark:bg-[#2c2c2e]">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="font-semibold text-foreground">模板管理</h2>
-                  <p className="mt-0.5 text-xs text-muted-foreground">建立可重複套用的任務組合。</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void loadTemplates()}
-                  className="inline-flex h-9 items-center rounded-md border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted"
-                >
-                  重新整理
-                </button>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
-                <div className="space-y-3">
-                  {templates.length === 0 ? (
-                    <p className="rounded-md border border-dashed border-border px-3 py-6 text-center text-sm text-muted-foreground">
-                      目前沒有模板
-                    </p>
-                  ) : (
-                    templates.map((template) => (
-                      <div key={template.id} className="rounded-md border border-border px-3 py-3">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="font-medium text-foreground">{template.name}</p>
-                            <div className="mt-2 flex flex-wrap gap-1.5">
-                              {template.items.map((item) => (
-                                <span key={item.id} className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">
-                                  {item.session_position} · {taskTypeName(item.task_type as Exclude<TaskType, 'attendance'>)}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => void handleDeleteTemplate(template.id, template.name)}
-                            className="grid size-8 shrink-0 place-items-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted hover:text-red-500"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="rounded-md border border-border p-3">
-                  <p className="font-medium text-foreground">新增模板</p>
-                  <div className="mt-3 grid gap-3">
-                    <input
-                      value={newTemplateName}
-                      onChange={(event) => setNewTemplateName(event.target.value)}
-                      placeholder="模板名稱"
-                      className="h-9 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15"
-                    />
-
-                    {newTemplateItems.map((item, index) => (
-                      <div key={`item-${index}`} className="flex items-center gap-2">
-                        <select
-                          value={item.task_type}
-                          onChange={(event) => setNewTemplateItems((current) => current.map((entry, entryIndex) => (
-                            entryIndex === index
-                              ? { ...entry, task_type: event.target.value as Exclude<TaskType, 'attendance'> }
-                              : entry
-                          )))}
-                          className="h-9 flex-1 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15"
-                        >
-                          {TASK_TYPE_OPTIONS.map(([taskType, label]) => (
-                            <option key={`new-${taskType}`} value={taskType}>{label}</option>
-                          ))}
-                        </select>
-                        <select
-                          value={item.session_position}
-                          onChange={(event) => setNewTemplateItems((current) => current.map((entry, entryIndex) => (
-                            entryIndex === index
-                              ? { ...entry, session_position: event.target.value as 'S1' | 'S2' }
-                              : entry
-                          )))}
-                          className="h-9 w-24 rounded-md border border-border bg-background px-3 text-sm outline-none focus:border-gold focus:ring-2 focus:ring-gold/15"
-                        >
-                          <option value="S1">S1</option>
-                          <option value="S2">S2</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setNewTemplateItems((current) => current.length === 1 ? current : current.filter((_, entryIndex) => entryIndex !== index))}
-                          className="grid size-9 place-items-center rounded-md text-muted-foreground/60 transition-colors hover:bg-muted hover:text-red-500"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    ))}
-
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setNewTemplateItems((current) => [...current, { task_type: 'practice', session_position: 'S2' }])}
-                        className="inline-flex h-9 items-center gap-1 rounded-md border border-border px-3 text-xs font-medium text-foreground/80 transition-colors hover:bg-muted"
-                      >
-                        <Plus size={14} /> 加項目
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void handleCreateTemplate()}
-                        className="inline-flex h-9 items-center rounded-md bg-foreground px-4 text-xs font-medium text-background transition-opacity hover:opacity-90"
-                      >
-                        儲存模板
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </>
         )}
       </div>

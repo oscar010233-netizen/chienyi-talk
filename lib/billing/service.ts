@@ -698,6 +698,140 @@ async function writeOpenBagLineDetails(
   }
 }
 
+async function ensureSessionCommentTasks(
+  supabase: Supabase,
+  params: {
+    tenantId: string
+    classId: string
+    bagId: string
+  },
+): Promise<void> {
+  const { data: lineRows, error: lineError } = await supabase
+    .from('payment_bag_lines')
+    .select('id')
+    .eq('tenant_id', params.tenantId)
+    .eq('bag_id', params.bagId)
+
+  if (lineError) throw new Error(lineError.message)
+
+  const lineIds = (lineRows ?? []).map((row: { id: string }) => row.id)
+  if (lineIds.length === 0) return
+
+  const [{ data: sessionRows, error: sessionError }, { data: existingTasks, error: taskError }, { data: siblingTasks, error: siblingTaskError }, { data: enrollments, error: enrollmentError }] = await Promise.all([
+    supabase
+      .from('payment_bag_line_sessions')
+      .select('slot_index')
+      .in('line_id', lineIds)
+      .eq('tenant_id', params.tenantId)
+      .neq('session_kind', 'makeup')
+      .not('slot_index', 'is', null),
+    supabase
+      .from('class_tasks')
+      .select('id, slot_index, display_order')
+      .eq('tenant_id', params.tenantId)
+      .eq('class_id', params.classId)
+      .eq('bag_id', params.bagId)
+      .eq('task_type', 'comment')
+      .order('display_order'),
+    supabase
+      .from('class_tasks')
+      .select('display_order')
+      .eq('tenant_id', params.tenantId)
+      .eq('class_id', params.classId)
+      .eq('bag_id', params.bagId),
+    supabase
+      .from('class_enrollments')
+      .select('student_id')
+      .eq('tenant_id', params.tenantId)
+      .eq('class_id', params.classId)
+      .eq('status', 'active'),
+  ])
+
+  if (sessionError) throw new Error(sessionError.message)
+  if (taskError) throw new Error(taskError.message)
+  if (siblingTaskError) throw new Error(siblingTaskError.message)
+  if (enrollmentError) throw new Error(enrollmentError.message)
+
+  const slotIndexes = Array.from(
+    new Set(
+      (sessionRows ?? [])
+        .map((row: { slot_index: number | null }) => row.slot_index)
+        .filter((slotIndex): slotIndex is number => slotIndex != null),
+    ),
+  ).sort((a, b) => a - b)
+
+  if (slotIndexes.length === 0) return
+
+  const existingTaskRows = (existingTasks ?? []) as Array<{ id: string; slot_index: number | null; display_order: number | null }>
+  const existingTaskBySlot = new Map<number, { id: string; slot_index: number | null; display_order: number | null }>()
+  for (const task of existingTaskRows) {
+    if (task.slot_index == null || existingTaskBySlot.has(task.slot_index)) continue
+    existingTaskBySlot.set(task.slot_index, task)
+  }
+
+  const firstOrder = (siblingTasks ?? []).reduce((max, row: { display_order: number | null }) => Math.max(max, row.display_order ?? 0), 0) + 1
+  const missingSlotIndexes = slotIndexes.filter((slotIndex) => !existingTaskBySlot.has(slotIndex))
+
+  let createdTasks: Array<{ id: string; slot_index: number | null; display_order: number | null }> = []
+  if (missingSlotIndexes.length > 0) {
+    const rows = missingSlotIndexes.map((slotIndex, index) => ({
+      tenant_id: params.tenantId,
+      class_id: params.classId,
+      bag_id: params.bagId,
+      slot_index: slotIndex,
+      lesson_label: null,
+      task_type: 'comment',
+      task_name: '評語',
+      threshold_value: null,
+      threshold_text: null,
+      max_score: null,
+      display_order: firstOrder + index,
+    }))
+
+    const { data, error } = await supabase
+      .from('class_tasks')
+      .insert(rows)
+      .select('id, slot_index, display_order')
+
+    if (error) throw new Error(error.message)
+    createdTasks = (data ?? []) as Array<{ id: string; slot_index: number | null; display_order: number | null }>
+  }
+
+  const commentTasks = [...existingTaskRows, ...createdTasks]
+  const studentIds = (enrollments ?? []).map((row: { student_id: string }) => row.student_id)
+  if (commentTasks.length === 0 || studentIds.length === 0) return
+
+  const commentTaskIds = commentTasks.map((task) => task.id)
+  const { data: existingRecords, error: recordError } = await supabase
+    .from('student_task_records')
+    .select('student_id, class_task_id')
+    .eq('tenant_id', params.tenantId)
+    .in('class_task_id', commentTaskIds)
+    .in('student_id', studentIds)
+
+  if (recordError) throw new Error(recordError.message)
+
+  const existingRecordKeys = new Set((existingRecords ?? []).map((row) => `${row.student_id}:${row.class_task_id}`))
+  const recordRows: Array<{ tenant_id: string; class_task_id: string; student_id: string }> = []
+
+  for (const task of commentTasks) {
+    for (const studentId of studentIds) {
+      const key = `${studentId}:${task.id}`
+      if (existingRecordKeys.has(key)) continue
+      recordRows.push({
+        tenant_id: params.tenantId,
+        class_task_id: task.id,
+        student_id: studentId,
+      })
+    }
+  }
+
+  if (recordRows.length > 0) {
+    const { error } = await supabase.from('student_task_records').insert(recordRows)
+    if (error) throw new Error(error.message)
+  }
+}
+
 export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWithLines> {
   const supabase = await createServiceClient()
   await assertPaymentBagDetailTables(supabase)
@@ -800,6 +934,11 @@ export async function openPaymentBag(input: OpenBagInput): Promise<PaymentBagWit
         classType: cls.class_type,
         lines: (lines ?? []) as PaymentBagLine[],
         drafts: studentDrafts,
+      })
+      await ensureSessionCommentTasks(supabase, {
+        tenantId: cls.tenant_id,
+        classId: cls.id,
+        bagId: bag.id,
       })
     }
   }

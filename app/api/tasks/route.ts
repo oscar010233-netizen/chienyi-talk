@@ -37,6 +37,13 @@ function integerOrNull(value: unknown): number | null {
   return number != null ? Math.trunc(number) : null
 }
 
+function hasSameMembers(left: string[], right: string[]) {
+  if (left.length !== right.length) return false
+  const leftSorted = [...left].sort()
+  const rightSorted = [...right].sort()
+  return leftSorted.every((value, index) => value === rightSorted[index])
+}
+
 function normalizeTaskInput(input: TaskInput, fallbackSlotIndex: number | null, fallbackLesson: string | null) {
   const taskType = String(input.task_type ?? '').trim()
   if (!isTaskType(taskType)) {
@@ -98,6 +105,7 @@ export async function PATCH(request: NextRequest) {
   const body = await request.json() as Record<string, unknown>
   const taskId = trimOrNull(body.task_id ?? body.id)
   const supabase = await createServiceClient()
+  const action = trimOrNull(body.action)
 
   if (taskId) {
     const { data: taskRow, error: taskError } = await supabase
@@ -160,6 +168,62 @@ export async function PATCH(request: NextRequest) {
 
   if (classError) return NextResponse.json({ error: classError.message }, { status: 500 })
   if (!cls) return NextResponse.json({ error: 'class not found' }, { status: 404 })
+
+  if (action === 'reorder') {
+    const orderedTaskIds = Array.isArray(body.ordered_task_ids)
+      ? body.ordered_task_ids.map((value) => String(value ?? '').trim()).filter(Boolean)
+      : []
+
+    if (orderedTaskIds.length === 0) {
+      return NextResponse.json({ error: 'ordered_task_ids required' }, { status: 400 })
+    }
+
+    const { data: slotTasks, error: slotTaskError } = await supabase
+      .from('class_tasks')
+      .select('id, tenant_id, class_id, bag_id, slot_index, lesson_label, task_type, task_name, threshold_value, max_score, threshold_text, display_order')
+      .eq('tenant_id', cls.tenant_id)
+      .eq('class_id', classId)
+      .eq('bag_id', bagId)
+      .eq('slot_index', slotIndex)
+      .in('task_type', ['homework', 'practice', 'quiz', 'progress'])
+
+    if (slotTaskError) return NextResponse.json({ error: slotTaskError.message }, { status: 500 })
+
+    const tasks = slotTasks ?? []
+    const existingTaskIds = tasks.map((task) => task.id)
+    if (!hasSameMembers(existingTaskIds, orderedTaskIds)) {
+      return NextResponse.json({ error: 'ordered_task_ids must match the slot tasks exactly' }, { status: 400 })
+    }
+
+    const orderPool = tasks
+      .map((task) => task.display_order)
+      .filter((value): value is number => value != null)
+      .sort((a, b) => a - b)
+
+    const fallbackStart = orderPool.length > 0 ? orderPool[0] : 1
+    const normalizedOrderPool = orderedTaskIds.map((_, index) => orderPool[index] ?? (fallbackStart + index))
+
+    for (let index = 0; index < orderedTaskIds.length; index += 1) {
+      const { error } = await supabase
+        .from('class_tasks')
+        .update({ display_order: normalizedOrderPool[index] })
+        .eq('id', orderedTaskIds[index])
+        .eq('tenant_id', cls.tenant_id)
+
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+    }
+
+    const byId = new Map(tasks.map((task) => [task.id, task]))
+    const reorderedTasks = orderedTaskIds.map((id, index) => ({
+      ...byId.get(id)!,
+      display_order: normalizedOrderPool[index],
+    }))
+
+    return NextResponse.json({
+      tasks: reorderedTasks,
+      updated: reorderedTasks.length,
+    })
+  }
 
   const { data: updated, error } = await supabase
     .from('class_tasks')
