@@ -58,6 +58,29 @@ function eventFill(color: string | null): string {
     : 'rgba(59, 130, 246, 0.14)'
 }
 
+function colorToRgb(color: string | null): [number, number, number] {
+  const fallback: [number, number, number] = [59, 130, 246]
+  if (!color || !color.startsWith('#')) return fallback
+
+  const normalized = color.slice(1)
+  const fullHex =
+    normalized.length === 3
+      ? normalized.split('').map(char => `${char}${char}`).join('')
+      : normalized
+
+  if (!/^[\da-fA-F]{6}$/.test(fullHex)) return fallback
+
+  const red = Number.parseInt(fullHex.slice(0, 2), 16)
+  const green = Number.parseInt(fullHex.slice(2, 4), 16)
+  const blue = Number.parseInt(fullHex.slice(4, 6), 16)
+  return [red, green, blue]
+}
+
+function colorWithAlpha(color: string | null, alpha: number): string {
+  const [red, green, blue] = colorToRgb(color)
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+}
+
 function handleInteractiveKeyDown(
   event: React.KeyboardEvent<HTMLElement>,
   onActivate: () => void
@@ -285,6 +308,35 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                         const teachers = [...(event.teachers ?? [])].sort((a, b) => a.start_time.localeCompare(b.start_time))
 
                         if (teachers.length > 0) {
+                          const segmentRows = teachers
+                            .map(teacher => {
+                              const teacherStart = minutesFromTime(teacher.start_time)
+                              const teacherEnd = minutesFromTime(teacher.end_time)
+                              const segmentStart = Math.max(teacherStart, clampedStart)
+                              const segmentEnd = Math.min(teacherEnd, clampedEnd)
+                              if (segmentEnd <= segmentStart) return null
+                              return {
+                                id: teacher.id,
+                                name: teacher.teacher?.name ?? '未指定老師',
+                                startTime: teacher.start_time.slice(0, 5),
+                                endTime: teacher.end_time.slice(0, 5),
+                                minutes: Math.max(segmentEnd - segmentStart, SLOT_MINUTES),
+                              }
+                            })
+                            .filter((segment): segment is NonNullable<typeof segment> => Boolean(segment))
+
+                          if (segmentRows.length === 0) return null
+
+                          const compactCard = height < 88
+                          const cardHeaderHeight = compactCard ? 30 : 36
+                          const cardBodyHeight = Math.max(height - cardHeaderHeight, 20)
+                          const cardBodyCompact = cardBodyHeight < 72
+                          const showConnectorLine = segmentRows.length > 1 && !cardBodyCompact
+                          const totalSegmentMinutes = segmentRows.reduce((sum, segment) => sum + segment.minutes, 0)
+                          const sectionMeta = [eventSubtitle(event), room.name, event.note ?? undefined]
+                            .filter(Boolean)
+                            .join(' · ')
+
                           return (
                             <div
                               key={event.id}
@@ -297,73 +349,77 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                 right: 6,
                                 height,
                               }}
-                              className="z-10 overflow-hidden rounded-md border border-border bg-background/95 shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] ring-1 ring-inset ring-white/60 transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99] dark:ring-white/10"
+                              className="z-10 overflow-hidden rounded-[14px] border border-[color:var(--workspace-course-group-border)] bg-[color:var(--workspace-course-group-bg)] shadow-[var(--workspace-course-group-shadow)] transition-[border-color,box-shadow] hover:border-[color:var(--workspace-course-group-border-hover)] hover:shadow-[var(--workspace-course-group-shadow-hover)] focus:outline-none focus:ring-2 focus:ring-gold/30 active:brightness-[0.99] sm:rounded-[16px]"
                               onClick={() => onClickEvent(event)}
                               onKeyDown={keyEvent => handleInteractiveKeyDown(keyEvent, () => onClickEvent(event))}
                             >
-                              {teachers.map((teacher, teacherIndex) => {
-                                const teacherStart = minutesFromTime(teacher.start_time)
-                                const teacherEnd = minutesFromTime(teacher.end_time)
-                                const segmentStart = Math.max(teacherStart, clampedStart)
-                                const segmentEnd = Math.min(teacherEnd, clampedEnd)
-                                if (segmentEnd <= segmentStart) return null
-
-                                const segmentTop = minuteToTop(segmentStart) - top
-                                const segmentHeight = Math.max(
-                                  minuteToTop(segmentEnd) - minuteToTop(segmentStart) - (teacherIndex === teachers.length - 1 ? 4 : 0),
-                                  20
-                                )
-                                const segmentColor = teacher.teacher?.color ?? teacher.color ?? color
-                                const showTitle = teacherIndex === 0 && segmentHeight >= 38
-                                const showSubtitle = teacherIndex === 0 && segmentHeight >= 52
-
-                                return (
-                                  <div
-                                    key={teacher.id}
-                                    style={{
-                                      position: 'absolute',
-                                      top: segmentTop,
-                                      left: 3,
-                                      right: 3,
-                                      height: segmentHeight,
-                                      backgroundColor: eventFill(segmentColor),
-                                      borderTop: teacherIndex > 0 ? '1px dashed rgba(148, 163, 184, 0.55)' : undefined,
-                                    }}
-                                    className="overflow-hidden text-left transition-[filter] hover:brightness-[1.02]"
-                                  >
+                              <div
+                                className="flex items-start justify-between gap-2 border-b border-[color:var(--workspace-course-divider)] px-3 py-2 sm:px-4 sm:py-2.5"
+                                style={{ minHeight: cardHeaderHeight }}
+                              >
+                                <div className="min-w-0">
+                                  <div className="flex min-w-0 items-center gap-1.5">
                                     <span
-                                      className="absolute inset-y-0 left-0 w-1.5"
-                                      style={{ backgroundColor: segmentColor }}
+                                      className="inline-block size-2.5 shrink-0 rounded-full"
+                                      style={{ backgroundColor: colorWithAlpha(color, 0.72) }}
                                     />
-                                    <div className="flex h-full min-w-0 flex-col justify-center px-2 py-1 pl-4">
-                                      {showTitle && (
-                                        <div className="flex min-w-0 items-center gap-1.5">
-                                          <span
-                                            className="inline-block size-2 shrink-0 rounded-full"
-                                            style={{ backgroundColor: color }}
-                                          />
-                                          <p className="truncate text-xs font-semibold leading-tight text-foreground">
-                                            {eventTitle(event)}
-                                          </p>
-                                        </div>
-                                      )}
-                                      {showSubtitle && (
-                                        <p className="truncate text-[10px] text-muted-foreground">
-                                          {eventSubtitle(event)}
-                                        </p>
-                                      )}
-                                      <p
-                                        className={[
-                                          'truncate text-[10px] text-muted-foreground',
-                                          showTitle ? 'mt-0.5' : '',
-                                        ].join(' ')}
-                                      >
-                                        {teacher.teacher?.name ?? '未指定老師'} {teacher.start_time.slice(0, 5)} - {teacher.end_time.slice(0, 5)}
-                                      </p>
-                                    </div>
+                                    <p className="truncate text-xs font-semibold text-[color:var(--workspace-course-text-primary)]">
+                                      {eventTitle(event)}
+                                    </p>
                                   </div>
-                                )
-                              })}
+                                  {!compactCard && (
+                                    <p className="mt-1 truncate text-[10px] text-[color:var(--workspace-course-text-secondary)]">
+                                      {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)} · {sectionMeta}
+                                    </p>
+                                  )}
+                                </div>
+                                <span className="shrink-0 rounded-full bg-[color:var(--workspace-course-divider)] px-1.5 py-0.5 text-[9px] font-medium text-[color:var(--workspace-course-text-tertiary)]">
+                                  {event.start_time.slice(0, 5)}
+                                </span>
+                              </div>
+
+                              <div
+                                className="relative"
+                                style={{ height: cardBodyHeight }}
+                              >
+                                {showConnectorLine && (
+                                  <span
+                                    className="pointer-events-none absolute top-2 bottom-2 left-[13px] w-px"
+                                    style={{ backgroundColor: colorWithAlpha(color, 0.18) }}
+                                  />
+                                )}
+                                <div className="flex h-full flex-col">
+                                  {segmentRows.map((segment, segmentIndex) => (
+                                    <div
+                                      key={segment.id}
+                                      className={[
+                                        'relative flex min-w-0 items-center gap-2 px-3 py-1.5 sm:px-4',
+                                        segmentIndex > 0 ? 'border-t border-[color:var(--workspace-course-divider)]' : '',
+                                        cardBodyCompact ? 'py-1' : '',
+                                      ].join(' ')}
+                                      style={{
+                                        flex: `${segment.minutes} ${segment.minutes} 0`,
+                                        backgroundColor: colorWithAlpha(color, segmentIndex === 0 ? 0.08 : 0.06),
+                                      }}
+                                    >
+                                      <span
+                                        className="h-4 w-1 shrink-0 rounded-full"
+                                        style={{ backgroundColor: colorWithAlpha(color, segmentIndex === 0 ? 0.64 : 0.44) }}
+                                      />
+                                      <div className="min-w-0">
+                                        <p className="truncate text-[11px] font-medium text-[color:var(--workspace-course-text-primary)]">
+                                          {segment.name} · {segment.startTime} - {segment.endTime}
+                                        </p>
+                                        {!cardBodyCompact && (
+                                          <p className="mt-0.5 truncate text-[10px] text-[color:var(--workspace-course-text-secondary)]">
+                                            {sectionMeta}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             </div>
                           )
                         }

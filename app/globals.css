@@ -91,6 +91,15 @@
   --sidebar-accent-foreground: #7d0000;
   --sidebar-border: #e7dddd;
   --sidebar-ring: #c83e3e;
+  --workspace-course-group-bg: rgba(255, 255, 255, 0.86);
+  --workspace-course-group-border: rgba(60, 60, 67, 0.12);
+  --workspace-course-group-border-hover: rgba(60, 60, 67, 0.2);
+  --workspace-course-group-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --workspace-course-group-shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.08);
+  --workspace-course-divider: rgba(60, 60, 67, 0.12);
+  --workspace-course-text-primary: rgba(28, 28, 30, 0.92);
+  --workspace-course-text-secondary: rgba(60, 60, 67, 0.76);
+  --workspace-course-text-tertiary: rgba(60, 60, 67, 0.55);
 }
 
 .dark {
@@ -126,6 +135,15 @@
   --sidebar-accent-foreground: #f5f5f7;
   --sidebar-border: rgba(255, 255, 255, 0.10);
   --sidebar-ring: #ff4d4f;
+  --workspace-course-group-bg: rgba(28, 28, 30, 0.74);
+  --workspace-course-group-border: rgba(255, 255, 255, 0.14);
+  --workspace-course-group-border-hover: rgba(255, 255, 255, 0.22);
+  --workspace-course-group-shadow: 0 1px 2px rgba(0, 0, 0, 0.28);
+  --workspace-course-group-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --workspace-course-divider: rgba(255, 255, 255, 0.14);
+  --workspace-course-text-primary: rgba(245, 245, 247, 0.94);
+  --workspace-course-text-secondary: rgba(235, 235, 245, 0.68);
+  --workspace-course-text-tertiary: rgba(235, 235, 245, 0.48);
 }
 
 /* ---- macOS materials: one place to tune light + dark ---- */
