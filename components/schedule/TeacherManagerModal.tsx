@@ -1,6 +1,6 @@
 'use client'
 
-import { Loader2, Plus, Trash2, X } from 'lucide-react'
+import { ChevronDown, ChevronUp, Loader2, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
 interface Teacher {
@@ -151,6 +151,55 @@ export function TeacherManagerModal({ open, onClose }: Props) {
     }
   }
 
+  async function moveTeacher(index: number, direction: 'up' | 'down') {
+    const targetIndex = direction === 'up' ? index - 1 : index + 1
+    if (targetIndex < 0 || targetIndex >= teachers.length) return
+
+    const swapped = [...teachers]
+    const current = swapped[index]
+    swapped[index] = swapped[targetIndex]
+    swapped[targetIndex] = current
+
+    const reindexed = swapped.map((teacher, currentIndex) => ({
+      ...teacher,
+      sort_order: currentIndex,
+    }))
+
+    const changedTeachers = reindexed.filter(
+      (teacher, currentIndex) =>
+        teacher.id !== teachers[currentIndex]?.id ||
+        teacher.sort_order !== teachers[currentIndex]?.sort_order
+    )
+
+    setTeachers(reindexed)
+    setSaving(true)
+    setError('')
+
+    try {
+      await Promise.all(
+        changedTeachers.map(teacher =>
+          fetch(`/api/teachers/${teacher.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sort_order: teacher.sort_order }),
+          }).then(async response => {
+            if (!response.ok) {
+              const data = await response.json()
+              throw new Error(data.error ?? '更新排序失敗')
+            }
+          })
+        )
+      )
+
+      await loadTeachers()
+    } catch (moveError) {
+      setError(moveError instanceof Error ? moveError.message : '更新排序失敗')
+      await loadTeachers()
+    } finally {
+      setSaving(false)
+    }
+  }
+
   function updateTeacher(index: number, patch: Partial<Teacher>) {
     setTeachers(previous =>
       previous.map((teacher, currentIndex) =>
@@ -203,6 +252,10 @@ export function TeacherManagerModal({ open, onClose }: Props) {
             </button>
           </div>
 
+          <p className="text-xs text-muted-foreground">
+            排序：數字越小越前，也可用右側 ↑ / ↓ 快速調整。
+          </p>
+
           {loading ? (
             <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
               <Loader2 size={16} className="mr-2 animate-spin" />
@@ -217,7 +270,7 @@ export function TeacherManagerModal({ open, onClose }: Props) {
               {teachers.map((teacher, index) => (
                 <div
                   key={teacher.id}
-                  className="grid gap-2 rounded-lg border border-border bg-background/60 p-3 sm:grid-cols-[minmax(0,1fr)_96px_auto_auto] sm:items-center"
+                  className="grid gap-2 rounded-lg border border-border bg-background/60 p-3 sm:grid-cols-[minmax(0,1fr)_160px_auto_auto_auto] sm:items-center"
                 >
                   <input
                     type="text"
@@ -225,12 +278,38 @@ export function TeacherManagerModal({ open, onClose }: Props) {
                     onChange={event => updateTeacher(index, { name: event.target.value })}
                     className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
                   />
-                  <input
-                    type="number"
-                    value={teacher.sort_order}
-                    onChange={event => updateTeacher(index, { sort_order: Number(event.target.value) || 0 })}
-                    className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
-                  />
+                  <label className="grid gap-1">
+                    <span className="text-[11px] font-medium text-muted-foreground">排序（數字越小越前）</span>
+                    <input
+                      type="number"
+                      value={teacher.sort_order}
+                      onChange={event => updateTeacher(index, { sort_order: Number(event.target.value) || 0 })}
+                      title="排序數字越小越前"
+                      className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
+                    />
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      title="上移"
+                      aria-label="上移"
+                      onClick={() => void moveTeacher(index, 'up')}
+                      disabled={saving || loading || index === 0}
+                      className="grid size-9 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ChevronUp size={15} />
+                    </button>
+                    <button
+                      type="button"
+                      title="下移"
+                      aria-label="下移"
+                      onClick={() => void moveTeacher(index, 'down')}
+                      disabled={saving || loading || index === teachers.length - 1}
+                      className="grid size-9 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <ChevronDown size={15} />
+                    </button>
+                  </div>
                   <button
                     type="button"
                     onClick={() => void handleUpdate(teacher)}

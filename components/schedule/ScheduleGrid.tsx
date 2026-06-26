@@ -296,10 +296,8 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                 left: 6,
                                 right: 6,
                                 height,
-                                borderColor: color,
-                                backgroundColor: eventFill(color),
                               }}
-                              className="z-10 overflow-hidden rounded-md border border-l-4 shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99]"
+                              className="z-10 overflow-hidden rounded-md border border-border bg-background/95 shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99]"
                               onClick={() => onClickEvent(event)}
                               onKeyDown={keyEvent => handleInteractiveKeyDown(keyEvent, () => onClickEvent(event))}
                             >
@@ -327,7 +325,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                       right: 0,
                                       height: segmentHeight,
                                       backgroundColor: eventFill(segmentColor),
-                                      borderTop: teacherIndex > 0 ? `1px dashed ${color}` : undefined,
+                                      borderTop: teacherIndex > 0 ? '1px dashed rgba(148, 163, 184, 0.55)' : undefined,
                                     }}
                                     className="overflow-hidden text-left transition-[filter] hover:brightness-[1.02]"
                                   >
@@ -337,9 +335,15 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                     />
                                     <div className="flex h-full min-w-0 flex-col justify-center px-2 py-1 pl-4">
                                       {teacherIndex === 0 && (
-                                        <p className="truncate text-xs font-semibold leading-tight text-foreground">
-                                          {eventTitle(event)}
-                                        </p>
+                                        <div className="flex min-w-0 items-center gap-1.5">
+                                          <span
+                                            className="inline-block size-2 shrink-0 rounded-full"
+                                            style={{ backgroundColor: color }}
+                                          />
+                                          <p className="truncate text-xs font-semibold leading-tight text-foreground">
+                                            {eventTitle(event)}
+                                          </p>
+                                        </div>
                                       )}
                                       {teacherIndex === 0 && segmentHeight >= 44 && (
                                         <p className="truncate text-[10px] text-muted-foreground">
@@ -372,10 +376,9 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                               left: 6,
                               right: 6,
                               height,
-                              borderColor: color,
                               backgroundColor: eventFill(color),
                             }}
-                            className="z-10 overflow-hidden rounded-md border border-l-4 px-2 py-1.5 text-left shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99]"
+                            className="z-10 overflow-hidden rounded-md border border-border px-2 py-1.5 text-left shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99]"
                             onClick={clickEvent => {
                               clickEvent.stopPropagation()
                               onClickEvent(event)
