@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       *,
       room:rooms(id, name, display_order),
       class_info:classes(id, class_name, class_code),
-      teachers:schedule_event_teachers(*, teacher:profiles(id, display_name))
+      teachers:schedule_event_teachers(*, teacher:teachers(id, name))
     `)
     .eq('schedule_day_id', day.id)
     .order('start_time')

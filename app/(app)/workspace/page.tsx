@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronLeft, ChevronRight, CalendarDays, UtensilsCrossed, CheckSquare } from 'lucide-react'
 import { ScheduleGrid, type NewEventDraft } from '@/components/schedule/ScheduleGrid'
 import { CreateEventModal } from '@/components/schedule/CreateEventModal'
+import { TeacherManagerModal } from '@/components/schedule/TeacherManagerModal'
 import { DinnerPanel } from '@/components/workspace/DinnerPanel'
 import { TodoPanel } from '@/components/workspace/TodoPanel'
 import type { Room, ScheduleEvent } from '@/lib/schedule/types'
@@ -52,6 +53,8 @@ export default function WorkspacePage() {
   const [events,      setEvents]      = useState<ScheduleEvent[]>([])
   const [loading,     setLoading]     = useState(false)
   const [modalOpen,   setModalOpen]   = useState(false)
+  const [teacherManagerOpen, setTeacherManagerOpen] = useState(false)
+  const [teachersVersion, setTeachersVersion] = useState(0)
   const [draft,       setDraft]       = useState<NewEventDraft | undefined>()
   const [editEvent,   setEditEvent]   = useState<ScheduleEvent | null>(null)
   const [showGrid,    setShowGrid]    = useState(true)
@@ -116,6 +119,11 @@ export default function WorkspacePage() {
   }
   function openEdit(ev: ScheduleEvent) {
     setEditEvent(ev); setDraft(undefined); setModalOpen(true)
+  }
+
+  function closeTeacherManager() {
+    setTeacherManagerOpen(false)
+    setTeachersVersion(previous => previous + 1)
   }
 
   const isToday        = date === formatDate(new Date())
@@ -220,6 +228,13 @@ export default function WorkspacePage() {
         event={editEvent}
         date={date}
         onSaved={fetchEvents}
+        onManageTeachers={() => setTeacherManagerOpen(true)}
+        teachersVersion={teachersVersion}
+      />
+
+      <TeacherManagerModal
+        open={teacherManagerOpen}
+        onClose={closeTeacherManager}
       />
     </div>
   )

@@ -23,8 +23,9 @@ export const DB_TABLES: TableMeta[] = [
 
   { name: 'rooms', group: '配課表', columns: ['id', 'tenant_id', 'name', 'room_type', 'display_order', 'status', 'created_at', 'updated_at'] },
   { name: 'schedule_days', group: '配課表', columns: ['id', 'tenant_id', 'date', 'weekday', 'note', 'status', 'created_at', 'updated_at'] },
+  { name: 'teachers', group: '配課表', note: '授課老師主表；刪除採封存（status=archived）', columns: ['id', 'tenant_id', 'name', 'status', 'linked_profile_id', 'sort_order', 'created_at', 'updated_at'] },
   { name: 'schedule_events', group: '配課表', columns: ['id', 'tenant_id', 'schedule_day_id', 'room_id', 'class_id', 'title', 'event_type', 'start_time', 'end_time', 'color', 'note', 'status', 'created_at', 'updated_at'] },
-  { name: 'schedule_event_teachers', group: '配課表', note: '配課表時段可指定授課老師；目前 UI 以整段時段為單位寫入', columns: ['id', 'tenant_id', 'schedule_event_id', 'teacher_id', 'start_time', 'end_time', 'color', 'created_at', 'updated_at'] },
+  { name: 'schedule_event_teachers', group: '配課表', note: '配課表時段可指定授課老師；目前 UI 以整段時段為單位寫入，teacher_id FK 指向 teachers', columns: ['id', 'tenant_id', 'schedule_event_id', 'teacher_id', 'start_time', 'end_time', 'color', 'created_at', 'updated_at'] },
   { name: 'day_entries', group: '配課表', note: '晚餐備註與待辦/晚餐拖曳排序已接 UI', columns: ['id', 'tenant_id', 'schedule_day_id', 'type', 'person', 'content', 'done', 'notes', 'sort_order', 'created_at'] },
 
   { name: 'billing_seasons', group: '帳務', columns: ['id', 'tenant_id', 'season_code', 'year', 'quarter', 'start_date', 'end_date', 'label', 'status', 'holiday_dates', 'created_at', 'updated_at'] },

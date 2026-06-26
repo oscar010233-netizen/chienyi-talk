@@ -352,7 +352,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                           teacherIndex === 0 ? 'mt-0.5' : '',
                                         ].join(' ')}
                                       >
-                                        {teacher.teacher?.display_name ?? '未指定老師'} {teacher.start_time.slice(0, 5)} - {teacher.end_time.slice(0, 5)}
+                                        {teacher.teacher?.name ?? '未指定老師'} {teacher.start_time.slice(0, 5)} - {teacher.end_time.slice(0, 5)}
                                       </p>
                                     </div>
                                   </div>

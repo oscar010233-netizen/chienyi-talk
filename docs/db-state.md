@@ -48,6 +48,8 @@
 
 - **`profiles`**：RLS policy（`tenant members can manage`）靠它判斷 tenant 歸屬，是整個權限體系的根。app 程式碼不直接讀寫它（用 service role 繞過 RLS）≠ 沒用。**不可刪。**
 - **`schedule_event_teachers`**：被 `/api/schedule/events` GET 的 `teachers:schedule_event_teachers(*)` join 著，配課表新增/編輯時段可寫入授課老師。直接 DROP 會讓配課表查詢爆掉——要砍必須先移除該 join 與 UI。
+- **`teachers`**：2026-06-26 新增的授課老師主表，欄位為 `id / tenant_id / name / status / linked_profile_id / sort_order / created_at / updated_at`；API 由 `/api/teachers` 提供 CRUD，刪除採 `status='archived'` 軟刪，不做 hard delete。
+- **`schedule_event_teachers.teacher_id`**：已從 `profiles.id` 改為指向 `teachers.id`，配課表 GET embed 也改成 `teacher:teachers(id, name)`。
 
 7. **出席重構：`payment_bag_line_sessions` 成為點名單一事實來源（2026-06-21）。**
    Migration `supabase/migrations/20260621000001_attendance_redesign.sql` 已套用（2026-06-21）：
@@ -75,6 +77,7 @@
    - 舊 `task_type='attendance'` 歷史資料保留不刪，app 停止建立新的。
    - 刪除：`SeasonPlanSheet.tsx`、`/api/season-plan`、`AddTaskModal.tsx`。
    - 新建：`PlanSheet.tsx`（整季計畫重寫）、`/api/task-templates`。
+   - `fn_apply_class_template_tasks` 已於 2026-06-26 套用（對應 migration `supabase/migrations/20260626000001_apply_class_template_tasks_rpc.sql`）。
 
 10. **新增 `session_daily_comments` 表（2026-06-23）。**
    每個班級 × 每個出席日 一則評語（給家長的話，非每個任務）。

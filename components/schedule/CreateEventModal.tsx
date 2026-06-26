@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
-import { CalendarClock, Loader2, Plus, Trash2, X } from 'lucide-react'
+import { CalendarClock, Loader2, Plus, Settings2, Trash2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Room, ScheduleEvent } from '@/lib/schedule/types'
 
@@ -11,10 +11,11 @@ interface ClassOption {
   class_code: string | null
 }
 
-interface ProfileOption {
+interface TeacherOption {
   id: string
-  display_name: string | null
-  role: string | null
+  name: string
+  status: 'active' | 'archived'
+  sort_order?: number
 }
 
 interface Props {
@@ -25,6 +26,8 @@ interface Props {
   event?: ScheduleEvent | null
   date: string
   onSaved: () => void
+  onManageTeachers: () => void
+  teachersVersion: number
 }
 
 interface TeacherSegmentDraft {
@@ -148,29 +151,41 @@ function TimeField({
   )
 }
 
-export function CreateEventModal({ open, onClose, rooms, draft, event, date, onSaved }: Props) {
+export function CreateEventModal({
+  open,
+  onClose,
+  rooms,
+  draft,
+  event,
+  date,
+  onSaved,
+  onManageTeachers,
+  teachersVersion,
+}: Props) {
   const [classes, setClasses] = useState<ClassOption[]>([])
-  const [profiles, setProfiles] = useState<ProfileOption[]>([])
+  const [teachers, setTeachers] = useState<TeacherOption[]>([])
 
   useEffect(() => {
+    if (!open) return
+
     let cancelled = false
 
     async function loadData() {
       try {
-        const [classRes, profileRes] = await Promise.all([
+        const [classRes, teacherRes] = await Promise.all([
           fetch('/api/classes'),
-          fetch('/api/profiles'),
+          fetch('/api/teachers'),
         ])
         const classData = await readJsonArray<ClassOption>(classRes)
-        const profileData = await readJsonArray<ProfileOption>(profileRes)
+        const teacherData = await readJsonArray<TeacherOption>(teacherRes)
         if (!cancelled) {
           setClasses(classData)
-          setProfiles(profileData)
+          setTeachers(teacherData)
         }
       } catch {
         if (!cancelled) {
           setClasses([])
-          setProfiles([])
+          setTeachers([])
         }
       }
     }
@@ -179,7 +194,7 @@ export function CreateEventModal({ open, onClose, rooms, draft, event, date, onS
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [open, teachersVersion])
 
   const formKey = useMemo(() => {
     if (event) return `event:${event.id}`
@@ -194,12 +209,13 @@ export function CreateEventModal({ open, onClose, rooms, draft, event, date, onS
       key={formKey}
       rooms={rooms}
       classes={classes}
-      profiles={profiles}
+      teachers={teachers}
       draft={draft}
       event={event}
       date={date}
       onClose={onClose}
       onSaved={onSaved}
+      onManageTeachers={onManageTeachers}
     />
   )
 }
@@ -207,21 +223,23 @@ export function CreateEventModal({ open, onClose, rooms, draft, event, date, onS
 function EventForm({
   rooms,
   classes,
-  profiles,
+  teachers,
   draft,
   event,
   date,
   onClose,
   onSaved,
+  onManageTeachers,
 }: {
   rooms: Room[]
   classes: ClassOption[]
-  profiles: ProfileOption[]
+  teachers: TeacherOption[]
   draft: Props['draft']
   event?: ScheduleEvent | null
   date: string
   onClose: () => void
   onSaved: () => void
+  onManageTeachers: () => void
 }) {
   const [form, setForm] = useState<FormState>(() => initialForm(event, draft))
   const [saving, setSaving] = useState(false)
@@ -538,20 +556,30 @@ function EventForm({
           <div className="grid gap-2">
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-medium text-muted-foreground">授課分段</span>
-              <button
-                type="button"
-                onClick={addSegment}
-                disabled={profiles.length === 0}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-semibold text-foreground/75 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Plus size={14} />
-                加入分段
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onManageTeachers}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-semibold text-foreground/75 transition-colors hover:bg-muted"
+                >
+                  <Settings2 size={14} />
+                  管理老師
+                </button>
+                <button
+                  type="button"
+                  onClick={addSegment}
+                  disabled={teachers.length === 0}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-semibold text-foreground/75 transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  <Plus size={14} />
+                  加入分段
+                </button>
+              </div>
             </div>
 
-            {profiles.length === 0 && (
+            {teachers.length === 0 && (
               <p className="rounded-md border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
-                目前沒有可選老師帳號。
+                目前沒有可選老師，請先到「管理老師」新增。
               </p>
             )}
 
@@ -570,9 +598,9 @@ function EventForm({
                         className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
                       >
                         <option value="">選擇老師</option>
-                        {profiles.map(profile => (
-                          <option key={profile.id} value={profile.id}>
-                            {profile.display_name ?? profile.id.slice(0, 8)}
+                        {teachers.map(teacher => (
+                          <option key={teacher.id} value={teacher.id}>
+                            {teacher.name}
                           </option>
                         ))}
                       </select>
