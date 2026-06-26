@@ -331,7 +331,8 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                           const compactCard = height < 88
                           const tinyCard = height < 64
                           const cardBodyCompact = height < 72
-                          const chipHeight = tinyCard ? 24 : 28
+                          const headerHeight = tinyCard ? 24 : 28
+                          const firstSegmentTextPadding = tinyCard ? 18 : 28
                           const sectionMeta = [eventSubtitle(event), room.name, event.note ?? undefined]
                             .filter(Boolean)
                             .join(' · ')
@@ -355,28 +356,46 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                               <div
                                 className="relative h-full overflow-hidden rounded-[14px] border border-[color:var(--workspace-course-group-border)] bg-[color:var(--workspace-course-group-bg)] shadow-[var(--workspace-course-group-shadow)] hover:border-[color:var(--workspace-course-group-border-hover)] hover:shadow-[var(--workspace-course-group-shadow-hover)] sm:rounded-[16px]"
                               >
+                                <div
+                                  className="pointer-events-none absolute top-1.5 left-1.5 right-1.5 z-20 rounded-[10px] border border-[color:var(--workspace-course-divider)] bg-background/75 px-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] backdrop-blur-[10px] sm:rounded-xl sm:px-3"
+                                  style={{ height: headerHeight }}
+                                >
+                                  <div className="flex h-full min-w-0 items-center gap-1.5 text-[10px] sm:text-[11px]">
+                                    <span className="min-w-0 flex-1 whitespace-nowrap font-semibold text-[color:var(--workspace-course-text-primary)]">
+                                      {eventTitle(event)}
+                                    </span>
+                                    <span className="shrink-0 text-[color:var(--workspace-course-text-tertiary)]">｜</span>
+                                    <span className="shrink-0 whitespace-nowrap text-[color:var(--workspace-course-text-secondary)]">
+                                      {event.start_time.slice(0, 5)}-{event.end_time.slice(0, 5)}
+                                    </span>
+                                  </div>
+                                </div>
                                 <div className="flex h-full flex-col">
                                   {segmentRows.map((segment, segmentIndex) => (
                                     <div
                                       key={segment.id}
                                       className={[
-                                        'relative flex min-w-0 items-center gap-2 px-3 py-1.5 sm:px-4',
+                                        'relative flex min-w-0 items-start gap-2 px-3 py-1.5 sm:px-4',
                                         segmentIndex > 0 ? 'border-t border-[color:var(--workspace-course-divider)]' : '',
                                         cardBodyCompact ? 'py-1' : '',
-                                        segmentIndex === 0 ? (tinyCard ? 'pt-2' : 'pt-3') : '',
                                       ].join(' ')}
                                       style={{
                                         flex: `${segment.minutes} ${segment.minutes} 0`,
-                                        backgroundColor: colorWithAlpha(segment.teacherColor, tinyCard ? 0.16 : 0.18),
+                                        backgroundColor: colorWithAlpha(segment.teacherColor, tinyCard ? 0.18 : 0.2),
                                       }}
                                     >
                                       <span
                                         className="h-4 w-1 shrink-0 rounded-full"
                                         style={{ backgroundColor: segment.teacherColor }}
                                       />
-                                      <div className="min-w-0">
+                                      <div
+                                        className="min-w-0"
+                                        style={{
+                                          paddingTop: segmentIndex === 0 ? firstSegmentTextPadding : 0,
+                                        }}
+                                      >
                                         <p className="truncate text-[11px] font-medium text-[color:var(--workspace-course-text-primary)]">
-                                          {segment.name} · {segment.startTime} - {segment.endTime}
+                                          {segment.name} ｜ {segment.startTime}-{segment.endTime}
                                         </p>
                                         {!cardBodyCompact && !compactCard && (
                                           <p className="mt-0.5 truncate text-[10px] text-[color:var(--workspace-course-text-secondary)]">
@@ -386,24 +405,6 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                       </div>
                                     </div>
                                   ))}
-                                </div>
-                              </div>
-                              <div
-                                className="pointer-events-none absolute left-3 top-0 z-20 -translate-y-1/2 rounded-full border border-[color:var(--workspace-course-group-border)] bg-[color:var(--workspace-course-group-bg)] px-2.5 shadow-[0_1px_1px_rgba(0,0,0,0.03)] ring-2 ring-[color:var(--workspace-course-group-bg)] sm:left-4 sm:px-3"
-                                style={{ height: chipHeight, maxWidth: 'calc(100% - 24px)' }}
-                              >
-                                <div className="flex h-full min-w-0 items-center gap-1.5">
-                                  <span
-                                    className="inline-block size-2 shrink-0 rounded-full"
-                                    style={{ backgroundColor: colorWithAlpha(color, 0.78) }}
-                                  />
-                                  <span className="truncate text-[11px] font-semibold text-[color:var(--workspace-course-text-primary)]">
-                                    {eventTitle(event)}
-                                  </span>
-                                  <span className="text-[10px] text-[color:var(--workspace-course-text-tertiary)]">·</span>
-                                  <span className="shrink-0 text-[10px] text-[color:var(--workspace-course-text-secondary)]">
-                                    {event.start_time.slice(0, 5)}-{event.end_time.slice(0, 5)}
-                                  </span>
                                 </div>
                               </div>
                             </div>
