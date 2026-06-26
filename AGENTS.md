@@ -115,6 +115,38 @@ Use `/api/pronunciation-assessment` as the single scoring entry point. Browser f
 
 MediaRecorder -> WAV 16 kHz mono PCM -> POST API route -> Azure Speech -> normalized score JSON.
 
+## Applying DB Migrations (DDL)
+
+**Never ask the user to run SQL manually. You run it yourself via Chrome MCP.**
+
+Workflow for every DDL migration:
+
+1. Write the migration SQL to `supabase/migrations/<timestamp>_<description>.sql`.
+2. Open Chrome MCP, navigate to `https://supabase.com/dashboard/project/pmoyvpnbbitnigchvluz`.
+3. Run the DDL via the Management API — execute this JS in the page context (the token never leaves the page):
+   ```js
+   const res = await fetch(
+     'https://api.supabase.com/v1/projects/pmoyvpnbbitnigchvluz/database/query',
+     {
+       method: 'POST',
+       headers: {
+         'Content-Type': 'application/json',
+         Authorization: 'Bearer ' + JSON.parse(localStorage['supabase.dashboard.auth.token']).access_token,
+       },
+       body: JSON.stringify({ query: `<sql>` }),
+     }
+   )
+   return { status: res.status, body: await res.json() }
+   ```
+   Success = HTTP 201 + `[]`.
+4. Verify the change via REST with the service-role key (`GET /rest/v1/<table>?limit=1` → 200 means the table/column exists).
+5. Update `docs/db-state.md` to record the change.
+
+**Gotchas:**
+- `localStorage["supabase.dashboard.auth.token"].access_token` is REDACTED if returned directly. Build the `Authorization` header inside the same `fetch` call; only return `{status, body}`.
+- The Monaco SQL Editor in the dashboard chokes on long CJK SQL — always use the `fetch` path above.
+- FK-repoint order: create+seed → DROP old FK → backfill → ADD new FK.
+
 ## Development Rules
 
 - Build real internal workflows, not marketing pages.

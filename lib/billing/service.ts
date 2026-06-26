@@ -113,7 +113,7 @@ async function getSeasonOrThrow(supabase: Supabase, seasonId: string): Promise<B
 async function getStudentsForClass(supabase: Supabase, classId: string): Promise<BillingStudent[]> {
   const { data, error } = await supabase
     .from('class_enrollments')
-    .select('id, student_id, slot_order, status, student:students(id, chinese_name, english_name, status, school, grade)')
+    .select('id, student_id, slot_order, status, intensive_preferred_weekday, student:students(id, chinese_name, english_name, status, school, grade)')
     .eq('class_id', classId)
     .eq('status', 'active')
     .order('slot_order')
@@ -133,6 +133,7 @@ async function getStudentsForClass(supabase: Supabase, classId: string): Promise
       enrollment_id: row.id,
       student_id: row.student_id,
       slot_order: row.slot_order,
+      intensive_preferred_weekday: row.intensive_preferred_weekday,
       chinese_name: student?.chinese_name ?? null,
       english_name: student?.english_name ?? null,
       status: student?.status ?? null,
@@ -217,6 +218,7 @@ export async function getBillingState(params: {
       actualAttendance: [],
       bags: [],
       activeBag: null,
+      openedStudentIds: [],
       generatedAt: new Date().toISOString(),
     }
   }
@@ -236,6 +238,9 @@ export async function getBillingState(params: {
       student: studentsById.get(line.student_id),
     }))
   }
+  const openedStudentIds = activeBag && activeBag.status !== 'void' && activeBag.status !== 'cancelled'
+    ? activeBag.lines.map((line) => line.student_id)
+    : []
 
   return {
     classes,
@@ -247,6 +252,7 @@ export async function getBillingState(params: {
     actualAttendance: actuals,
     bags,
     activeBag,
+    openedStudentIds,
     generatedAt: new Date().toISOString(),
   }
 }

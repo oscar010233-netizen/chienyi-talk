@@ -15,7 +15,7 @@ export const DB_TABLES: TableMeta[] = [
 
   { name: 'classes', group: '班級', columns: ['id', 'tenant_id', 'class_name', 'class_code', 'department', 'level', 'class_type', 'weekday1', 'weekday2', 'system_sessions', 'status', 'created_at', 'updated_at'] },
   { name: 'students', group: '班級', columns: ['id', 'tenant_id', 'chinese_name', 'english_name', 'status', 'school', 'grade', 'note', 'parent_name', 'parent_phone', 'created_at', 'updated_at'] },
-  { name: 'class_enrollments', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'student_id', 'status', 'slot_order', 'joined_at', 'left_at', 'created_at', 'updated_at'] },
+  { name: 'class_enrollments', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'student_id', 'status', 'slot_order', 'intensive_preferred_weekday', 'joined_at', 'left_at', 'created_at', 'updated_at'] },
   { name: 'class_tasks', group: '班級', columns: ['id', 'tenant_id', 'class_id', 'bag_id', 'slot_index', 'lesson_label', 'task_type', 'task_name', 'threshold_value', 'max_score', 'threshold_text', 'display_order', 'status', 'created_at', 'updated_at'] },
   { name: 'class_task_templates', group: '班級', columns: ['id', 'tenant_id', 'name', 'created_at', 'updated_at'] },
   { name: 'class_task_template_items', group: '班級', columns: ['id', 'tenant_id', 'template_id', 'task_type', 'session_position', 'sort_order', 'created_at'] },

@@ -21,6 +21,7 @@ export interface BillingStudent {
   enrollment_id: string
   student_id: string
   slot_order: number | null
+  intensive_preferred_weekday: number | null
   chinese_name: string | null
   english_name: string | null
   status: string | null
@@ -141,6 +142,7 @@ export interface BillingState {
   actualAttendance: ActualAttendance[]
   bags: PaymentBag[]
   activeBag: PaymentBagWithLines | null
+  openedStudentIds: string[]
   generatedAt: string
 }
 

@@ -162,6 +162,7 @@ export type Database = {
           student_id: string
           status: string
           slot_order: number | null
+          intensive_preferred_weekday: number | null
           joined_at: string | null
           left_at: string | null
           created_at: string
@@ -174,6 +175,7 @@ export type Database = {
           student_id: string
           status?: string
           slot_order?: number | null
+          intensive_preferred_weekday?: number | null
           joined_at?: string | null
           left_at?: string | null
           created_at?: string
@@ -186,6 +188,7 @@ export type Database = {
           student_id?: string
           status?: string
           slot_order?: number | null
+          intensive_preferred_weekday?: number | null
           joined_at?: string | null
           left_at?: string | null
           created_at?: string

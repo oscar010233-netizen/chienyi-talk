@@ -5,6 +5,9 @@
 
 ## 近期已執行的變更
 
+1. **`class_enrollments` 新增 `intensive_preferred_weekday` 欄位（2026-06-26）。**
+   透過 Management API 套用 `supabase/migrations/20260626000004_enrollment_intensive_weekday.sql`，欄位型別為 `SMALLINT`，限制值只能是 `1` 到 `7`。
+
 1. **`student_task_records.lamp` 欄位已移除。**
    燈號不再存 DB，一律由前端用 `lampFor(status, task_type)`（`lib/grade/status.ts`）即時計算。
    不要再 select / insert / update `lamp`。

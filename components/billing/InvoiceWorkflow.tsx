@@ -36,6 +36,7 @@ import type {
 } from '@/lib/billing/types'
 
 type TabKey = 'holidays' | 'open' | 'fees'
+type StudentTabKey = 'all' | 'unopened' | 'opened' | 'selected'
 type Message = { tone: 'ok' | 'error' | 'idle'; text: string }
 type FeeRowDraft = { preset?: string; note: string; amount: string }
 type AdjustmentDraft = { name: string; amount: string }
@@ -43,6 +44,7 @@ type StudentDraft = {
   teamDates: string[]
   intensiveDates: string[]
   intensiveUnscheduled: string
+  intensivePreferredWeekday: number | null
   tuitionAmount: string
   tuitionPresetId: string     // '' when manually entered
   tuitionPresetLabel: string  // '' when manually entered
@@ -188,6 +190,26 @@ function generateAllIntensiveWeekDates(cls: BillingClass, season: NonNullable<Bi
   return dates.sort(compareDate)
 }
 
+function generateDatesForWeekday(
+  weekday: number,
+  season: NonNullable<BillingState['selectedSeason']>,
+  holidays: Set<string>,
+): string[] {
+  const start = dateFromDateOnly(season.start_date)
+  const end = dateFromDateOnly(season.end_date)
+  const dates: string[] = []
+
+  for (let time = start.getTime(); time <= end.getTime(); time += 86400000) {
+    const current = new Date(time)
+    const value = dateOnly(current.getUTCFullYear(), current.getUTCMonth() + 1, current.getUTCDate())
+    if (isoWeekday(value) !== weekday) continue
+    if (holidays.has(value)) continue
+    dates.push(value)
+  }
+
+  return dates.sort(compareDate)
+}
+
 function emptyFeeRow(): FeeRowDraft {
   return { preset: 'custom', note: '', amount: '0' }
 }
@@ -223,11 +245,17 @@ function formatDateList(dates: string[]) {
   return dates.map(formatDateMd).join('　')
 }
 
-function studentDraftFromTemplate(teamDates: string[], intensiveSessions: number, template: FeeTemplateDraft): StudentDraft {
+function studentDraftFromTemplate(
+  teamDates: string[],
+  intensiveSessions: number,
+  template: FeeTemplateDraft,
+  student: BillingStudent | undefined,
+): StudentDraft {
   return {
     teamDates: [...teamDates],
     intensiveDates: [],
     intensiveUnscheduled: String(intensiveSessions),
+    intensivePreferredWeekday: student?.intensive_preferred_weekday ?? null,
     tuitionAmount: template.tuitionAmount,
     tuitionPresetId: template.tuitionPresetId,
     tuitionPresetLabel: template.tuitionPresetLabel,
@@ -281,6 +309,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     () => new Set(state.holidays),
     [state.holidays],
   )
+  const openedSet = useMemo(() => new Set(state.openedStudentIds), [state.openedStudentIds])
 
   const [seasonForm, setSeasonForm] = useState({
     year: defaultDraft.year,
@@ -299,8 +328,15 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
   const [bagList, setBagList] = useState<BagListItem[]>([])
   const [bagListLoading, setBagListLoading] = useState(false)
   const [openStep, setOpenStep] = useState(1)
+  const [studentTab, setStudentTab] = useState<StudentTabKey>('unopened')
   const [teamDates, setTeamDates] = useState<Set<string>>(new Set())
-  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(new Set(state.students.map((student) => student.student_id)))
+  const [selectedStudents, setSelectedStudents] = useState<Set<string>>(
+    new Set(
+      initialState.students
+        .filter((student) => !initialState.openedStudentIds.includes(student.student_id))
+        .map((student) => student.student_id)
+    )
+  )
   const [intensiveWeeks, setIntensiveWeeks] = useState<Set<string>>(new Set())
   const [feeTemplate, setFeeTemplate] = useState<FeeTemplateDraft>(emptyFeeTemplate)
   const [feeCatalog, setFeeCatalog] = useState<BillingFeeCatalogItem[]>([])
@@ -376,8 +412,19 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     if (!selectedClass || !selectedSeason) return
     const generated = generateTeamDates(selectedClass, selectedSeason, globalHolidayDates)
     setTeamDates(new Set(generated))
-    setSelectedStudents(new Set(state.students.map((student) => student.student_id)))
-    setCurrentStudentId(state.students[0]?.student_id ?? '')
+    setStudentTab('unopened')
+    setSelectedStudents(
+      new Set(
+        state.students
+          .filter((student) => !openedSet.has(student.student_id))
+          .map((student) => student.student_id)
+      )
+    )
+    setCurrentStudentId(
+      state.students.find((student) => !openedSet.has(student.student_id))?.student_id
+      ?? state.students[0]?.student_id
+      ?? ''
+    )
     setIntensiveWeeks(
       selectedClass.class_type === 'intensive'
         ? new Set(generateAllIntensiveWeekDates(selectedClass, selectedSeason))
@@ -385,7 +432,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     )
     setStudentDrafts({})
     setOpenStep(1)
-  }, [selectedClass, selectedSeason, globalHolidayDates, state.students])
+  }, [selectedClass, selectedSeason, globalHolidayDates, state.students, openedSet])
 
   useEffect(() => {
     let cancelled = false
@@ -649,7 +696,8 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
       const next = { ...prev }
       for (const studentId of selectedStudents) {
         if (!next[studentId]) {
-          const draft = studentDraftFromTemplate(baseTeamDates, intensiveCount, feeTemplate)
+          const student = state.students.find((item) => item.student_id === studentId)
+          const draft = studentDraftFromTemplate(baseTeamDates, intensiveCount, feeTemplate, student)
           const refund = prevRefundMap.get(studentId)
           if (refund) {
             draft.carryoverAmount = String(-refund.amount)
@@ -672,9 +720,42 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
         Array.from(teamDates).sort(compareDate),
         selectedClass?.class_type === 'intensive' ? intensiveWeeks.size : 0,
         feeTemplate,
+        state.students.find((student) => student.student_id === currentStudentId),
       )
       return { ...prev, [currentStudentId]: mutator(prev[currentStudentId] ?? fallback) }
     })
+  }
+
+  function changeCurrentStudentPreferredWeekday(nextWeekday: number | null) {
+    updateCurrentDraft((draft) => ({ ...draft, intensivePreferredWeekday: nextWeekday }))
+    if (!currentStudent) return
+    void fetch('/api/billing/enrollment-preference', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        enrollmentId: currentStudent.enrollment_id,
+        intensivePreferredWeekday: nextWeekday,
+      }),
+    }).catch((error) => {
+      console.error('save intensive preferred weekday failed', error)
+    })
+  }
+
+  function autoArrangeCurrentStudentIntensiveDates() {
+    if (!currentDraft || !selectedSeason) return
+    if (!currentDraft.intensivePreferredWeekday) return
+    const targetSessions = intensiveWeeks.size
+    const arrangedDates = generateDatesForWeekday(
+      currentDraft.intensivePreferredWeekday,
+      selectedSeason,
+      globalHolidayDates,
+    ).slice(0, targetSessions)
+    const unscheduled = Math.max(0, targetSessions - arrangedDates.length)
+    updateCurrentDraft((draft) => ({
+      ...draft,
+      intensiveDates: arrangedDates,
+      intensiveUnscheduled: String(unscheduled),
+    }))
   }
 
   function toggleIntensiveWeek(date: string) {
@@ -738,6 +819,12 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     }, '開袋完成')
   }
 
+  const filteredStudents = state.students.filter((student) => {
+    if (studentTab === 'unopened') return !openedSet.has(student.student_id)
+    if (studentTab === 'opened') return openedSet.has(student.student_id)
+    if (studentTab === 'selected') return selectedStudents.has(student.student_id)
+    return true
+  })
   const selectedStudentList = state.students.filter((student) => selectedStudents.has(student.student_id))
   const currentStudent = selectedStudentList.find((student) => student.student_id === currentStudentId)
   const currentDraft = currentStudentId ? studentDrafts[currentStudentId] : undefined
@@ -749,7 +836,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
     : 0
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto">
+    <div className={`flex h-full flex-col ${tab === 'open' && openMode === 'workflow' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
       <div className="mac-glass mac-hairline sticky top-0 z-40 border-b px-4 py-3 md:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-xl font-semibold tracking-tight text-foreground">帳務</h1>
@@ -1165,9 +1252,9 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
 
       {tab === 'open' && (
-        <main className="grid gap-4 p-4 md:p-6">
+        <main className={openMode === 'workflow' ? 'flex min-h-0 flex-1 flex-col gap-4 p-4 md:p-6' : 'grid gap-4 p-4 md:p-6'}>
           {/* Filter bar */}
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex shrink-0 flex-wrap items-center gap-3">
             <select
               value={classId}
               onChange={(event) => changeClassFilter(event.target.value)}
@@ -1200,346 +1287,450 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
 
           {/* List mode */}
           {openMode === 'list' && (
-            <section className="overflow-hidden rounded-lg border border-border bg-background">
-              {bagListLoading ? (
-                <div className="grid min-h-48 place-items-center">
-                  <Loader2 size={20} className="animate-spin text-muted-foreground" />
-                </div>
-              ) : bagList.length === 0 ? (
-                <div className="grid min-h-48 place-items-center gap-3 text-center">
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      {classId && seasonId ? '這個班這個季度尚未開袋' : '尚無繳費袋'}
-                    </p>
-                    {classId && seasonId && (
-                      <button
-                        type="button"
-                        onClick={() => handleEnterWorkflow()}
-                        disabled={pending}
-                        className={`${primaryButton} mt-3`}
-                      >
-                        {pending ? <Loader2 size={14} className="animate-spin" /> : <ReceiptText size={14} />}
-                        開袋
-                      </button>
-                    )}
+            <>
+              <section className="overflow-hidden rounded-lg border border-border bg-background">
+                {bagListLoading ? (
+                  <div className="grid min-h-48 place-items-center">
+                    <Loader2 size={20} className="animate-spin text-muted-foreground" />
                   </div>
-                </div>
-              ) : (
-                <table className="w-full border-separate border-spacing-0 text-sm">
-                  <thead>
-                    <tr className="text-xs text-muted-foreground">
-                      {!classId && <th className="border-b border-border px-4 py-2.5 text-left font-medium">班級</th>}
-                      {!seasonId && <th className="border-b border-border px-4 py-2.5 text-left font-medium">季度</th>}
-                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">袋號</th>
-                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">開袋日</th>
-                      <th className="border-b border-border px-4 py-2.5 text-right font-medium">人數</th>
-                      <th className="border-b border-border px-4 py-2.5 text-left font-medium">狀態</th>
-                      <th className="border-b border-border" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bagList.map((bag) => (
-                      <tr
-                        key={bag.id}
-                        onClick={() => handleSelectBag(bag)}
-                        className="cursor-pointer hover:bg-muted/40"
-                      >
-                        {!classId && <td className="border-b border-border px-4 py-2.5 font-medium">{bag.class_name}</td>}
-                        {!seasonId && <td className="border-b border-border px-4 py-2.5 text-muted-foreground">{bag.season_code}</td>}
-                        <td className="border-b border-border px-4 py-2.5 font-mono text-xs">{bag.bag_code}</td>
-                        <td className="border-b border-border px-4 py-2.5 text-muted-foreground">{bag.issue_date}</td>
-                        <td className="border-b border-border px-4 py-2.5 text-right text-muted-foreground">{bag.line_count} 人</td>
-                        <td className="border-b border-border px-4 py-2.5">
-                          <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${bag.status === 'draft' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
-                            {bag.status === 'draft' ? '草稿' : bag.status}
-                          </span>
-                        </td>
-                        <td className="border-b border-border px-4 py-2.5 text-right">
-                          <span className="text-xs text-muted-foreground hover:text-foreground">查看 →</span>
-                        </td>
+                ) : bagList.length === 0 ? (
+                  <div className="grid min-h-48 place-items-center gap-3 text-center">
+                    <div>
+                      <p className="text-sm text-muted-foreground">
+                        {classId && seasonId ? '這個班這個季度尚未開袋' : '尚無繳費袋'}
+                      </p>
+                      {classId && seasonId && (
+                        <button
+                          type="button"
+                          onClick={() => handleEnterWorkflow()}
+                          disabled={pending}
+                          className={`${primaryButton} mt-3`}
+                        >
+                          {pending ? <Loader2 size={14} className="animate-spin" /> : <ReceiptText size={14} />}
+                          開袋
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <table className="w-full border-separate border-spacing-0 text-sm">
+                    <thead>
+                      <tr className="text-xs text-muted-foreground">
+                        {!classId && <th className="border-b border-border px-4 py-2.5 text-left font-medium">班級</th>}
+                        {!seasonId && <th className="border-b border-border px-4 py-2.5 text-left font-medium">季度</th>}
+                        <th className="border-b border-border px-4 py-2.5 text-left font-medium">袋號</th>
+                        <th className="border-b border-border px-4 py-2.5 text-left font-medium">開袋日</th>
+                        <th className="border-b border-border px-4 py-2.5 text-right font-medium">人數</th>
+                        <th className="border-b border-border px-4 py-2.5 text-left font-medium">狀態</th>
+                        <th className="border-b border-border" />
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </section>
+                    </thead>
+                    <tbody>
+                      {bagList.map((bag) => (
+                        <tr
+                          key={bag.id}
+                          onClick={() => handleSelectBag(bag)}
+                          className="cursor-pointer hover:bg-muted/40"
+                        >
+                          {!classId && <td className="border-b border-border px-4 py-2.5 font-medium">{bag.class_name}</td>}
+                          {!seasonId && <td className="border-b border-border px-4 py-2.5 text-muted-foreground">{bag.season_code}</td>}
+                          <td className="border-b border-border px-4 py-2.5 font-mono text-xs">{bag.bag_code}</td>
+                          <td className="border-b border-border px-4 py-2.5 text-muted-foreground">{bag.issue_date}</td>
+                          <td className="border-b border-border px-4 py-2.5 text-right text-muted-foreground">{bag.line_count} 人</td>
+                          <td className="border-b border-border px-4 py-2.5">
+                            <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${bag.status === 'draft' ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'}`}>
+                              {bag.status === 'draft' ? '草稿' : bag.status}
+                            </span>
+                          </td>
+                          <td className="border-b border-border px-4 py-2.5 text-right">
+                            <span className="text-xs text-muted-foreground hover:text-foreground">查看 →</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </section>
+              <BagPreview state={state} onRefresh={load} />
+            </>
           )}
 
           {/* Workflow mode */}
           {openMode === 'workflow' && selectedClass && selectedSeason && (
-          <>
-          <section className="rounded-lg border border-border bg-background p-4">
-            <div className="mb-6">
-              <WizardSteps
-                current={openStep}
-                steps={['日期 & 學生', '費用', '個別調整']}
-              />
-              <div className="mt-2 text-right text-xs text-muted-foreground">
-                {selectedClass.class_name} · {selectedSeason.season_code}
-              </div>
-            </div>
-
-            {openStep === 1 && (
-              <div className="grid gap-6 md:grid-cols-[minmax(0,380px)_1fr]">
-                <div className="min-w-0">
-                  <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                    <span>{classTypeLabel(selectedClass.class_type)}</span>
-                    <span>{[weekdayLabel(selectedClass.weekday1), selectedClass.class_type === 'double' ? weekdayLabel(selectedClass.weekday2) : ''].filter(Boolean).join(' + ')}</span>
-                    <span>{teamDates.size} 堂團課</span>
-                    <span className="flex-1" />
-                    {selectedClass.class_type === 'intensive' && (
-                      <span>強化課 {intensiveWeeks.size} 堂</span>
-                    )}
-                  </div>
-                  <QuarterCalendar
-                    year={selectedSeason.year}
-                    quarter={selectedSeason.quarter}
-                    selected={teamDates}
-                    holidays={globalHolidayDates}
-                    onToggle={toggleTeamDate}
-                    mode="team"
-                    intensiveWeeks={selectedClass.class_type === 'intensive' ? intensiveWeeks : undefined}
-                    teamWeekday={selectedClass.class_type === 'intensive' ? (selectedClass.weekday1 ?? undefined) : undefined}
-                    onToggleIntensiveWeek={selectedClass.class_type === 'intensive' ? toggleIntensiveWeek : undefined}
-                  />
+            <section className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-lg border border-border bg-background">
+              <div className="shrink-0 border-b border-border px-4 py-4">
+                <WizardSteps
+                  current={openStep}
+                  steps={['日期 & 學生', '費用', '個別調整']}
+                />
+                <div className="mt-2 text-right text-xs text-muted-foreground">
+                  {selectedClass.class_name} · {selectedSeason.season_code}
                 </div>
-                <aside className="overflow-hidden rounded-lg border border-border">
-                  <div className="flex items-center justify-between border-b border-border px-3 py-2 text-sm font-medium">
-                    <span>學生</span>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStudents(new Set(state.students.map((student) => student.student_id)))}
-                      className="text-xs text-muted-foreground hover:text-foreground"
-                    >
-                      全選
+              </div>
+
+              <div className="grid min-h-0 flex-1 gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="min-h-0 overflow-y-auto pr-1">
+                  {openStep === 1 && (
+                    <div className="grid gap-6 md:grid-cols-[minmax(0,380px)_1fr]">
+                      <div className="min-w-0">
+                        <div className="mb-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                          <span>{classTypeLabel(selectedClass.class_type)}</span>
+                          <span>{[weekdayLabel(selectedClass.weekday1), selectedClass.class_type === 'double' ? weekdayLabel(selectedClass.weekday2) : ''].filter(Boolean).join(' + ')}</span>
+                          <span>{teamDates.size} 堂團課</span>
+                          <span className="flex-1" />
+                          {selectedClass.class_type === 'intensive' && (
+                            <span>強化課 {intensiveWeeks.size} 堂</span>
+                          )}
+                        </div>
+                        <QuarterCalendar
+                          year={selectedSeason.year}
+                          quarter={selectedSeason.quarter}
+                          selected={teamDates}
+                          holidays={globalHolidayDates}
+                          onToggle={toggleTeamDate}
+                          mode="team"
+                          intensiveWeeks={selectedClass.class_type === 'intensive' ? intensiveWeeks : undefined}
+                          teamWeekday={selectedClass.class_type === 'intensive' ? (selectedClass.weekday1 ?? undefined) : undefined}
+                          onToggleIntensiveWeek={selectedClass.class_type === 'intensive' ? toggleIntensiveWeek : undefined}
+                        />
+                      </div>
+                      <aside className="overflow-hidden rounded-lg border border-border">
+                        <div className="flex items-center justify-between border-b border-border px-3 py-2 text-sm font-medium">
+                          <span>學生</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedStudents(new Set(state.students.map((student) => student.student_id)))}
+                            className="text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            全選
+                          </button>
+                        </div>
+                        <div className="flex flex-wrap gap-1 border-b border-border px-3 py-2">
+                          {([
+                            { key: 'unopened', label: '未開票' },
+                            { key: 'opened', label: '已開票' },
+                            { key: 'selected', label: '已選取' },
+                            { key: 'all', label: '全部' },
+                          ] as Array<{ key: StudentTabKey; label: string }>).map((item) => (
+                            <button
+                              key={item.key}
+                              type="button"
+                              onClick={() => setStudentTab(item.key)}
+                              className={`inline-flex h-8 items-center rounded-md px-2.5 text-xs font-medium transition-colors ${
+                                studentTab === item.key
+                                  ? 'bg-foreground text-background'
+                                  : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                              }`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="max-h-[520px] overflow-auto">
+                          {filteredStudents.map((student) => (
+                            <label key={student.student_id} className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={selectedStudents.has(student.student_id)}
+                                onChange={() => toggleStudent(student.student_id)}
+                                className="accent-foreground"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="truncate">{studentName(student)}</div>
+                                <div className="mt-1 flex flex-wrap gap-1">
+                                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                    openedSet.has(student.student_id)
+                                      ? 'bg-emerald-50 text-emerald-700'
+                                      : 'bg-muted text-muted-foreground'
+                                  }`}>
+                                    {openedSet.has(student.student_id) ? '已開票' : '未開票'}
+                                  </span>
+                                  {openedSet.has(student.student_id) && selectedStudents.has(student.student_id) && (
+                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                                      本次會覆蓋既有 billing record
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </label>
+                          ))}
+                          {state.students.length === 0 && <div className="p-4 text-sm text-muted-foreground">沒有學生</div>}
+                        </div>
+                      </aside>
+                    </div>
+                  )}
+
+                  {openStep === 2 && (
+                    <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+                      <section className="rounded-lg border border-border bg-muted/20 p-4">
+                        <div className="grid gap-2 text-sm">
+                          <SummaryLine label="團課" value={`${teamDates.size} 堂`} />
+                          {selectedClass.class_type === 'intensive' && <SummaryLine label="強化課" value={`${intensiveWeeks.size} 堂`} />}
+                          <SummaryLine label="學生" value={`${selectedStudents.size} 人`} />
+                          <SummaryLine label="小計" value={formatMoney(numberInput(feeTemplate.tuitionAmount) + rowsTotal(feeTemplate.bookRows) + rowsTotal(feeTemplate.miscRows) - rowsTotal(feeTemplate.discountRows))} />
+                        </div>
+                        {prevRefundLoading && (
+                          <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                            <Loader2 size={11} className="animate-spin" />
+                            讀取前季退費…
+                          </p>
+                        )}
+                        {!prevRefundLoading && prevRefundMap.size > 0 && (
+                          <div className="mt-3 border-t border-border pt-3">
+                            <p className="mb-1.5 text-xs font-medium text-muted-foreground">前季退費（將自動帶入結轉）</p>
+                            {Array.from(prevRefundMap.entries()).map(([sid, r]) => {
+                              const student = state.students.find((s) => s.student_id === sid)
+                              const name = student ? studentName(student) : sid.slice(0, 8)
+                              return (
+                                <div key={sid} className="flex justify-between text-xs text-muted-foreground">
+                                  <span>{name}</span>
+                                  <span className="text-red-600">−{formatMoney(r.amount)} ({r.sessions} 堂)</span>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </section>
+                      <section className="grid gap-4">
+                        <label>
+                          <span className={labelClass}>學費費率</span>
+                          <div className="grid grid-cols-[1fr_130px] gap-2">
+                            <select
+                              value={feeTemplate.tuitionPresetId}
+                              onChange={(event) => {
+                                const item = feeCatalog.find((entry) => entry.id === event.target.value)
+                                if (item) {
+                                  // Amount will be computed by the reactive useEffect above
+                                  setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: item.id, tuitionPresetLabel: item.label }))
+                                } else {
+                                  setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: '', tuitionPresetLabel: '' }))
+                                }
+                              }}
+                              className={inputClass}
+                            >
+                              <option value="">從費用資料庫選擇…</option>
+                              {feeCatalog.filter((item) => item.category === 'tuition' && item.base_sessions && item.base_sessions > 0).map((item) => (
+                                <option key={item.id} value={item.id}>
+                                  {item.label} · {item.base_sessions}堂/{formatMoney(item.amount)}元
+                                </option>
+                              ))}
+                            </select>
+                            <input
+                              value={feeTemplate.tuitionAmount}
+                              onChange={(event) => setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: '', tuitionPresetLabel: '', tuitionAmount: event.target.value }))}
+                              inputMode="numeric"
+                              className={`${inputClass} w-full`}
+                            />
+                          </div>
+                          {(() => {
+                            const preset = feeCatalog.find((i) => i.id === feeTemplate.tuitionPresetId)
+                            if (!preset?.base_sessions) return null
+                            const rate = Math.round(preset.amount / preset.base_sessions)
+                            const raw = actualSessionCount * rate
+                            return (
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                {preset.label}：{preset.base_sessions}堂/{formatMoney(preset.amount)}元
+                                {' → '}單堂費 {formatMoney(rate)}元 × {actualSessionCount}堂 = {formatMoney(raw)}
+                                {' → '}四捨五入至十位：{formatMoney(Math.round(raw / 10) * 10)}
+                              </p>
+                            )
+                          })()}
+                          {feeCatalog.some((i) => i.category === 'tuition' && !i.base_sessions) && (
+                            <p className="mt-1 text-xs text-amber-600">
+                              有舊學費項目尚未設定基準堂數，請至「費用項目庫 → 學費費率」補設定後才可使用。
+                            </p>
+                          )}
+                        </label>
+                        <FeeRowsEditor title="教材費" category="book" catalog={feeCatalog} rows={feeTemplate.bookRows} onChange={(bookRows) => setFeeTemplate((prev) => ({ ...prev, bookRows }))} />
+                        <FeeRowsEditor title="雜費" category="misc" catalog={feeCatalog} rows={feeTemplate.miscRows} onChange={(miscRows) => setFeeTemplate((prev) => ({ ...prev, miscRows }))} />
+                        <FeeRowsEditor title="折扣" category="discount" catalog={feeCatalog} rows={feeTemplate.discountRows} onChange={(discountRows) => setFeeTemplate((prev) => ({ ...prev, discountRows }))} />
+                      </section>
+                    </div>
+                  )}
+
+                  {openStep === 3 && currentDraft && (
+                    <div className="grid gap-4 xl:grid-cols-[220px_1fr_340px]">
+                      <aside className="overflow-hidden rounded-lg border border-border">
+                        <div className="border-b border-border px-3 py-2 text-sm font-medium">學生</div>
+                        <div className="max-h-[560px] overflow-auto">
+                          {selectedStudentList.map((student, index) => (
+                            <button
+                              key={student.student_id}
+                              type="button"
+                              onClick={() => setCurrentStudentId(student.student_id)}
+                              className={`flex w-full items-center gap-2 border-b border-border px-3 py-2 text-left text-sm ${currentStudentId === student.student_id ? 'bg-muted' : 'hover:bg-muted/60'}`}
+                            >
+                              <span className="w-6 text-xs text-muted-foreground">#{index + 1}</span>
+                              <span>{studentName(student)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </aside>
+                      <section>
+                        <div className="mb-3 flex flex-wrap items-center gap-2">
+                          <div className="text-sm font-medium">{studentName(currentStudent)}</div>
+                          {selectedClass.class_type === 'intensive' && (
+                            <div className="ml-auto inline-flex rounded-md border border-border p-0.5">
+                              <button type="button" onClick={() => setSessionMode('team')} className={`h-8 rounded px-3 text-xs ${sessionMode === 'team' ? 'bg-foreground text-background' : 'text-muted-foreground'}`}>團課</button>
+                              <button type="button" onClick={() => setSessionMode('intensive')} className={`h-8 rounded px-3 text-xs ${sessionMode === 'intensive' ? 'bg-foreground text-background' : 'text-muted-foreground'}`}>強化課</button>
+                            </div>
+                          )}
+                          {selectedClass.class_type === 'intensive' && (
+                            <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
+                              <span>未排強化課</span>
+                              <input
+                                value={currentDraft.intensiveUnscheduled}
+                                onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, intensiveUnscheduled: event.target.value }))}
+                                className={`${inputClass} w-16`}
+                              />
+                            </label>
+                          )}
+                          {selectedClass.class_type === 'intensive' && (
+                            <div className="flex flex-wrap items-end gap-2">
+                              <label>
+                                <span className={labelClass}>強化課偏好星期</span>
+                                <select
+                                  value={currentDraft.intensivePreferredWeekday ?? ''}
+                                  onChange={(event) => changeCurrentStudentPreferredWeekday(event.target.value === '' ? null : Number(event.target.value))}
+                                  className={`${inputClass} w-36`}
+                                >
+                                  <option value="">未設定</option>
+                                  {weekdays.map((weekday) => (
+                                    <option key={weekday.value} value={weekday.value}>
+                                      {weekday.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </label>
+                              <button
+                                type="button"
+                                onClick={autoArrangeCurrentStudentIntensiveDates}
+                                disabled={!currentDraft.intensivePreferredWeekday}
+                                className={buttonBase}
+                              >
+                                自動安排
+                              </button>
+                              <span className="text-xs text-muted-foreground">
+                                偏好星期：{weekdayLabel(currentDraft.intensivePreferredWeekday) || '未設定'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                        <QuarterCalendar
+                          year={selectedSeason.year}
+                          quarter={selectedSeason.quarter}
+                          selected={new Set(currentDraft.teamDates)}
+                          secondary={new Set(currentDraft.intensiveDates)}
+                          holidays={globalHolidayDates}
+                          onToggle={toggleStudentSession}
+                          mode={sessionMode}
+                        />
+                        <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3 text-xs leading-6">
+                          <div>團課 {currentDraft.teamDates.length} 堂：{formatDateList(currentDraft.teamDates)}</div>
+                          {selectedClass.class_type === 'intensive' && <div>強化課 {currentDraft.intensiveDates.length + numberInput(currentDraft.intensiveUnscheduled)} 堂：{formatDateList(currentDraft.intensiveDates)}</div>}
+                        </div>
+                      </section>
+                      <aside className="grid gap-4">
+                        <label>
+                          <span className={labelClass}>學費費率</span>
+                          <input
+                            value={currentDraft.tuitionAmount}
+                            onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, tuitionAmount: event.target.value, tuitionPresetId: '', tuitionPresetLabel: '' }))}
+                            className={`${inputClass} w-full`}
+                          />
+                        </label>
+                        <FeeRowsEditor title="教材費" category="book" catalog={feeCatalog} rows={currentDraft.bookRows} onChange={(bookRows) => updateCurrentDraft((draft) => ({ ...draft, bookRows }))} compact />
+                        <FeeRowsEditor title="雜費" category="misc" catalog={feeCatalog} rows={currentDraft.miscRows} onChange={(miscRows) => updateCurrentDraft((draft) => ({ ...draft, miscRows }))} compact />
+                        <FeeRowsEditor title="折扣" category="discount" catalog={feeCatalog} rows={currentDraft.discountRows} onChange={(discountRows) => updateCurrentDraft((draft) => ({ ...draft, discountRows }))} compact />
+                        <div className="grid grid-cols-[100px_1fr] gap-2">
+                          <label>
+                            <span className={labelClass}>結轉</span>
+                            <input value={currentDraft.carryoverAmount} onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, carryoverAmount: event.target.value }))} className={`${inputClass} w-full`} />
+                          </label>
+                          <label>
+                            <span className={labelClass}>結轉備註</span>
+                            <input value={currentDraft.carryoverNote} onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, carryoverNote: event.target.value }))} className={`${inputClass} w-full`} />
+                          </label>
+                        </div>
+                        <AdjustmentEditor rows={currentDraft.adjustments} onChange={(adjustments) => updateCurrentDraft((draft) => ({ ...draft, adjustments }))} />
+                        <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
+                          <SummaryLine label="費用小計" value={formatMoney(currentSubtotal)} />
+                          <SummaryLine label="個別總額" value={formatMoney(currentTotal)} />
+                        </div>
+                      </aside>
+                    </div>
+                  )}
+
+                  {openStep === 3 && !currentDraft && (
+                    <div className="grid min-h-48 place-items-center rounded-lg border border-dashed border-border text-sm text-muted-foreground">
+                      請先從左側選擇學生
+                    </div>
+                  )}
+                </div>
+
+                <aside className="min-h-0 overflow-y-auto rounded-lg border border-border bg-muted/20 p-4">
+                  <WorkflowLivePreview
+                    openStep={openStep}
+                    selectedClass={selectedClass}
+                    selectedSeason={selectedSeason}
+                    selectedStudentList={selectedStudentList}
+                    teamDates={teamDates}
+                    intensiveWeeks={intensiveWeeks}
+                    feeTemplate={feeTemplate}
+                    studentDrafts={studentDrafts}
+                    currentStudent={currentStudent}
+                    currentDraft={currentDraft}
+                    currentSubtotal={currentSubtotal}
+                    currentTotal={currentTotal}
+                  />
+                </aside>
+              </div>
+
+              <div className="shrink-0 border-t border-border px-4 py-3">
+                {openStep === 1 && (
+                  <div className="flex justify-end">
+                    <button type="button" onClick={goFees} disabled={!selectedStudents.size} className={primaryButton}>
+                      下一步
+                      <ChevronRight size={14} />
                     </button>
                   </div>
-                  <div className="max-h-[520px] overflow-auto">
-                    {state.students.map((student) => (
-                      <label key={student.student_id} className="flex items-center gap-2 border-b border-border px-3 py-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={selectedStudents.has(student.student_id)}
-                          onChange={() => toggleStudent(student.student_id)}
-                          className="accent-foreground"
-                        />
-                        <span>{studentName(student)}</span>
-                      </label>
-                    ))}
-                    {state.students.length === 0 && <div className="p-4 text-sm text-muted-foreground">沒有學生</div>}
-                  </div>
-                </aside>
-                <div className="md:col-span-2 flex justify-end">
-                  <button type="button" onClick={goFees} disabled={!selectedStudents.size} className={primaryButton}>
-                    下一步
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
+                )}
 
-            {openStep === 2 && (
-              <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
-                <section className="rounded-lg border border-border bg-muted/20 p-4">
-                  <div className="grid gap-2 text-sm">
-                    <SummaryLine label="團課" value={`${teamDates.size} 堂`} />
-                    {selectedClass.class_type === 'intensive' && <SummaryLine label="強化課" value={`${intensiveWeeks.size} 堂`} />}
-                    <SummaryLine label="學生" value={`${selectedStudents.size} 人`} />
-                    <SummaryLine label="小計" value={formatMoney(numberInput(feeTemplate.tuitionAmount) + rowsTotal(feeTemplate.bookRows) + rowsTotal(feeTemplate.miscRows) - rowsTotal(feeTemplate.discountRows))} />
+                {openStep === 2 && (
+                  <div className="flex justify-between">
+                    <button type="button" onClick={() => setOpenStep(1)} className={buttonBase}>
+                      <ChevronLeft size={14} />
+                      上一步
+                    </button>
+                    <button type="button" onClick={goStudentAdjustments} className={primaryButton}>
+                      個別調整
+                      <ChevronRight size={14} />
+                    </button>
                   </div>
-                  {prevRefundLoading && (
-                    <p className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
-                      <Loader2 size={11} className="animate-spin" />
-                      讀取前季退費…
-                    </p>
-                  )}
-                  {!prevRefundLoading && prevRefundMap.size > 0 && (
-                    <div className="mt-3 border-t border-border pt-3">
-                      <p className="mb-1.5 text-xs font-medium text-muted-foreground">前季退費（將自動帶入結轉）</p>
-                      {Array.from(prevRefundMap.entries()).map(([sid, r]) => {
-                        const student = state.students.find((s) => s.student_id === sid)
-                        const name = student ? studentName(student) : sid.slice(0, 8)
-                        return (
-                          <div key={sid} className="flex justify-between text-xs text-muted-foreground">
-                            <span>{name}</span>
-                            <span className="text-red-600">−{formatMoney(r.amount)} ({r.sessions} 堂)</span>
-                          </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </section>
-                <section className="grid gap-4">
-                  <label>
-                    <span className={labelClass}>學費費率</span>
-                    <div className="grid grid-cols-[1fr_130px] gap-2">
-                      <select
-                        value={feeTemplate.tuitionPresetId}
-                        onChange={(event) => {
-                          const item = feeCatalog.find((entry) => entry.id === event.target.value)
-                          if (item) {
-                            // Amount will be computed by the reactive useEffect above
-                            setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: item.id, tuitionPresetLabel: item.label }))
-                          } else {
-                            setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: '', tuitionPresetLabel: '' }))
-                          }
-                        }}
-                        className={inputClass}
-                      >
-                        <option value="">從費用資料庫選擇…</option>
-                        {feeCatalog.filter((item) => item.category === 'tuition' && item.base_sessions && item.base_sessions > 0).map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.label} · {item.base_sessions}堂/{formatMoney(item.amount)}元
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        value={feeTemplate.tuitionAmount}
-                        onChange={(event) => setFeeTemplate((prev) => ({ ...prev, tuitionPresetId: '', tuitionPresetLabel: '', tuitionAmount: event.target.value }))}
-                        inputMode="numeric"
-                        className={`${inputClass} w-full`}
-                      />
-                    </div>
-                    {(() => {
-                      const preset = feeCatalog.find((i) => i.id === feeTemplate.tuitionPresetId)
-                      if (!preset?.base_sessions) return null
-                      const rate = Math.round(preset.amount / preset.base_sessions)
-                      const raw = actualSessionCount * rate
-                      return (
-                        <p className="mt-1 text-xs text-muted-foreground">
-                          {preset.label}：{preset.base_sessions}堂/{formatMoney(preset.amount)}元
-                          {' → '}單堂費 {formatMoney(rate)}元 × {actualSessionCount}堂 = {formatMoney(raw)}
-                          {' → '}四捨五入至十位：{formatMoney(Math.round(raw / 10) * 10)}
-                        </p>
-                      )
-                    })()}
-                    {feeCatalog.some((i) => i.category === 'tuition' && !i.base_sessions) && (
-                      <p className="mt-1 text-xs text-amber-600">
-                        有舊學費項目尚未設定基準堂數，請至「費用項目庫 → 學費費率」補設定後才可使用。
-                      </p>
-                    )}
-                  </label>
-                  <FeeRowsEditor title="教材費" category="book" catalog={feeCatalog} rows={feeTemplate.bookRows} onChange={(bookRows) => setFeeTemplate((prev) => ({ ...prev, bookRows }))} />
-                  <FeeRowsEditor title="雜費" category="misc" catalog={feeCatalog} rows={feeTemplate.miscRows} onChange={(miscRows) => setFeeTemplate((prev) => ({ ...prev, miscRows }))} />
-                  <FeeRowsEditor title="折扣" category="discount" catalog={feeCatalog} rows={feeTemplate.discountRows} onChange={(discountRows) => setFeeTemplate((prev) => ({ ...prev, discountRows }))} />
-                </section>
-                <div className="lg:col-span-2 flex justify-between">
-                  <button type="button" onClick={() => setOpenStep(1)} className={buttonBase}>
-                    <ChevronLeft size={14} />
-                    上一步
-                  </button>
-                  <button type="button" onClick={goStudentAdjustments} className={primaryButton}>
-                    個別調整
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              </div>
-            )}
+                )}
 
-            {openStep === 3 && currentDraft && (
-              <div className="grid gap-4 xl:grid-cols-[220px_1fr_340px]">
-                <aside className="overflow-hidden rounded-lg border border-border">
-                  <div className="border-b border-border px-3 py-2 text-sm font-medium">學生</div>
-                  <div className="max-h-[560px] overflow-auto">
-                    {selectedStudentList.map((student, index) => (
-                      <button
-                        key={student.student_id}
-                        type="button"
-                        onClick={() => setCurrentStudentId(student.student_id)}
-                        className={`flex w-full items-center gap-2 border-b border-border px-3 py-2 text-left text-sm ${currentStudentId === student.student_id ? 'bg-muted' : 'hover:bg-muted/60'}`}
-                      >
-                        <span className="w-6 text-xs text-muted-foreground">#{index + 1}</span>
-                        <span>{studentName(student)}</span>
-                      </button>
-                    ))}
-                  </div>
-                </aside>
-                <section>
-                  <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <div className="text-sm font-medium">{studentName(currentStudent)}</div>
-                    {selectedClass.class_type === 'intensive' && (
-                      <div className="ml-auto inline-flex rounded-md border border-border p-0.5">
-                        <button type="button" onClick={() => setSessionMode('team')} className={`h-8 rounded px-3 text-xs ${sessionMode === 'team' ? 'bg-foreground text-background' : 'text-muted-foreground'}`}>團課</button>
-                        <button type="button" onClick={() => setSessionMode('intensive')} className={`h-8 rounded px-3 text-xs ${sessionMode === 'intensive' ? 'bg-foreground text-background' : 'text-muted-foreground'}`}>精修</button>
-                      </div>
-                    )}
-                    {selectedClass.class_type === 'intensive' && (
-                      <label className="inline-flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>未排精修</span>
-                        <input
-                          value={currentDraft.intensiveUnscheduled}
-                          onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, intensiveUnscheduled: event.target.value }))}
-                          className={`${inputClass} w-16`}
-                        />
-                      </label>
-                    )}
-                  </div>
-                  <QuarterCalendar
-                    year={selectedSeason.year}
-                    quarter={selectedSeason.quarter}
-                    selected={new Set(currentDraft.teamDates)}
-                    secondary={new Set(currentDraft.intensiveDates)}
-                    holidays={globalHolidayDates}
-                    onToggle={toggleStudentSession}
-                    mode={sessionMode}
-                  />
-                  <div className="mt-3 rounded-lg border border-border bg-muted/20 p-3 text-xs leading-6">
-                    <div>團課 {currentDraft.teamDates.length} 堂：{formatDateList(currentDraft.teamDates)}</div>
-                    {selectedClass.class_type === 'intensive' && <div>精修 {currentDraft.intensiveDates.length + numberInput(currentDraft.intensiveUnscheduled)} 堂：{formatDateList(currentDraft.intensiveDates)}</div>}
-                  </div>
-                </section>
-                <aside className="grid gap-4">
-                  <label>
-                    <span className={labelClass}>學費費率</span>
-                    <input
-                      value={currentDraft.tuitionAmount}
-                      onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, tuitionAmount: event.target.value, tuitionPresetId: '', tuitionPresetLabel: '' }))}
-                      className={`${inputClass} w-full`}
-                    />
-                  </label>
-                  <FeeRowsEditor title="教材費" category="book" catalog={feeCatalog} rows={currentDraft.bookRows} onChange={(bookRows) => updateCurrentDraft((draft) => ({ ...draft, bookRows }))} compact />
-                  <FeeRowsEditor title="雜費" category="misc" catalog={feeCatalog} rows={currentDraft.miscRows} onChange={(miscRows) => updateCurrentDraft((draft) => ({ ...draft, miscRows }))} compact />
-                  <FeeRowsEditor title="折扣" category="discount" catalog={feeCatalog} rows={currentDraft.discountRows} onChange={(discountRows) => updateCurrentDraft((draft) => ({ ...draft, discountRows }))} compact />
-                  <div className="grid grid-cols-[100px_1fr] gap-2">
-                    <label>
-                      <span className={labelClass}>結轉</span>
-                      <input value={currentDraft.carryoverAmount} onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, carryoverAmount: event.target.value }))} className={`${inputClass} w-full`} />
+                {openStep === 3 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button type="button" onClick={() => setOpenStep(2)} className={buttonBase}>
+                      <ChevronLeft size={14} />
+                      上一步
+                    </button>
+                    <label className="ml-auto">
+                      <span className={labelClass}>開袋日</span>
+                      <input type="date" value={bagForm.issue_date} onChange={(event) => setBagForm((prev) => ({ ...prev, issue_date: event.target.value }))} className={inputClass} />
                     </label>
                     <label>
-                      <span className={labelClass}>結轉備註</span>
-                      <input value={currentDraft.carryoverNote} onChange={(event) => updateCurrentDraft((draft) => ({ ...draft, carryoverNote: event.target.value }))} className={`${inputClass} w-full`} />
+                      <span className={labelClass}>繳費期限</span>
+                      <input type="date" value={bagForm.due_date} onChange={(event) => setBagForm((prev) => ({ ...prev, due_date: event.target.value }))} className={inputClass} />
                     </label>
+                    <button type="button" onClick={openBag} disabled={pending} className={primaryButton}>
+                      {pending ? <Loader2 size={14} className="animate-spin" /> : <ReceiptText size={14} />}
+                      送出開袋
+                    </button>
                   </div>
-                  <AdjustmentEditor rows={currentDraft.adjustments} onChange={(adjustments) => updateCurrentDraft((draft) => ({ ...draft, adjustments }))} />
-                  <div className="rounded-lg border border-border bg-muted/20 p-3 text-sm">
-                    <SummaryLine label="費用小計" value={formatMoney(currentSubtotal)} />
-                    <SummaryLine label="個別總額" value={formatMoney(currentTotal)} />
-                  </div>
-                </aside>
-                <div className="xl:col-span-3 flex flex-wrap items-center gap-2">
-                  <button type="button" onClick={() => setOpenStep(2)} className={buttonBase}>
-                    <ChevronLeft size={14} />
-                    上一步
-                  </button>
-                  <label className="ml-auto">
-                    <span className={labelClass}>開袋日</span>
-                    <input type="date" value={bagForm.issue_date} onChange={(event) => setBagForm((prev) => ({ ...prev, issue_date: event.target.value }))} className={inputClass} />
-                  </label>
-                  <label>
-                    <span className={labelClass}>繳費期限</span>
-                    <input type="date" value={bagForm.due_date} onChange={(event) => setBagForm((prev) => ({ ...prev, due_date: event.target.value }))} className={inputClass} />
-                  </label>
-                  <button type="button" onClick={openBag} disabled={pending} className={primaryButton}>
-                    {pending ? <Loader2 size={14} className="animate-spin" /> : <ReceiptText size={14} />}
-                    送出開袋
-                  </button>
-                </div>
+                )}
               </div>
-            )}
-          </section>
-
-          <BagPreview state={state} onRefresh={load} />
-          </>
+            </section>
           )}
         </main>
       )}
@@ -1561,6 +1752,134 @@ function TabButton({ active, children, icon, onClick }: { active: boolean; child
       {icon}
       {children}
     </button>
+  )
+}
+
+function WorkflowLivePreview({
+  openStep,
+  selectedClass,
+  selectedSeason,
+  selectedStudentList,
+  teamDates,
+  intensiveWeeks,
+  feeTemplate,
+  studentDrafts,
+  currentStudent,
+  currentDraft,
+  currentSubtotal,
+  currentTotal,
+}: {
+  openStep: number
+  selectedClass: BillingClass
+  selectedSeason: NonNullable<BillingState['selectedSeason']>
+  selectedStudentList: BillingStudent[]
+  teamDates: Set<string>
+  intensiveWeeks: Set<string>
+  feeTemplate: FeeTemplateDraft
+  studentDrafts: Record<string, StudentDraft>
+  currentStudent: BillingStudent | undefined
+  currentDraft: StudentDraft | undefined
+  currentSubtotal: number
+  currentTotal: number
+}) {
+  const selectedNames = selectedStudentList.map((student) => studentName(student))
+  const templateSubtotal =
+    numberInput(feeTemplate.tuitionAmount)
+    + rowsTotal(feeTemplate.bookRows)
+    + rowsTotal(feeTemplate.miscRows)
+    - rowsTotal(feeTemplate.discountRows)
+  const draftedStudents = selectedStudentList
+    .map((student) => ({ student, draft: studentDrafts[student.student_id] }))
+    .filter((entry): entry is { student: BillingStudent; draft: StudentDraft } => Boolean(entry.draft))
+  const draftedTotal = draftedStudents.reduce((sum, entry) => {
+    const subtotal =
+      numberInput(entry.draft.tuitionAmount)
+      + rowsTotal(entry.draft.bookRows)
+      + rowsTotal(entry.draft.miscRows)
+      - rowsTotal(entry.draft.discountRows)
+    const total =
+      subtotal
+      + numberInput(entry.draft.carryoverAmount)
+      + entry.draft.adjustments.reduce((acc, row) => acc + numberInput(row.amount), 0)
+    return sum + total
+  }, 0)
+  const sortedTeamDates = Array.from(teamDates).sort(compareDate)
+  const sortedIntensiveDates = Array.from(intensiveWeeks).sort(compareDate)
+
+  return (
+    <div className="grid gap-4">
+      <div>
+        <h3 className="text-sm font-semibold">即時預覽</h3>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {selectedClass.class_name} · {selectedSeason.season_code}
+        </p>
+      </div>
+
+      <section className="rounded-lg border border-border bg-background p-3 text-sm">
+        <div className="grid gap-2">
+          <SummaryLine label="目前步驟" value={`Step ${openStep}`} />
+          <SummaryLine label="已選學生" value={`${selectedStudentList.length} 人`} />
+          <SummaryLine label="團課" value={`${teamDates.size} 堂`} />
+          {selectedClass.class_type === 'intensive' && (
+            <SummaryLine label="強化課" value={`${intensiveWeeks.size} 堂`} />
+          )}
+        </div>
+      </section>
+
+      {openStep === 1 && (
+        <section className="rounded-lg border border-border bg-background p-3 text-sm">
+          <p className="text-xs font-medium text-muted-foreground">模板摘要</p>
+          <div className="mt-2 grid gap-2">
+            <SummaryLine label="學費模板" value={feeTemplate.tuitionPresetLabel || '手動輸入'} />
+            <SummaryLine label="學費" value={formatMoney(numberInput(feeTemplate.tuitionAmount))} />
+            <SummaryLine label="教材費" value={formatMoney(rowsTotal(feeTemplate.bookRows))} />
+            <SummaryLine label="雜費" value={formatMoney(rowsTotal(feeTemplate.miscRows))} />
+            <SummaryLine label="折扣" value={`-${formatMoney(rowsTotal(feeTemplate.discountRows))}`} />
+            <SummaryLine label="每人小計" value={formatMoney(templateSubtotal)} />
+          </div>
+        </section>
+      )}
+
+      {(openStep === 2 || openStep === 3) && (
+        <>
+          <section className="rounded-lg border border-border bg-background p-3 text-sm">
+            <p className="text-xs font-medium text-muted-foreground">課次與日期摘要</p>
+            <div className="mt-2 grid gap-1.5 text-xs text-muted-foreground">
+              <div>團課日期：{sortedTeamDates.length > 0 ? formatDateList(sortedTeamDates) : '尚未選取'}</div>
+              {selectedClass.class_type === 'intensive' && (
+                <div>強化課日期：{sortedIntensiveDates.length > 0 ? formatDateList(sortedIntensiveDates) : '尚未選取'}</div>
+              )}
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-border bg-background p-3 text-sm">
+            <p className="text-xs font-medium text-muted-foreground">學生摘要</p>
+            <div className="mt-2 grid gap-1.5 text-xs text-muted-foreground">
+              {selectedNames.slice(0, 8).map((name, index) => (
+                <div key={`${name}-${index}`}>{name}</div>
+              ))}
+              {selectedNames.length > 8 && <div>...另 {selectedNames.length - 8} 人</div>}
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-border bg-background p-3 text-sm">
+            <p className="text-xs font-medium text-muted-foreground">費用摘要</p>
+            <div className="mt-2 grid gap-2">
+              <SummaryLine label="模板每人小計" value={formatMoney(templateSubtotal)} />
+              <SummaryLine label="已建立草稿" value={`${draftedStudents.length} / ${selectedStudentList.length}`} />
+              {draftedStudents.length > 0 && <SummaryLine label="草稿總額" value={formatMoney(draftedTotal)} />}
+              {openStep === 3 && currentDraft && (
+                <>
+                  <SummaryLine label="目前學生" value={studentName(currentStudent)} />
+                  <SummaryLine label="目前小計" value={formatMoney(currentSubtotal)} />
+                  <SummaryLine label="目前總額" value={formatMoney(currentTotal)} />
+                </>
+              )}
+            </div>
+          </section>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -1869,106 +2188,106 @@ function BagPreview({ state, onRefresh }: { state: BillingState; onRefresh?: () 
 
   return (
     <>
-    <section className="overflow-hidden rounded-lg border border-border bg-background">
-      <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
-        <ReceiptText size={16} />
-        <h2 className="text-sm font-semibold">{bag.bag_code}</h2>
-        <span className="text-xs text-muted-foreground">{bag.lines.length} 人 · {formatMoney(total)}</span>
-        <button
-          type="button"
-          onClick={openRefundDialog}
-          disabled={computing}
-          className="ml-auto inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
-        >
-          {computing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-          下季退費預覽
-        </button>
-      </div>
-      <div className="overflow-auto">
-        <table className="w-full min-w-[820px] border-separate border-spacing-0 text-sm">
-          <thead className="text-xs text-muted-foreground">
-            <tr>
-              <th className="border-b border-border px-3 py-2 text-left">學生</th>
-              <th className="border-b border-border px-3 py-2 text-right">堂數</th>
-              <th className="border-b border-border px-3 py-2 text-right">學費</th>
-              <th className="border-b border-border px-3 py-2 text-right">教材</th>
-              <th className="border-b border-border px-3 py-2 text-right">雜費</th>
-              <th className="border-b border-border px-3 py-2 text-right">折扣</th>
-              <th className="border-b border-border px-3 py-2 text-right">結轉/調整</th>
-              <th className="border-b border-border px-3 py-2 text-right">總額</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bag.lines.map((line) => (
-              <tr key={line.id}>
-                <td className="border-b border-border px-3 py-2">{studentName(line.student)}</td>
-                <td className="border-b border-border px-3 py-2 text-right">{line.session_count}</td>
-                <td className="border-b border-border px-3 py-2 text-right">{formatMoney(line.tuition_amount)}</td>
-                <td className="border-b border-border px-3 py-2 text-right">{formatMoney(line.book_fee)}</td>
-                <td className="border-b border-border px-3 py-2 text-right">{formatMoney(line.misc_fee)}</td>
-                <td className="border-b border-border px-3 py-2 text-right">{formatMoney(line.discount_amount)}</td>
-                <td className="border-b border-border px-3 py-2 text-right">{formatMoney(Number(line.carryover_amount) + Number(line.adjustment_amount))}</td>
-                <td className="border-b border-border px-3 py-2 text-right font-medium">{formatMoney(line.total_amount)}</td>
+      <section className="overflow-hidden rounded-lg border border-border bg-background">
+        <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-3">
+          <ReceiptText size={16} />
+          <h2 className="text-sm font-semibold">{bag.bag_code}</h2>
+          <span className="text-xs text-muted-foreground">{bag.lines.length} 人 · {formatMoney(total)}</span>
+          <button
+            type="button"
+            onClick={openRefundDialog}
+            disabled={computing}
+            className="ml-auto inline-flex h-7 items-center gap-1.5 rounded-md border border-border px-2.5 text-xs font-medium text-muted-foreground hover:bg-muted disabled:opacity-50"
+          >
+            {computing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+            下季退費預覽
+          </button>
+        </div>
+        <div className="overflow-auto">
+          <table className="w-full min-w-[820px] border-separate border-spacing-0 text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th className="border-b border-border px-3 py-2 text-left">學生</th>
+                <th className="border-b border-border px-3 py-2 text-right">堂數</th>
+                <th className="border-b border-border px-3 py-2 text-right">學費</th>
+                <th className="border-b border-border px-3 py-2 text-right">教材</th>
+                <th className="border-b border-border px-3 py-2 text-right">雜費</th>
+                <th className="border-b border-border px-3 py-2 text-right">折扣</th>
+                <th className="border-b border-border px-3 py-2 text-right">結轉/調整</th>
+                <th className="border-b border-border px-3 py-2 text-right">總額</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
+            </thead>
+            <tbody>
+              {bag.lines.map((line) => (
+                <tr key={line.id}>
+                  <td className="border-b border-border px-3 py-2">{studentName(line.student)}</td>
+                  <td className="border-b border-border px-3 py-2 text-right">{line.session_count}</td>
+                  <td className="border-b border-border px-3 py-2 text-right">{formatMoney(line.tuition_amount)}</td>
+                  <td className="border-b border-border px-3 py-2 text-right">{formatMoney(line.book_fee)}</td>
+                  <td className="border-b border-border px-3 py-2 text-right">{formatMoney(line.misc_fee)}</td>
+                  <td className="border-b border-border px-3 py-2 text-right">{formatMoney(line.discount_amount)}</td>
+                  <td className="border-b border-border px-3 py-2 text-right">{formatMoney(Number(line.carryover_amount) + Number(line.adjustment_amount))}</td>
+                  <td className="border-b border-border px-3 py-2 text-right font-medium">{formatMoney(line.total_amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
 
-    {refundPreview !== null && (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setRefundPreview(null)} />
-        <div className="relative flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-background shadow-2xl">
-          <div className="border-b border-border px-4 py-3">
-            <h2 className="font-semibold">下季退費預覽</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">本期「缺席(退)」紀錄，將在下一季開袋時自動帶入結轉折抵</p>
-          </div>
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {refundPreview.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-muted-foreground">本期無「缺席(退)」紀錄</p>
-            ) : (
-              <table className="w-full border-separate border-spacing-0 text-sm">
-                <thead className="text-xs text-muted-foreground">
-                  <tr>
-                    <th className="border-b border-border px-4 py-2 text-left">學生</th>
-                    <th className="border-b border-border px-4 py-2 text-right">退堂</th>
-                    <th className="border-b border-border px-4 py-2 text-right">單價</th>
-                    <th className="border-b border-border px-4 py-2 text-right">退費</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {refundPreview.map((r, i) => (
-                    <tr key={r.line_id} className={i % 2 === 1 ? 'bg-muted/40' : ''}>
-                      <td className="border-b border-border px-4 py-2">{r.student_name}</td>
-                      <td className="border-b border-border px-4 py-2 text-right">{r.refund_sessions}</td>
-                      <td className="border-b border-border px-4 py-2 text-right">{formatMoney(r.rate_per_session)}</td>
-                      <td className="border-b border-border px-4 py-2 text-right text-orange-600 dark:text-orange-400">−{formatMoney(r.refund_amount)}</td>
+      {refundPreview !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setRefundPreview(null)} />
+          <div className="relative flex max-h-[80dvh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-background shadow-2xl">
+            <div className="border-b border-border px-4 py-3">
+              <h2 className="font-semibold">下季退費預覽</h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">本期「缺席(退)」紀錄，將在下一季開袋時自動帶入結轉折抵</p>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {refundPreview.length === 0 ? (
+                <p className="px-4 py-8 text-center text-sm text-muted-foreground">本期無「缺席(退)」紀錄</p>
+              ) : (
+                <table className="w-full border-separate border-spacing-0 text-sm">
+                  <thead className="text-xs text-muted-foreground">
+                    <tr>
+                      <th className="border-b border-border px-4 py-2 text-left">學生</th>
+                      <th className="border-b border-border px-4 py-2 text-right">退堂</th>
+                      <th className="border-b border-border px-4 py-2 text-right">單價</th>
+                      <th className="border-b border-border px-4 py-2 text-right">退費</th>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={3} className="px-4 py-2 text-right text-xs text-muted-foreground">合計退費</td>
-                    <td className="px-4 py-2 text-right font-semibold text-orange-600 dark:text-orange-400">−{formatMoney(refundTotal)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            )}
-          </div>
-          {refundError && <p className="border-t border-border px-4 py-2 text-xs text-red-500">{refundError}</p>}
-          <div className="flex justify-end border-t border-border px-4 py-3">
-            <button
-              type="button"
-              onClick={() => setRefundPreview(null)}
-              className="h-9 rounded-md border border-border px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
-            >
-              關閉
-            </button>
+                  </thead>
+                  <tbody>
+                    {refundPreview.map((r, i) => (
+                      <tr key={r.line_id} className={i % 2 === 1 ? 'bg-muted/40' : ''}>
+                        <td className="border-b border-border px-4 py-2">{r.student_name}</td>
+                        <td className="border-b border-border px-4 py-2 text-right">{r.refund_sessions}</td>
+                        <td className="border-b border-border px-4 py-2 text-right">{formatMoney(r.rate_per_session)}</td>
+                        <td className="border-b border-border px-4 py-2 text-right text-orange-600 dark:text-orange-400">−{formatMoney(r.refund_amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={3} className="px-4 py-2 text-right text-xs text-muted-foreground">合計退費</td>
+                      <td className="px-4 py-2 text-right font-semibold text-orange-600 dark:text-orange-400">−{formatMoney(refundTotal)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
+            </div>
+            {refundError && <p className="border-t border-border px-4 py-2 text-xs text-red-500">{refundError}</p>}
+            <div className="flex justify-end border-t border-border px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setRefundPreview(null)}
+                className="h-9 rounded-md border border-border px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
+              >
+                關閉
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    )}
+      )}
     </>
   )
 }
