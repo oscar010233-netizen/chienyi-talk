@@ -321,6 +321,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                 startTime: teacher.start_time.slice(0, 5),
                                 endTime: teacher.end_time.slice(0, 5),
                                 minutes: Math.max(segmentEnd - segmentStart, SLOT_MINUTES),
+                                teacherColor: teacher.teacher?.color ?? teacher.color ?? color,
                               }
                             })
                             .filter((segment): segment is NonNullable<typeof segment> => Boolean(segment))
@@ -385,7 +386,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                 {showConnectorLine && (
                                   <span
                                     className="pointer-events-none absolute top-2 bottom-2 left-[13px] w-px"
-                                    style={{ backgroundColor: colorWithAlpha(color, 0.18) }}
+                                    style={{ backgroundColor: 'var(--workspace-course-divider)' }}
                                   />
                                 )}
                                 <div className="flex h-full flex-col">
@@ -404,7 +405,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                     >
                                       <span
                                         className="h-4 w-1 shrink-0 rounded-full"
-                                        style={{ backgroundColor: colorWithAlpha(color, segmentIndex === 0 ? 0.64 : 0.44) }}
+                                        style={{ backgroundColor: segment.teacherColor }}
                                       />
                                       <div className="min-w-0">
                                         <p className="truncate text-[11px] font-medium text-[color:var(--workspace-course-text-primary)]">
