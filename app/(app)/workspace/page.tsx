@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, CalendarDays, UtensilsCrossed, CheckSquare } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays, UtensilsCrossed, CheckSquare, Users } from 'lucide-react'
 import { ScheduleGrid, type NewEventDraft } from '@/components/schedule/ScheduleGrid'
 import { CreateEventModal } from '@/components/schedule/CreateEventModal'
 import { TeacherManagerModal } from '@/components/schedule/TeacherManagerModal'
@@ -160,6 +160,16 @@ export default function WorkspacePage() {
               <ViewToggle icon={<UtensilsCrossed size={13} />} label="晚餐" active={showDinner} onClick={() => setShowDinner(v => !v)} />
               <ViewToggle icon={<CheckSquare size={13} />}     label="待辦" active={showTodo}   onClick={() => setShowTodo(v => !v)} />
             </div>
+
+            <div className="h-5 w-px bg-border" />
+
+            <button
+              onClick={() => setTeacherManagerOpen(true)}
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-border bg-background px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Users size={14} />
+              老師管理
+            </button>
 
             <div className="h-5 w-px bg-border" />
 
