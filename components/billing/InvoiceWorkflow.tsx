@@ -1407,9 +1407,9 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                         </div>
                         <div className="flex flex-wrap gap-1 border-b border-border px-3 py-2">
                           {([
-                            { key: 'unopened', label: '未開票' },
-                            { key: 'opened', label: '已開票' },
-                            { key: 'selected', label: '已選取' },
+                            { key: 'unopened', label: '未開袋' },
+                            { key: 'opened', label: '已開袋' },
+                            { key: 'selected', label: '本次勾選' },
                             { key: 'all', label: '全部' },
                           ] as Array<{ key: StudentTabKey; label: string }>).map((item) => (
                             <button
@@ -1443,7 +1443,7 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                                       ? 'bg-emerald-50 text-emerald-700'
                                       : 'bg-muted text-muted-foreground'
                                   }`}>
-                                    {openedSet.has(student.student_id) ? '已開票' : '未開票'}
+                                    {openedSet.has(student.student_id) ? '已開袋' : '未開袋'}
                                   </span>
                                   {openedSet.has(student.student_id) && selectedStudents.has(student.student_id) && (
                                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
@@ -1683,6 +1683,9 @@ export function InvoiceWorkflow({ initialState }: { initialState: BillingState }
                     currentSubtotal={currentSubtotal}
                     currentTotal={currentTotal}
                   />
+                  <div className="mt-4 border-t border-border pt-4">
+                    <BagPreview state={state} onRefresh={load} />
+                  </div>
                 </aside>
               </div>
 

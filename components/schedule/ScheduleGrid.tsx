@@ -41,7 +41,7 @@ function currentTimeLabel(date: Date): string {
 }
 
 function eventTitle(event: ScheduleEvent): string {
-  return event.title || event.class_info?.class_name || '未命名課程'
+  return event.class_info?.class_name || event.title || '未命名課程'
 }
 
 function eventSubtitle(event: ScheduleEvent): string {
@@ -49,6 +49,10 @@ function eventSubtitle(event: ScheduleEvent): string {
   if (event.event_type === 'makeup') return '補課'
   if (event.event_type === 'other') return '其他'
   return '團課'
+}
+
+function eventTimeRange(event: ScheduleEvent): string {
+  return `${event.start_time.slice(0, 5)}–${event.end_time.slice(0, 5)}`
 }
 
 function eventFill(color: string | null): string {
@@ -328,14 +332,9 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
 
                           if (segmentRows.length === 0) return null
 
-                          const compactCard = height < 88
                           const tinyCard = height < 64
-                          const cardBodyCompact = height < 72
-                          const headerHeight = tinyCard ? 24 : 28
-                          const firstSegmentTextPadding = tinyCard ? 18 : 28
-                          const sectionMeta = [eventSubtitle(event), room.name, event.note ?? undefined]
-                            .filter(Boolean)
-                            .join(' · ')
+                          const headerHeight = tinyCard ? 40 : 48
+                          const firstSegmentTextPadding = tinyCard ? 34 : 44
 
                           return (
                             <div
@@ -349,7 +348,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                 right: 6,
                                 height,
                               }}
-                              className="z-10 overflow-visible rounded-[14px] transition-[border-color,box-shadow] focus:outline-none focus:ring-2 focus:ring-gold/30 active:brightness-[0.99] sm:rounded-[16px]"
+                              className="z-10 overflow-visible rounded-[14px] border border-[color:var(--workspace-course-group-border)] transition-[border-color,box-shadow] focus:outline-none focus:ring-2 focus:ring-gold/30 active:brightness-[0.99] sm:rounded-[16px]"
                               onClick={() => onClickEvent(event)}
                               onKeyDown={keyEvent => handleInteractiveKeyDown(keyEvent, () => onClickEvent(event))}
                             >
@@ -358,15 +357,14 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                               >
                                 <div
                                   className="pointer-events-none absolute top-1.5 left-1.5 right-1.5 z-20 rounded-[10px] border border-[color:var(--workspace-course-divider)] bg-background/75 px-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] backdrop-blur-[10px] sm:rounded-xl sm:px-3"
-                                  style={{ height: headerHeight }}
+                                  style={{ minHeight: headerHeight }}
                                 >
-                                  <div className="flex h-full min-w-0 items-center gap-1.5 text-[10px] sm:text-[11px]">
-                                    <span className="min-w-0 flex-1 whitespace-nowrap font-semibold text-[color:var(--workspace-course-text-primary)]">
+                                  <div className="flex h-full min-w-0 flex-col justify-center py-1 text-[10px] sm:text-[11px]">
+                                    <span className="break-words whitespace-normal font-semibold leading-tight text-[color:var(--workspace-course-text-primary)]">
                                       {eventTitle(event)}
                                     </span>
-                                    <span className="shrink-0 text-[color:var(--workspace-course-text-tertiary)]">｜</span>
-                                    <span className="shrink-0 whitespace-nowrap text-[color:var(--workspace-course-text-secondary)]">
-                                      {event.start_time.slice(0, 5)}-{event.end_time.slice(0, 5)}
+                                    <span className="mt-0.5 break-words whitespace-normal leading-tight text-[color:var(--workspace-course-text-secondary)]">
+                                      {eventTimeRange(event)}
                                     </span>
                                   </div>
                                 </div>
@@ -377,11 +375,10 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                       className={[
                                         'relative flex min-w-0 items-start gap-2 px-3 py-1.5 sm:px-4',
                                         segmentIndex > 0 ? 'border-t border-[color:var(--workspace-course-divider)]' : '',
-                                        cardBodyCompact ? 'py-1' : '',
                                       ].join(' ')}
                                       style={{
                                         flex: `${segment.minutes} ${segment.minutes} 0`,
-                                        backgroundColor: colorWithAlpha(segment.teacherColor, tinyCard ? 0.18 : 0.2),
+                                        backgroundColor: colorWithAlpha(segment.teacherColor, tinyCard ? 0.34 : 0.38),
                                       }}
                                     >
                                       <span
@@ -389,19 +386,14 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                         style={{ backgroundColor: segment.teacherColor }}
                                       />
                                       <div
-                                        className="min-w-0"
+                                        className="min-w-0 flex-1"
                                         style={{
                                           paddingTop: segmentIndex === 0 ? firstSegmentTextPadding : 0,
                                         }}
                                       >
-                                        <p className="truncate text-[11px] font-medium text-[color:var(--workspace-course-text-primary)]">
-                                          {segment.name} ｜ {segment.startTime}-{segment.endTime}
+                                        <p className="break-words whitespace-normal text-[11px] font-medium leading-tight text-[color:var(--workspace-course-text-primary)]">
+                                          {segment.name} ｜ {segment.startTime}–{segment.endTime}
                                         </p>
-                                        {!cardBodyCompact && !compactCard && (
-                                          <p className="mt-0.5 truncate text-[10px] text-[color:var(--workspace-course-text-secondary)]">
-                                            {sectionMeta}
-                                          </p>
-                                        )}
                                       </div>
                                     </div>
                                   ))}
@@ -423,7 +415,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                               height,
                               backgroundColor: eventFill(color),
                             }}
-                            className="z-10 overflow-hidden rounded-md border border-border px-2 py-1.5 text-left shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99]"
+                            className="z-10 rounded-md border border-border px-2 py-1.5 text-left shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99]"
                             onClick={clickEvent => {
                               clickEvent.stopPropagation()
                               onClickEvent(event)
@@ -431,10 +423,10 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                           >
                             <div className="flex min-w-0 items-start justify-between gap-2">
                               <div className="min-w-0">
-                                <p className="truncate text-xs font-semibold leading-tight text-foreground">
+                                <p className="break-words whitespace-normal text-xs font-semibold leading-tight text-foreground">
                                   {eventTitle(event)}
                                 </p>
-                                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                                <p className="mt-0.5 break-words whitespace-normal text-[11px] text-muted-foreground">
                                   {eventSubtitle(event)}
                                 </p>
                               </div>
@@ -443,8 +435,8 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                               </span>
                             </div>
                             {height >= 58 && (
-                              <p className="mt-1 truncate text-[10px] text-muted-foreground">
-                                {event.start_time.slice(0, 5)} - {event.end_time.slice(0, 5)}
+                              <p className="mt-1 break-words whitespace-normal text-[10px] text-muted-foreground">
+                                {eventTimeRange(event)}
                               </p>
                             )}
                           </button>
