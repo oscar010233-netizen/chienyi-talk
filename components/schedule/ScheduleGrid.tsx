@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Clock3 } from 'lucide-react'
 import type { Room, ScheduleEvent } from '@/lib/schedule/types'
 
@@ -113,6 +113,127 @@ interface Props {
   events: ScheduleEvent[]
   onCreateEvent: (draft: NewEventDraft) => void
   onClickEvent: (event: ScheduleEvent) => void
+}
+
+interface SegmentRow {
+  id: string
+  name: string
+  startTime: string
+  endTime: string
+  minutes: number
+  teacherColor: string
+}
+
+interface GroupedCourseCardProps {
+  event: ScheduleEvent
+  top: number
+  height: number
+  color: string
+  segmentRows: SegmentRow[]
+  onClickEvent: (event: ScheduleEvent) => void
+}
+
+function GroupedCourseCard({
+  event,
+  top,
+  height,
+  color,
+  segmentRows,
+  onClickEvent,
+}: GroupedCourseCardProps) {
+  const tinyCard = height < 64
+  const headerHeight = tinyCard ? 40 : 48
+  const badgeRef = useRef<HTMLDivElement | null>(null)
+  const [firstSegmentTextPadding, setFirstSegmentTextPadding] = useState(headerHeight + 6)
+
+  useLayoutEffect(() => {
+    const badgeElement = badgeRef.current
+    if (!badgeElement) return
+
+    const updatePadding = () => {
+      const nextPadding = Math.ceil(badgeElement.getBoundingClientRect().height) + 6
+      setFirstSegmentTextPadding(previous => (previous === nextPadding ? previous : nextPadding))
+    }
+
+    updatePadding()
+
+    if (typeof ResizeObserver === 'undefined') return
+
+    const observer = new ResizeObserver(() => updatePadding())
+    observer.observe(badgeElement)
+
+    return () => observer.disconnect()
+  }, [headerHeight])
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      style={{
+        position: 'absolute',
+        top: top + 2,
+        left: 6,
+        right: 6,
+        height,
+      }}
+      className="z-10 overflow-visible rounded-[14px] transition-[border-color,box-shadow] focus:outline-none focus:ring-2 focus:ring-gold/30 active:brightness-[0.99] sm:rounded-[16px]"
+      onClick={() => onClickEvent(event)}
+      onKeyDown={keyEvent => handleInteractiveKeyDown(keyEvent, () => onClickEvent(event))}
+    >
+      <div className="relative h-full overflow-hidden rounded-[14px] bg-[color:var(--workspace-course-group-bg)] shadow-[var(--workspace-course-group-shadow)] hover:shadow-[var(--workspace-course-group-shadow-hover)] sm:rounded-[16px]">
+        <div
+          className="absolute top-0 bottom-0 left-0 w-[3px]"
+          style={{ backgroundColor: eventFill(color) }}
+        />
+        <div className="relative ml-[3px] h-full overflow-hidden rounded-r-[14px] border-t border-r border-b border-[color:var(--workspace-course-group-border)] hover:border-[color:var(--workspace-course-group-border-hover)] sm:rounded-r-[16px]">
+          <div
+            ref={badgeRef}
+            className="pointer-events-none absolute top-1.5 left-1.5 right-1.5 z-20 rounded-[10px] border border-[color:var(--workspace-course-divider)] bg-background/75 px-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] backdrop-blur-[10px] sm:rounded-xl sm:px-3"
+            style={{ minHeight: headerHeight }}
+          >
+            <div className="flex h-full min-w-0 flex-col justify-center py-1 text-[10px] sm:text-[11px]">
+              <span className="break-words whitespace-normal font-semibold leading-tight text-[color:var(--workspace-course-text-primary)]">
+                {eventTitle(event)}
+              </span>
+              <span className="mt-0.5 break-words whitespace-normal leading-tight text-[color:var(--workspace-course-text-secondary)]">
+                {eventTimeRange(event)}
+              </span>
+            </div>
+          </div>
+          <div className="flex h-full flex-col">
+            {segmentRows.map((segment, segmentIndex) => (
+              <div
+                key={segment.id}
+                className={[
+                  'relative flex min-w-0 items-start gap-2 px-3 py-1.5 sm:px-4',
+                  segmentIndex > 0 ? 'border-t border-[color:var(--workspace-course-divider)]' : '',
+                ].join(' ')}
+                style={{
+                  flex: `${segment.minutes} ${segment.minutes} 0`,
+                  backgroundColor: colorWithAlpha(segment.teacherColor, tinyCard ? 0.12 : 0.15),
+                }}
+              >
+                <span
+                  className="h-4 w-1 shrink-0 rounded-full"
+                  style={{ backgroundColor: segment.teacherColor }}
+                />
+                <div
+                  className="min-w-0 flex-1"
+                  style={{
+                    paddingTop: segmentIndex === 0 ? firstSegmentTextPadding : 0,
+                  }}
+                >
+                  <p className="break-words whitespace-normal text-[11px] font-medium leading-tight text-[color:var(--workspace-course-text-primary)]">
+                    {segment.name} ｜ {segment.startTime}–{segment.endTime}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent }: Props) {
@@ -332,74 +453,16 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
 
                           if (segmentRows.length === 0) return null
 
-                          const tinyCard = height < 64
-                          const headerHeight = tinyCard ? 40 : 48
-                          const firstSegmentTextPadding = tinyCard ? 34 : 44
-
                           return (
-                            <div
+                            <GroupedCourseCard
                               key={event.id}
-                              role="button"
-                              tabIndex={0}
-                              style={{
-                                position: 'absolute',
-                                top: top + 2,
-                                left: 6,
-                                right: 6,
-                                height,
-                              }}
-                              className="z-10 overflow-visible rounded-[14px] border border-[color:var(--workspace-course-group-border)] transition-[border-color,box-shadow] focus:outline-none focus:ring-2 focus:ring-gold/30 active:brightness-[0.99] sm:rounded-[16px]"
-                              onClick={() => onClickEvent(event)}
-                              onKeyDown={keyEvent => handleInteractiveKeyDown(keyEvent, () => onClickEvent(event))}
-                            >
-                              <div
-                                className="relative h-full overflow-hidden rounded-[14px] border border-[color:var(--workspace-course-group-border)] bg-[color:var(--workspace-course-group-bg)] shadow-[var(--workspace-course-group-shadow)] hover:border-[color:var(--workspace-course-group-border-hover)] hover:shadow-[var(--workspace-course-group-shadow-hover)] sm:rounded-[16px]"
-                              >
-                                <div
-                                  className="pointer-events-none absolute top-1.5 left-1.5 right-1.5 z-20 rounded-[10px] border border-[color:var(--workspace-course-divider)] bg-background/75 px-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] backdrop-blur-[10px] sm:rounded-xl sm:px-3"
-                                  style={{ minHeight: headerHeight }}
-                                >
-                                  <div className="flex h-full min-w-0 flex-col justify-center py-1 text-[10px] sm:text-[11px]">
-                                    <span className="break-words whitespace-normal font-semibold leading-tight text-[color:var(--workspace-course-text-primary)]">
-                                      {eventTitle(event)}
-                                    </span>
-                                    <span className="mt-0.5 break-words whitespace-normal leading-tight text-[color:var(--workspace-course-text-secondary)]">
-                                      {eventTimeRange(event)}
-                                    </span>
-                                  </div>
-                                </div>
-                                <div className="flex h-full flex-col">
-                                  {segmentRows.map((segment, segmentIndex) => (
-                                    <div
-                                      key={segment.id}
-                                      className={[
-                                        'relative flex min-w-0 items-start gap-2 px-3 py-1.5 sm:px-4',
-                                        segmentIndex > 0 ? 'border-t border-[color:var(--workspace-course-divider)]' : '',
-                                      ].join(' ')}
-                                      style={{
-                                        flex: `${segment.minutes} ${segment.minutes} 0`,
-                                        backgroundColor: colorWithAlpha(segment.teacherColor, tinyCard ? 0.34 : 0.38),
-                                      }}
-                                    >
-                                      <span
-                                        className="h-4 w-1 shrink-0 rounded-full"
-                                        style={{ backgroundColor: segment.teacherColor }}
-                                      />
-                                      <div
-                                        className="min-w-0 flex-1"
-                                        style={{
-                                          paddingTop: segmentIndex === 0 ? firstSegmentTextPadding : 0,
-                                        }}
-                                      >
-                                        <p className="break-words whitespace-normal text-[11px] font-medium leading-tight text-[color:var(--workspace-course-text-primary)]">
-                                          {segment.name} ｜ {segment.startTime}–{segment.endTime}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
+                              event={event}
+                              top={top}
+                              height={height}
+                              color={color}
+                              segmentRows={segmentRows}
+                              onClickEvent={onClickEvent}
+                            />
                           )
                         }
 
