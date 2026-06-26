@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase/server'
+import { normalizeScheduleHexColor } from '@/lib/schedule/colors'
 
 function normalizePatch(body: Record<string, unknown>) {
   const update: Record<string, unknown> = {}
@@ -22,6 +23,14 @@ function normalizePatch(body: Record<string, unknown>) {
       return { error: 'status must be active or archived', update: null }
     }
     update.status = body.status
+  }
+
+  if ('color' in body) {
+    const color = normalizeScheduleHexColor(body.color)
+    if (!color) {
+      return { error: 'color must be a hex value like #RRGGBB', update: null }
+    }
+    update.color = color
   }
 
   return { error: null, update }
@@ -48,7 +57,7 @@ export async function PATCH(
     .from('teachers')
     .update(update)
     .eq('id', id)
-    .select('id, name, status, sort_order')
+    .select('id, name, color, status, sort_order')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
@@ -67,7 +76,7 @@ export async function DELETE(
     .from('teachers')
     .update({ status: 'archived' })
     .eq('id', id)
-    .select('id, name, status, sort_order')
+    .select('id, name, color, status, sort_order')
     .single()
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })

@@ -2,10 +2,12 @@
 
 import { ChevronDown, ChevronUp, Loader2, Plus, Trash2, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { DEFAULT_SCHEDULE_COLOR, SCHEDULE_COLOR_PALETTE } from '@/lib/schedule/colors'
 
 interface Teacher {
   id: string
   name: string
+  color: string
   status: 'active' | 'archived'
   sort_order: number
 }
@@ -88,7 +90,7 @@ export function TeacherManagerModal({ open, onClose }: Props) {
       const response = await fetch('/api/teachers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, color: DEFAULT_SCHEDULE_COLOR }),
       })
 
       if (!response.ok) {
@@ -117,7 +119,7 @@ export function TeacherManagerModal({ open, onClose }: Props) {
       const response = await fetch(`/api/teachers/${teacher.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, sort_order: teacher.sort_order }),
+        body: JSON.stringify({ name, color: teacher.color, sort_order: teacher.sort_order }),
       })
 
       if (!response.ok) {
@@ -217,7 +219,7 @@ export function TeacherManagerModal({ open, onClose }: Props) {
         className="absolute inset-0 bg-black/35 backdrop-blur-[2px]"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-xl rounded-t-xl border border-white/70 bg-card text-card-foreground shadow-[0_30px_90px_-45px_rgba(0,0,0,0.75)] md:rounded-xl dark:border-white/10">
+      <div className="relative z-10 max-h-[92vh] w-full overflow-y-auto rounded-t-xl border border-white/70 bg-card text-card-foreground shadow-[0_30px_90px_-45px_rgba(0,0,0,0.75)] md:max-w-3xl md:rounded-xl dark:border-white/10">
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <div>
             <h2 className="text-base font-semibold text-foreground">管理老師</h2>
@@ -233,7 +235,7 @@ export function TeacherManagerModal({ open, onClose }: Props) {
         </div>
 
         <div className="grid gap-4 px-5 py-4">
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <input
               type="text"
               value={newName}
@@ -245,7 +247,7 @@ export function TeacherManagerModal({ open, onClose }: Props) {
               type="button"
               onClick={handleCreate}
               disabled={saving}
-              className="inline-flex h-10 items-center gap-1.5 rounded-md bg-gold px-4 text-sm font-semibold text-white transition-colors hover:bg-gold/90 disabled:opacity-50 dark:bg-[#ff4d4f]"
+              className="inline-flex h-10 items-center justify-center gap-1.5 rounded-md bg-gold px-4 text-sm font-semibold text-white transition-colors hover:bg-gold/90 disabled:opacity-50 sm:px-5 dark:bg-[#ff4d4f]"
             >
               {saving ? <Loader2 size={15} className="animate-spin" /> : <Plus size={15} />}
               新增
@@ -270,62 +272,106 @@ export function TeacherManagerModal({ open, onClose }: Props) {
               {teachers.map((teacher, index) => (
                 <div
                   key={teacher.id}
-                  className="grid gap-2 rounded-lg border border-border bg-background/60 p-3 sm:grid-cols-[minmax(0,1fr)_160px_auto_auto_auto] sm:items-center"
+                  className="grid gap-3 rounded-xl border border-border bg-background/60 p-3 md:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.95fr)]"
                 >
-                  <input
-                    type="text"
-                    value={teacher.name}
-                    onChange={event => updateTeacher(index, { name: event.target.value })}
-                    className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
-                  />
-                  <label className="grid gap-1">
-                    <span className="text-[11px] font-medium text-muted-foreground">排序（數字越小越前）</span>
-                    <input
-                      type="number"
-                      value={teacher.sort_order}
-                      onChange={event => updateTeacher(index, { sort_order: Number(event.target.value) || 0 })}
-                      title="排序數字越小越前"
-                      className="h-9 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
-                    />
-                  </label>
-                  <div className="flex items-center gap-1">
-                    <button
-                      type="button"
-                      title="上移"
-                      aria-label="上移"
-                      onClick={() => void moveTeacher(index, 'up')}
-                      disabled={saving || loading || index === 0}
-                      className="grid size-9 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <ChevronUp size={15} />
-                    </button>
-                    <button
-                      type="button"
-                      title="下移"
-                      aria-label="下移"
-                      onClick={() => void moveTeacher(index, 'down')}
-                      disabled={saving || loading || index === teachers.length - 1}
-                      className="grid size-9 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <ChevronDown size={15} />
-                    </button>
+                  <div className="grid gap-3">
+                    <div className="flex items-center gap-3">
+                      <span
+                        className="size-4 shrink-0 rounded-full border border-black/5 shadow-sm"
+                        style={{ backgroundColor: teacher.color }}
+                      />
+                      <input
+                        type="text"
+                        value={teacher.name}
+                        onChange={event => updateTeacher(index, { name: event.target.value })}
+                        className="h-10 flex-1 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <span className="text-[11px] font-medium text-muted-foreground">老師顏色</span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        {SCHEDULE_COLOR_PALETTE.map(color => (
+                          <button
+                            key={`${teacher.id}:${color}`}
+                            type="button"
+                            aria-label={`選擇老師顏色 ${color}`}
+                            onClick={() => updateTeacher(index, { color })}
+                            style={{ backgroundColor: color }}
+                            className={[
+                              'size-6 rounded-full ring-offset-2 ring-offset-background transition-transform',
+                              teacher.color === color ? 'scale-110 ring-2 ring-foreground' : 'hover:scale-105',
+                            ].join(' ')}
+                          />
+                        ))}
+                        <label className="inline-flex items-center gap-2 rounded-md border border-border bg-background px-2 py-1.5 text-[11px] text-muted-foreground">
+                          <span>自訂</span>
+                          <input
+                            type="color"
+                            value={teacher.color}
+                            onChange={event => updateTeacher(index, { color: event.target.value.toUpperCase() })}
+                            className="h-8 w-10 cursor-pointer rounded border-0 bg-transparent p-0"
+                          />
+                        </label>
+                      </div>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => void handleUpdate(teacher)}
-                    disabled={saving}
-                    className="h-9 rounded-md border border-border px-3 text-sm font-semibold text-foreground/75 transition-colors hover:bg-muted disabled:opacity-50"
-                  >
-                    儲存
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void handleArchive(teacher)}
-                    disabled={saving}
-                    className="inline-flex h-9 items-center justify-center rounded-md border border-red-200 px-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-400/25 dark:hover:bg-red-400/10"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+
+                  <div className="grid gap-3 sm:grid-cols-[104px_1fr] md:grid-cols-1">
+                    <label className="grid gap-1">
+                      <span className="text-[11px] font-medium text-muted-foreground">排序（數字越小越前）</span>
+                      <input
+                        type="number"
+                        value={teacher.sort_order}
+                        onChange={event => updateTeacher(index, { sort_order: Number(event.target.value) || 0 })}
+                        title="排序數字越小越前"
+                        className="h-10 rounded-md border border-input bg-background px-3 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
+                      />
+                    </label>
+
+                    <div className="grid gap-3 sm:content-end md:content-start">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          title="上移"
+                          aria-label="上移"
+                          onClick={() => void moveTeacher(index, 'up')}
+                          disabled={saving || loading || index === 0}
+                          className="grid size-10 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <ChevronUp size={16} />
+                        </button>
+                        <button
+                          type="button"
+                          title="下移"
+                          aria-label="下移"
+                          onClick={() => void moveTeacher(index, 'down')}
+                          disabled={saving || loading || index === teachers.length - 1}
+                          className="grid size-10 place-items-center rounded-md border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <ChevronDown size={16} />
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleUpdate(teacher)}
+                          disabled={saving}
+                          className="h-10 rounded-md border border-border px-4 text-sm font-semibold text-foreground/75 transition-colors hover:bg-muted disabled:opacity-50"
+                        >
+                          儲存
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleArchive(teacher)}
+                          disabled={saving}
+                          className="inline-flex h-10 items-center justify-center rounded-md border border-red-200 px-4 text-sm font-semibold text-red-600 transition-colors hover:bg-red-50 disabled:opacity-50 dark:border-red-400/25 dark:hover:bg-red-400/10"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>

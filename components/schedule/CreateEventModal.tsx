@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type ChangeEvent } from 'react'
 import { CalendarClock, Loader2, Plus, Settings2, Trash2, X } from 'lucide-react'
+import { DEFAULT_SCHEDULE_COLOR, SCHEDULE_COLOR_PALETTE } from '@/lib/schedule/colors'
 import { cn } from '@/lib/utils'
 import type { Room, ScheduleEvent } from '@/lib/schedule/types'
 
@@ -14,6 +15,7 @@ interface ClassOption {
 interface TeacherOption {
   id: string
   name: string
+  color: string
   status: 'active' | 'archived'
   sort_order?: number
 }
@@ -50,16 +52,7 @@ interface FormState {
   teacherSegments: TeacherSegmentDraft[]
 }
 
-const EVENT_COLORS = [
-  '#3b82f6',
-  '#8b5cf6',
-  '#10b981',
-  '#f59e0b',
-  '#ef4444',
-  '#06b6d4',
-  '#f97316',
-  '#84cc16',
-]
+const EVENT_COLORS = SCHEDULE_COLOR_PALETTE
 
 const EVENT_TYPES: { value: ScheduleEvent['event_type']; label: string }[] = [
   { value: 'class', label: '團課' },
@@ -88,7 +81,7 @@ function segmentId(index: number): string {
 
 function initialForm(event: ScheduleEvent | null | undefined, draft: Props['draft']): FormState {
   if (event) {
-    const eventColor = event.color ?? EVENT_COLORS[0]
+    const eventColor = event.color ?? DEFAULT_SCHEDULE_COLOR
     return {
       roomId: event.room_id,
       classId: event.class_id ?? '',
@@ -105,7 +98,7 @@ function initialForm(event: ScheduleEvent | null | undefined, draft: Props['draf
           teacherId: teacher.teacher_id,
           startTime: teacher.start_time.slice(0, 5),
           endTime: teacher.end_time.slice(0, 5),
-          color: teacher.color ?? eventColor,
+          color: teacher.teacher?.color ?? teacher.color ?? eventColor,
         })),
     }
   }
@@ -117,7 +110,7 @@ function initialForm(event: ScheduleEvent | null | undefined, draft: Props['draf
     eventType: 'class',
     startTime: draft?.startTime ?? '12:00',
     endTime: draft?.endTime ?? '13:00',
-    color: EVENT_COLORS[0],
+    color: DEFAULT_SCHEDULE_COLOR,
     note: '',
     teacherSegments: [],
   }
@@ -245,6 +238,10 @@ function EventForm({
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [error, setError] = useState('')
+  const teacherColorById = useMemo(
+    () => new Map(teachers.map((teacher) => [teacher.id, teacher.color])),
+    [teachers],
+  )
 
   function update<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm(previous => ({ ...previous, [key]: value }))
@@ -272,7 +269,7 @@ function EventForm({
             teacherId: '',
             startTime: last?.endTime ?? previous.startTime,
             endTime: previous.endTime,
-            color: EVENT_COLORS[(nextIndex + 1) % EVENT_COLORS.length],
+            color: '',
           },
         ],
       }
@@ -297,6 +294,13 @@ function EventForm({
         classId,
         title: shouldSyncTitle ? nextClassName : previous.title,
       }
+    })
+  }
+
+  function changeSegmentTeacher(index: number, teacherId: string) {
+    updateSegment(index, {
+      teacherId,
+      color: teacherId ? (teacherColorById.get(teacherId) ?? '') : '',
     })
   }
 
@@ -356,7 +360,7 @@ function EventForm({
           teacher_id: segment.teacherId,
           start_time: segment.startTime,
           end_time: segment.endTime,
-          color: segment.color,
+          color: segment.color || null,
         }))
 
       const payload = {
@@ -594,7 +598,7 @@ function EventForm({
                       <span className="text-[11px] font-medium text-muted-foreground">老師</span>
                       <select
                         value={segment.teacherId}
-                        onChange={event => updateSegment(index, { teacherId: event.target.value })}
+                        onChange={event => changeSegmentTeacher(index, event.target.value)}
                         className="h-9 rounded-md border border-input bg-background px-2 text-sm outline-none transition-colors focus:border-gold focus:ring-2 focus:ring-gold/15"
                       >
                         <option value="">選擇老師</option>
@@ -625,20 +629,19 @@ function EventForm({
                     </label>
 
                     <div className="flex items-center justify-between gap-2 sm:justify-end">
-                      <div className="flex max-w-[88px] flex-wrap justify-end gap-1.5 sm:max-w-[120px]">
-                        {EVENT_COLORS.map(color => (
-                          <button
-                            key={color}
-                            type="button"
-                            aria-label={`選擇分段顏色 ${color}`}
-                            onClick={() => updateSegment(index, { color })}
-                            style={{ backgroundColor: color }}
+                      <div className="min-w-0 rounded-md border border-border bg-background/70 px-2 py-1.5 text-[11px] text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <span
                             className={cn(
-                              'size-5 rounded-full ring-offset-2 ring-offset-background transition-transform',
-                              segment.color === color ? 'scale-110 ring-2 ring-foreground' : 'hover:scale-105'
+                              'size-3 shrink-0 rounded-full border',
+                              segment.color ? 'border-black/5' : 'border-dashed border-border bg-transparent',
                             )}
+                            style={segment.color ? { backgroundColor: segment.color } : undefined}
                           />
-                        ))}
+                          <span className="truncate">
+                            {segment.color || '選老師後自動套色'}
+                          </span>
+                        </div>
                       </div>
                       <button
                         type="button"

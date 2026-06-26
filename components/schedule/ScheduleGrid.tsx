@@ -297,7 +297,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                 right: 6,
                                 height,
                               }}
-                              className="z-10 overflow-hidden rounded-md border border-border bg-background/95 shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99]"
+                              className="z-10 overflow-hidden rounded-md border border-border bg-background/95 shadow-[0_8px_22px_-16px_rgba(0,0,0,0.65)] ring-1 ring-inset ring-white/60 transition-all hover:-translate-y-0.5 hover:brightness-[1.03] focus:outline-none focus:ring-2 focus:ring-gold/30 active:scale-[0.99] dark:ring-white/10"
                               onClick={() => onClickEvent(event)}
                               onKeyDown={keyEvent => handleInteractiveKeyDown(keyEvent, () => onClickEvent(event))}
                             >
@@ -313,7 +313,9 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                   minuteToTop(segmentEnd) - minuteToTop(segmentStart) - (teacherIndex === teachers.length - 1 ? 4 : 0),
                                   20
                                 )
-                                const segmentColor = teacher.color ?? color
+                                const segmentColor = teacher.teacher?.color ?? teacher.color ?? color
+                                const showTitle = teacherIndex === 0 && segmentHeight >= 38
+                                const showSubtitle = teacherIndex === 0 && segmentHeight >= 52
 
                                 return (
                                   <div
@@ -321,8 +323,8 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                     style={{
                                       position: 'absolute',
                                       top: segmentTop,
-                                      left: 0,
-                                      right: 0,
+                                      left: 3,
+                                      right: 3,
                                       height: segmentHeight,
                                       backgroundColor: eventFill(segmentColor),
                                       borderTop: teacherIndex > 0 ? '1px dashed rgba(148, 163, 184, 0.55)' : undefined,
@@ -334,7 +336,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                       style={{ backgroundColor: segmentColor }}
                                     />
                                     <div className="flex h-full min-w-0 flex-col justify-center px-2 py-1 pl-4">
-                                      {teacherIndex === 0 && (
+                                      {showTitle && (
                                         <div className="flex min-w-0 items-center gap-1.5">
                                           <span
                                             className="inline-block size-2 shrink-0 rounded-full"
@@ -345,7 +347,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                           </p>
                                         </div>
                                       )}
-                                      {teacherIndex === 0 && segmentHeight >= 44 && (
+                                      {showSubtitle && (
                                         <p className="truncate text-[10px] text-muted-foreground">
                                           {eventSubtitle(event)}
                                         </p>
@@ -353,7 +355,7 @@ export function ScheduleGrid({ date, rooms, events, onCreateEvent, onClickEvent 
                                       <p
                                         className={[
                                           'truncate text-[10px] text-muted-foreground',
-                                          teacherIndex === 0 ? 'mt-0.5' : '',
+                                          showTitle ? 'mt-0.5' : '',
                                         ].join(' ')}
                                       >
                                         {teacher.teacher?.name ?? '未指定老師'} {teacher.start_time.slice(0, 5)} - {teacher.end_time.slice(0, 5)}
