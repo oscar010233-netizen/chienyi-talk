@@ -186,7 +186,7 @@ function GroupedCourseCard({
       >
         <div
           className="absolute top-0 bottom-0 left-0 w-[3px]"
-          style={{ backgroundColor: eventFill(color) }}
+          style={{ backgroundColor: colorWithAlpha(color, 0.55) }}
         />
         <div className="relative ml-[3px] h-full overflow-hidden rounded-r-[14px] sm:rounded-r-[16px]">
           <div
