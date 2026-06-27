@@ -180,7 +180,10 @@ function GroupedCourseCard({
       onClick={() => onClickEvent(event)}
       onKeyDown={keyEvent => handleInteractiveKeyDown(keyEvent, () => onClickEvent(event))}
     >
-      <div className="relative h-full overflow-hidden rounded-[14px] ring-2 ring-[color:var(--workspace-course-group-border)] shadow-[var(--workspace-course-group-shadow)] hover:ring-[color:var(--workspace-course-group-border-hover)] hover:shadow-[var(--workspace-course-group-shadow-hover)] sm:rounded-[16px]">
+      <div
+        className="relative h-full overflow-hidden rounded-[14px] shadow-[var(--workspace-course-group-shadow)] hover:shadow-[var(--workspace-course-group-shadow-hover)] sm:rounded-[16px]"
+        style={{ boxShadow: `0 0 0 2px ${colorWithAlpha(color, 0.55)}` }}
+      >
         <div
           className="absolute top-0 bottom-0 left-0 w-[3px]"
           style={{ backgroundColor: eventFill(color) }}
