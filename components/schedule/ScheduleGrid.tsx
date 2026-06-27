@@ -185,10 +185,10 @@ function GroupedCourseCard({
           className="absolute top-0 bottom-0 left-0 w-[3px]"
           style={{ backgroundColor: eventFill(color) }}
         />
-        <div className="relative ml-[3px] h-full overflow-hidden rounded-r-[14px] border-t border-r border-b border-[color:var(--workspace-course-group-border)] hover:border-[color:var(--workspace-course-group-border-hover)] sm:rounded-r-[16px]">
+        <div className="relative ml-[3px] h-full overflow-hidden rounded-r-[14px] border-t-2 border-r-2 border-b-2 border-[color:var(--workspace-course-group-border)] hover:border-[color:var(--workspace-course-group-border-hover)] sm:rounded-r-[16px]">
           <div
             ref={badgeRef}
-            className="pointer-events-none absolute top-1.5 left-1.5 right-1.5 z-20 rounded-[10px] border border-[color:var(--workspace-course-divider)] bg-background/75 px-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] backdrop-blur-[10px] sm:rounded-xl sm:px-3"
+            className="pointer-events-none absolute top-1.5 left-1.5 right-1.5 z-20 rounded-[10px] border border-[color:var(--workspace-course-divider)] bg-background/45 px-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.06)] backdrop-blur-[16px] backdrop-saturate-150 sm:rounded-xl sm:px-3"
             style={{ minHeight: headerHeight }}
           >
             <div className="flex h-full min-w-0 flex-col justify-center py-1 text-[10px] sm:text-[11px]">
